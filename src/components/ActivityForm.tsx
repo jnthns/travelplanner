@@ -38,14 +38,14 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ tripId, date, existingActiv
         setAiSuggestion(null);
         const prompt = `You are an expert travel assistant. For this activity: "${title.trim()}".
 
-Write a highly detailed and useful guide (at least 150 words) structured in this order:
+Write a highly detailed and useful guide (maximum 200 words) in bullet point format with newlines for formatting, structured in this order:
 1. Start with specific, practical travel tips to optimize the experience — best time to visit, how to avoid crowds, money-saving strategies, local etiquette, and efficiency tips for getting the most out of the visit.
 2. Then include lesser-known tips or details that a typical tourist might miss (hidden features, local secrets, nearby gems worth combining into the visit).
 3. End with a brief but rich historical, cultural, or geographical description of the location/activity.
 
-Prioritize actionable advice over general description. Use engaging but factual language. Output only the guide paragraphs, no headings or labels.`;
+Prioritize actionable advice over general description. Use engaging but factual language. Output only the guide paragraphs, no headings or labels. Start with a line divider in your response.`;
         try {
-            const text = await generateWithGemini(prompt, 800);
+            const text = await generateWithGemini(prompt, 1500);
             setAiSuggestion(text);
         } catch (e) {
             setAiError(e instanceof Error ? e.message : 'AI suggestion failed');

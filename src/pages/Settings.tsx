@@ -1,52 +1,27 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
+import { Check } from 'lucide-react';
+import {
+  THEME_PRESETS,
+  type ThemeConfig,
+  loadThemeConfig,
+  saveThemeConfig,
+  getResolvedTokens,
+  applyTheme,
+} from '../design-system/themes';
 import './Settings.css';
 
 const SETTINGS_STORAGE_KEY = 'travelplanner_settings';
-const THEME_STORAGE_KEY = 'travelplanner_theme';
-
-const DEFAULT_THEME = {
-  primary: '#3b82f6',
-  primaryHover: '#2563eb',
-  secondary: '#10b981',
-  secondaryHover: '#059669',
-  accent: '#f59e0b',
-  accentHover: '#d97706',
-};
-
-type ThemeColors = typeof DEFAULT_THEME;
 
 type SettingsState = {
   compactLayout: boolean;
 };
-
-function loadTheme(): Partial<ThemeColors> {
-  try {
-    const raw = localStorage.getItem(THEME_STORAGE_KEY);
-    if (!raw) return {};
-    return JSON.parse(raw) as Partial<ThemeColors>;
-  } catch {
-    return {};
-  }
-}
-
-function applyTheme(theme: Partial<ThemeColors>) {
-  const root = document.documentElement;
-  if (theme.primary != null) root.style.setProperty('--primary-color', theme.primary);
-  if (theme.primaryHover != null) root.style.setProperty('--primary-hover', theme.primaryHover);
-  if (theme.secondary != null) root.style.setProperty('--secondary-color', theme.secondary);
-  if (theme.secondaryHover != null) root.style.setProperty('--secondary-hover', theme.secondaryHover);
-  if (theme.accent != null) root.style.setProperty('--accent-color', theme.accent);
-  if (theme.accentHover != null) root.style.setProperty('--accent-hover', theme.accentHover);
-}
 
 const loadSettings = (): SettingsState => {
   try {
     const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
     if (!raw) return { compactLayout: false };
     const parsed = JSON.parse(raw) as Partial<SettingsState>;
-    return {
-      compactLayout: parsed.compactLayout ?? false,
-    };
+    return { compactLayout: parsed.compactLayout ?? false };
   } catch {
     return { compactLayout: false };
   }
@@ -54,7 +29,10 @@ const loadSettings = (): SettingsState => {
 
 const Settings: React.FC = () => {
   const [settings, setSettings] = useState<SettingsState>(() => loadSettings());
-  const [theme, setTheme] = useState<ThemeColors>(() => ({ ...DEFAULT_THEME, ...loadTheme() }));
+  const [themeConfig, setThemeConfig] = useState<ThemeConfig>(() => loadThemeConfig());
+
+  const resolvedTokens = useMemo(() => getResolvedTokens(themeConfig), [themeConfig]);
+  const activePreset = THEME_PRESETS.find((p) => p.id === themeConfig.presetId) ?? THEME_PRESETS[0];
 
   useEffect(() => {
     localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
@@ -62,58 +40,104 @@ const Settings: React.FC = () => {
   }, [settings]);
 
   useEffect(() => {
-    applyTheme(theme);
-    localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(theme));
-  }, [theme]);
+    applyTheme(resolvedTokens);
+    saveThemeConfig(themeConfig);
+  }, [resolvedTokens, themeConfig]);
 
-  const updateTheme = (key: keyof ThemeColors, value: string) => {
-    setTheme((prev) => ({ ...prev, [key]: value }));
+  const selectPreset = (presetId: string) => {
+    setThemeConfig({ presetId, colorOverrides: {} });
   };
 
-  const resetTheme = () => {
-    setTheme({ ...DEFAULT_THEME });
+  const updateColor = (key: 'primaryColor' | 'secondaryColor' | 'accentColor', value: string) => {
+    setThemeConfig((prev) => ({
+      ...prev,
+      colorOverrides: { ...prev.colorOverrides, [key]: value },
+    }));
   };
+
+  const resetColors = () => {
+    setThemeConfig((prev) => ({ ...prev, colorOverrides: {} }));
+  };
+
+  const hasOverrides = Object.values(themeConfig.colorOverrides).some(Boolean);
+
+  const colorFields = [
+    { key: 'primaryColor' as const, label: 'Primary', value: resolvedTokens.primaryColor },
+    { key: 'secondaryColor' as const, label: 'Secondary', value: resolvedTokens.secondaryColor },
+    { key: 'accentColor' as const, label: 'Accent', value: resolvedTokens.accentColor },
+  ];
 
   return (
     <div className="page-container animate-fade-in">
       <header className="page-header">
         <div>
           <h1>Settings</h1>
-          <p>Adjust TravelPlanner preferences for your device.</p>
+          <p>Customize your TravelPlanner experience.</p>
         </div>
       </header>
 
-      <div className="card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
-        <h2 style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>Theme colors</h2>
+      <div className="card settings-section">
+        <h2 className="section-heading">Theme</h2>
+        <div className="preset-grid">
+          {THEME_PRESETS.map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              className={`preset-card ${preset.id === themeConfig.presetId ? 'active' : ''}`}
+              onClick={() => selectPreset(preset.id)}
+            >
+              <div className="preset-swatches">
+                <span className="swatch" style={{ background: preset.preview.bg }} />
+                <span className="swatch" style={{ background: preset.preview.primary }} />
+                <span className="swatch" style={{ background: preset.preview.secondary }} />
+                <span className="swatch" style={{ background: preset.preview.accent }} />
+              </div>
+              <span className="preset-name">{preset.name}</span>
+              <span className="preset-desc">{preset.description}</span>
+              {preset.id === themeConfig.presetId && (
+                <span className="preset-check"><Check size={14} /></span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="card settings-section">
+        <div className="section-heading-row">
+          <h2 className="section-heading">Color palette</h2>
+          {hasOverrides && (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={resetColors}>
+              Reset to preset
+            </button>
+          )}
+        </div>
+        <p className="section-hint">Override the {activePreset.name} theme colors.</p>
         <div className="theme-color-grid">
-          {(['primary', 'secondary', 'accent'] as const).map((key) => (
+          {colorFields.map(({ key, label, value }) => (
             <div key={key} className="input-group">
-              <label className="input-label">{key.charAt(0).toUpperCase() + key.slice(1)}</label>
+              <label className="input-label">{label}</label>
               <div className="theme-color-row">
                 <input
                   type="color"
-                  value={theme[key]}
-                  onChange={(e) => updateTheme(key, e.target.value)}
+                  value={value}
+                  onChange={(e) => updateColor(key, e.target.value)}
                   className="theme-color-swatch"
-                  aria-label={`${key} color`}
+                  aria-label={`${label} color`}
                 />
                 <input
                   type="text"
-                  value={theme[key]}
-                  onChange={(e) => updateTheme(key, e.target.value)}
+                  value={value}
+                  onChange={(e) => updateColor(key, e.target.value)}
                   className="input-field theme-color-hex"
                 />
               </div>
             </div>
           ))}
         </div>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={resetTheme}>
-          Reset to default
-        </button>
       </div>
 
-      <div className="card" style={{ padding: '1.5rem' }}>
-        <h2 style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>Layout</h2>
+      <div className="card settings-section">
+        <h2 className="section-heading">Layout</h2>
         <div className="input-group">
           <label className="input-label" htmlFor="compact-layout-toggle">
             <input
@@ -128,7 +152,7 @@ const Settings: React.FC = () => {
             Compact layout
           </label>
           <p>
-            Use slightly tighter spacing and paddings to fit more information on screen.
+            Use tighter spacing to fit more information on screen.
           </p>
         </div>
       </div>
@@ -137,4 +161,3 @@ const Settings: React.FC = () => {
 };
 
 export default Settings;
-

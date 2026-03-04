@@ -5,29 +5,14 @@ import ItineraryList from './pages/ItineraryList';
 import CalendarView from './pages/CalendarView';
 import Transportation from './pages/Transportation';
 import Settings from './pages/Settings';
-import './theme.css'; // Global beautiful theme
-
-const THEME_STORAGE_KEY = 'travelplanner_theme';
-function loadAndApplyTheme() {
-  try {
-    const raw = localStorage.getItem(THEME_STORAGE_KEY);
-    if (!raw) return;
-    const theme = JSON.parse(raw) as Record<string, string>;
-    const root = document.documentElement;
-    Object.entries(theme).forEach(([key, value]) => {
-      if (key === 'primary') root.style.setProperty('--primary-color', value);
-      else if (key === 'primaryHover') root.style.setProperty('--primary-hover', value);
-      else if (key === 'secondary') root.style.setProperty('--secondary-color', value);
-      else if (key === 'secondaryHover') root.style.setProperty('--secondary-hover', value);
-      else if (key === 'accent') root.style.setProperty('--accent-color', value);
-      else if (key === 'accentHover') root.style.setProperty('--accent-hover', value);
-    });
-  } catch { /* ignore */ }
-}
+import { loadThemeConfig, getResolvedTokens, applyTheme } from './design-system/themes';
+import './theme.css';
 
 const App: React.FC = () => {
   useEffect(() => {
-    loadAndApplyTheme();
+    const config = loadThemeConfig();
+    const tokens = getResolvedTokens(config);
+    applyTheme(tokens);
   }, []);
 
   return (

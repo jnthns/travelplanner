@@ -109,7 +109,7 @@ For each option use a bullet with:
 
 Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid superlatives.`;
         try {
-            const text = await generateWithGemini(prompt, 500);
+            const text = await generateWithGemini(prompt, 1000);
             setAiRoutesSuggestion(text);
         } catch (e) {
             setAiRoutesError(e instanceof Error ? e.message : 'AI suggestion failed');

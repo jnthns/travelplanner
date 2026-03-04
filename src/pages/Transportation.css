@@ -11,7 +11,9 @@
 .cost-summary {
     padding: 1.25rem;
     margin-bottom: 1.5rem;
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.05), rgba(59, 130, 246, 0.05));
+    background: linear-gradient(135deg,
+        color-mix(in srgb, var(--secondary-color) 5%, transparent),
+        color-mix(in srgb, var(--primary-color) 5%, transparent));
 }
 
 .cost-summary h3 {

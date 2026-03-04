@@ -84,8 +84,7 @@
 }
 
 .nav-item.active {
-    background-color: rgba(59, 130, 246, 0.1);
-    /* Light primary */
+    background-color: color-mix(in srgb, var(--primary-color) 10%, transparent);
     color: var(--primary-color);
     font-weight: 600;
 }

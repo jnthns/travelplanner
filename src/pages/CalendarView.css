@@ -98,12 +98,12 @@
 
 .calendar-day:hover {
     border-color: var(--primary-color);
-    background-color: rgba(59, 130, 246, 0.02);
+    background-color: color-mix(in srgb, var(--primary-color) 2%, transparent);
 }
 
 .calendar-day.today {
     border-color: var(--primary-color);
-    background-color: rgba(59, 130, 246, 0.05);
+    background-color: color-mix(in srgb, var(--primary-color) 5%, transparent);
 }
 
 .calendar-day.today .cal-day-number {
@@ -114,12 +114,14 @@
 }
 
 .calendar-day.in-trip {
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.04), rgba(59, 130, 246, 0.04));
+    background: linear-gradient(135deg,
+        color-mix(in srgb, var(--secondary-color) 4%, transparent),
+        color-mix(in srgb, var(--primary-color) 4%, transparent));
 }
 
 .calendar-day.selected {
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary-color) 20%, transparent);
 }
 
 .cal-day-number {
