@@ -21,7 +21,7 @@ const Sidebar: React.FC = () => {
       <div className="sidebar-header">
         <div className="logo-container">
           <span className="logo-icon">✈️</span>
-          <span className="logo-text">TripPlanner</span>
+          <span className="logo-text">TravelPlanner</span>
         </div>
         <button
           type="button"

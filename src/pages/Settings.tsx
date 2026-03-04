@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import './Settings.css';
 
-const SETTINGS_STORAGE_KEY = 'tripplanner_settings';
-const THEME_STORAGE_KEY = 'tripplanner_theme';
+const SETTINGS_STORAGE_KEY = 'travelplanner_settings';
+const THEME_STORAGE_KEY = 'travelplanner_theme';
 
 const DEFAULT_THEME = {
   primary: '#3b82f6',
@@ -79,7 +79,7 @@ const Settings: React.FC = () => {
       <header className="page-header">
         <div>
           <h1>Settings</h1>
-          <p>Adjust TripPlanner preferences for your device.</p>
+          <p>Adjust TravelPlanner preferences for your device.</p>
         </div>
       </header>
 

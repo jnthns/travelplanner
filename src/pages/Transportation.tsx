@@ -15,7 +15,7 @@ const Transportation: React.FC = () => {
     const { routes, addRoute, updateRoute, deleteRoute, getRoutesByTrip } = useTransportRoutes();
 
     const [selectedTripId, setSelectedTripId] = useLocalStorageState<string | null>(
-        'tripplanner_transport_selectedTripId',
+        'travelplanner_transport_selectedTripId',
         null,
     );
     const [showForm, setShowForm] = useState(false);

@@ -19,7 +19,7 @@ import type { Trip } from '../lib/types';
 import ActivityForm from '../components/ActivityForm';
 import './CalendarView.css';
 
-const CALENDAR_VIEW_KEY = 'tripplanner_calendar_view';
+const CALENDAR_VIEW_KEY = 'travelplanner_calendar_view';
 
 type ViewMode = 'month' | 'week' | 'day' | 'trip';
 

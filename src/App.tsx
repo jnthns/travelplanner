@@ -7,7 +7,7 @@ import Transportation from './pages/Transportation';
 import Settings from './pages/Settings';
 import './theme.css'; // Global beautiful theme
 
-const THEME_STORAGE_KEY = 'tripplanner_theme';
+const THEME_STORAGE_KEY = 'travelplanner_theme';
 function loadAndApplyTheme() {
   try {
     const raw = localStorage.getItem(THEME_STORAGE_KEY);
@@ -31,7 +31,7 @@ const App: React.FC = () => {
   }, []);
 
   return (
-    <Router>
+    <Router basename="/travelplanner/">
       <div className="app-container">
         <Sidebar />
         <main className="main-content">

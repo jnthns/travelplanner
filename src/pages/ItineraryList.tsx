@@ -27,11 +27,11 @@ const ItineraryList: React.FC = () => {
     const [showTripForm, setShowTripForm] = useState(false);
     const [editingTrip, setEditingTrip] = useState<string | null>(null);
     const [selectedTripId, setSelectedTripId] = useLocalStorageState<string | null>(
-        'tripplanner_itinerary_selectedTripId',
+        'travelplanner_itinerary_selectedTripId',
         null,
     );
     const [expandedDayList, setExpandedDayList] = useLocalStorageState<string[]>(
-        'tripplanner_itinerary_expandedDays',
+        'travelplanner_itinerary_expandedDays',
         [],
     );
     const [addingActivityDate, setAddingActivityDate] = useState<string | null>(null);
