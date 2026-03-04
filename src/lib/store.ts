@@ -1,122 +1,138 @@
 import { useState, useEffect, useCallback } from 'react';
+import {
+    collection,
+    addDoc,
+    updateDoc,
+    deleteDoc,
+    doc,
+    onSnapshot,
+    type Unsubscribe,
+} from 'firebase/firestore';
+import { db } from './firebase';
 import type { Trip, Activity, TransportRoute } from './types';
-
-const STORAGE_KEYS = {
-    trips: 'wandertrack_trips',
-    activities: 'wandertrack_activities',
-    transport: 'wandertrack_transport',
-};
-
-function loadFromStorage<T>(key: string): T[] {
-    try {
-        const data = localStorage.getItem(key);
-        return data ? JSON.parse(data) : [];
-    } catch {
-        return [];
-    }
-}
-
-function saveToStorage<T>(key: string, data: T[]): void {
-    localStorage.setItem(key, JSON.stringify(data));
-}
-
-function generateId(): string {
-    return Date.now().toString(36) + Math.random().toString(36).substring(2);
-}
 
 // ---- Trips ----
 export function useTrips() {
-    const [trips, setTrips] = useState<Trip[]>(() => loadFromStorage<Trip>(STORAGE_KEYS.trips));
+    const [trips, setTrips] = useState<Trip[]>([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        saveToStorage(STORAGE_KEYS.trips, trips);
-    }, [trips]);
-
-    const addTrip = useCallback((trip: Omit<Trip, 'id'>) => {
-        const newTrip = { ...trip, id: generateId() };
-        setTrips(prev => [...prev, newTrip]);
-        return newTrip;
+        let unsub: Unsubscribe;
+        try {
+            unsub = onSnapshot(collection(db, 'trips'), (snapshot) => {
+                const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Trip);
+                setTrips(data);
+                setLoading(false);
+            });
+        } catch {
+            setLoading(false);
+        }
+        return () => unsub?.();
     }, []);
 
-    const updateTrip = useCallback((id: string, updates: Partial<Trip>) => {
-        setTrips(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+    const addTrip = useCallback(async (trip: Omit<Trip, 'id'>) => {
+        const docRef = await addDoc(collection(db, 'trips'), trip);
+        return { ...trip, id: docRef.id } as Trip;
     }, []);
 
-    const deleteTrip = useCallback((id: string) => {
-        setTrips(prev => prev.filter(t => t.id !== id));
+    const updateTrip = useCallback(async (id: string, updates: Partial<Trip>) => {
+        await updateDoc(doc(db, 'trips', id), updates);
     }, []);
 
-    return { trips, addTrip, updateTrip, deleteTrip };
+    const deleteTrip = useCallback(async (id: string) => {
+        await deleteDoc(doc(db, 'trips', id));
+    }, []);
+
+    return { trips, loading, addTrip, updateTrip, deleteTrip };
 }
 
 // ---- Activities ----
 export function useActivities() {
-    const [activities, setActivities] = useState<Activity[]>(() =>
-        loadFromStorage<Activity>(STORAGE_KEYS.activities)
-    );
+    const [activities, setActivities] = useState<Activity[]>([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        saveToStorage(STORAGE_KEYS.activities, activities);
-    }, [activities]);
-
-    const addActivity = useCallback((activity: Omit<Activity, 'id'>) => {
-        const newActivity = { ...activity, id: generateId() };
-        setActivities(prev => [...prev, newActivity]);
-        return newActivity;
+        let unsub: Unsubscribe;
+        try {
+            unsub = onSnapshot(collection(db, 'activities'), (snapshot) => {
+                const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Activity);
+                setActivities(data);
+                setLoading(false);
+            });
+        } catch {
+            setLoading(false);
+        }
+        return () => unsub?.();
     }, []);
 
-    const updateActivity = useCallback((id: string, updates: Partial<Activity>) => {
-        setActivities(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
+    const addActivity = useCallback(async (activity: Omit<Activity, 'id'>) => {
+        const docRef = await addDoc(collection(db, 'activities'), activity);
+        return { ...activity, id: docRef.id } as Activity;
     }, []);
 
-    const deleteActivity = useCallback((id: string) => {
-        setActivities(prev => prev.filter(a => a.id !== id));
+    const updateActivity = useCallback(async (id: string, updates: Partial<Activity>) => {
+        await updateDoc(doc(db, 'activities', id), updates);
+    }, []);
+
+    const deleteActivity = useCallback(async (id: string) => {
+        await deleteDoc(doc(db, 'activities', id));
     }, []);
 
     const getActivitiesByDate = useCallback(
-        (date: string) => activities.filter(a => a.date === date).sort((a, b) => a.order - b.order),
+        (date: string) => activities.filter((a) => a.date === date).sort((a, b) => a.order - b.order),
         [activities]
     );
 
     const getActivitiesByTrip = useCallback(
-        (tripId: string) => activities.filter(a => a.tripId === tripId).sort((a, b) => {
-            if (a.date !== b.date) return a.date.localeCompare(b.date);
-            return a.order - b.order;
-        }),
+        (tripId: string) =>
+            activities
+                .filter((a) => a.tripId === tripId)
+                .sort((a, b) => {
+                    if (a.date !== b.date) return a.date.localeCompare(b.date);
+                    return a.order - b.order;
+                }),
         [activities]
     );
 
-    return { activities, addActivity, updateActivity, deleteActivity, getActivitiesByDate, getActivitiesByTrip };
+    return { activities, loading, addActivity, updateActivity, deleteActivity, getActivitiesByDate, getActivitiesByTrip };
 }
 
 // ---- Transport Routes ----
 export function useTransportRoutes() {
-    const [routes, setRoutes] = useState<TransportRoute[]>(() =>
-        loadFromStorage<TransportRoute>(STORAGE_KEYS.transport)
-    );
+    const [routes, setRoutes] = useState<TransportRoute[]>([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        saveToStorage(STORAGE_KEYS.transport, routes);
-    }, [routes]);
-
-    const addRoute = useCallback((route: Omit<TransportRoute, 'id'>) => {
-        const newRoute = { ...route, id: generateId() };
-        setRoutes(prev => [...prev, newRoute]);
-        return newRoute;
+        let unsub: Unsubscribe;
+        try {
+            unsub = onSnapshot(collection(db, 'transportRoutes'), (snapshot) => {
+                const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as TransportRoute);
+                setRoutes(data);
+                setLoading(false);
+            });
+        } catch {
+            setLoading(false);
+        }
+        return () => unsub?.();
     }, []);
 
-    const updateRoute = useCallback((id: string, updates: Partial<TransportRoute>) => {
-        setRoutes(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r));
+    const addRoute = useCallback(async (route: Omit<TransportRoute, 'id'>) => {
+        const docRef = await addDoc(collection(db, 'transportRoutes'), route);
+        return { ...route, id: docRef.id } as TransportRoute;
     }, []);
 
-    const deleteRoute = useCallback((id: string) => {
-        setRoutes(prev => prev.filter(r => r.id !== id));
+    const updateRoute = useCallback(async (id: string, updates: Partial<TransportRoute>) => {
+        await updateDoc(doc(db, 'transportRoutes', id), updates);
+    }, []);
+
+    const deleteRoute = useCallback(async (id: string) => {
+        await deleteDoc(doc(db, 'transportRoutes', id));
     }, []);
 
     const getRoutesByTrip = useCallback(
-        (tripId: string) => routes.filter(r => r.tripId === tripId).sort((a, b) => a.date.localeCompare(b.date)),
+        (tripId: string) => routes.filter((r) => r.tripId === tripId).sort((a, b) => a.date.localeCompare(b.date)),
         [routes]
     );
 
-    return { routes, addRoute, updateRoute, deleteRoute, getRoutesByTrip };
+    return { routes, loading, addRoute, updateRoute, deleteRoute, getRoutesByTrip };
 }

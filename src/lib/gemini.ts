@@ -1,18 +1,15 @@
-import { GoogleGenAI } from '@google/genai';
-
-const MODEL = 'gemini-2.5-flash';
 const MIN_CALL_SPACING_MS = 1200;
 const MAX_RETRIES = 2;
 
 let lastCallAt = 0;
 const inflight = new Map<string, Promise<string>>();
 
-function getClient() {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
-  if (!apiKey?.trim()) {
-    throw new Error('Gemini API key is not set. Add VITE_GEMINI_API_KEY to your environment.');
+function getProxyUrl(): string {
+  const url = import.meta.env.VITE_AI_PROXY_URL as string | undefined;
+  if (!url?.trim()) {
+    throw new Error('AI proxy URL is not set. Add VITE_AI_PROXY_URL to your environment.');
   }
-  return new GoogleGenAI({ apiKey });
+  return url.replace(/\/+$/, '');
 }
 
 function isRateLimitError(err: unknown): boolean {
@@ -28,35 +25,38 @@ async function sleep(ms: number) {
 
 /**
  * Single-flight + spaced calls + retry-on-429 wrapper.
- * This ensures we do NOT send multiple requests for a single “Suggest” click.
+ * Calls the Cloudflare Worker proxy instead of Gemini directly.
  */
 export async function generateWithGemini(prompt: string, maxTokens = 500): Promise<string> {
-  const key = `${MODEL}:${maxTokens}:${prompt}`;
+  const key = `${maxTokens}:${prompt}`;
   const existing = inflight.get(key);
   if (existing) return existing;
 
   const p = (async () => {
-    // Basic spacing to reduce accidental bursts across the app.
     const now = Date.now();
     const waitFor = Math.max(0, MIN_CALL_SPACING_MS - (now - lastCallAt));
     if (waitFor > 0) await sleep(waitFor);
     lastCallAt = Date.now();
 
-    const ai = getClient();
+    const proxyUrl = getProxyUrl();
     let attempt = 0;
     // eslint-disable-next-line no-constant-condition
     while (true) {
       try {
-        const response = await ai.models.generateContent({
-          model: MODEL,
-          contents: prompt,
-          config: {
-            maxOutputTokens: maxTokens,
-            temperature: 0.4,
-          },
+        const response = await fetch(`${proxyUrl}/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt, maxTokens }),
         });
-        const text = response.text?.trim?.() ?? '';
-        if (!text) throw new Error('Empty or invalid response from Gemini');
+
+        const data = await response.json() as { text?: string; error?: string };
+
+        if (!response.ok) {
+          throw new Error(data.error || `Proxy returned ${response.status}`);
+        }
+
+        const text = data.text?.trim() ?? '';
+        if (!text) throw new Error('Empty response from AI proxy');
         return text;
       } catch (err) {
         if (attempt < MAX_RETRIES && isRateLimitError(err)) {

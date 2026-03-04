@@ -66,11 +66,11 @@ const ItineraryList: React.FC = () => {
         });
     };
 
-    const handleSaveTrip = (tripData: Trip | Omit<Trip, 'id'>) => {
+    const handleSaveTrip = async (tripData: Trip | Omit<Trip, 'id'>) => {
         if ('id' in tripData) {
-            updateTrip(tripData.id, tripData);
+            await updateTrip(tripData.id, tripData);
         } else {
-            const newTrip = addTrip(tripData);
+            const newTrip = await addTrip(tripData);
             setSelectedTripId(newTrip.id);
         }
         setShowTripForm(false);

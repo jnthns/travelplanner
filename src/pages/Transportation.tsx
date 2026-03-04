@@ -118,7 +118,7 @@ Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid 
         }
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.from.trim() || !formData.to.trim() || !formData.date) return;
 
@@ -137,9 +137,9 @@ Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid 
         };
 
         if (editingRoute) {
-            updateRoute(editingRoute.id, routeData);
+            await updateRoute(editingRoute.id, routeData);
         } else {
-            addRoute(routeData);
+            await addRoute(routeData);
         }
         resetForm();
     };
