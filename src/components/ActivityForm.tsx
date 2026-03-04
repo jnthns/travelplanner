@@ -36,15 +36,16 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ tripId, date, existingActiv
         setAiLoading(true);
         setAiError(null);
         setAiSuggestion(null);
-        const prompt = `You are a travel assistant. For this activity: "${title.trim()}".
+        const prompt = `You are an expert travel assistant. For this activity: "${title.trim()}".
 
-Write a single paragraph (max 200 words) that:
-1. Describes the activity clearly with factual, useful context.
-2. Includes brief travel tips to optimize and get the most out of the experience.
+Write a highly detailed and useful guide (at least 150 words) structured in this order:
+1. Start with specific, practical travel tips to optimize the experience — best time to visit, how to avoid crowds, money-saving strategies, local etiquette, and efficiency tips for getting the most out of the visit.
+2. Then include lesser-known tips or details that a typical tourist might miss (hidden features, local secrets, nearby gems worth combining into the visit).
+3. End with a brief but rich historical, cultural, or geographical description of the location/activity.
 
-Use only factual language. No superlatives (avoid "best", "amazing", "must-see"). Be direct and informative. Output only the paragraph, no headings or labels.`;
+Prioritize actionable advice over general description. Use engaging but factual language. Output only the guide paragraphs, no headings or labels.`;
         try {
-            const text = await generateWithGemini(prompt, 400);
+            const text = await generateWithGemini(prompt, 800);
             setAiSuggestion(text);
         } catch (e) {
             setAiError(e instanceof Error ? e.message : 'AI suggestion failed');
