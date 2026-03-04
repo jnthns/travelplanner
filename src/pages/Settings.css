@@ -1,0 +1,29 @@
+.theme-color-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.theme-color-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.theme-color-swatch {
+    width: 2.5rem;
+    height: 2rem;
+    padding: 0;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    background: none;
+}
+
+.theme-color-hex {
+    flex: 1;
+    min-width: 0;
+    font-family: monospace;
+    font-size: 0.8rem;
+}

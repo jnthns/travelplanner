@@ -1,0 +1,332 @@
+/* Calendar Controls */
+.calendar-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.view-tabs {
+    display: flex;
+    gap: 0.25rem;
+    background-color: var(--border-light);
+    border-radius: var(--radius-md);
+    padding: 0.25rem;
+}
+
+.view-tab {
+    padding: 0.4rem 0.85rem;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+    font-family: inherit;
+}
+
+.view-tab.active {
+    background-color: var(--surface-color);
+    color: var(--primary-color);
+    box-shadow: var(--shadow-sm);
+}
+
+.nav-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.current-label {
+    font-weight: 600;
+    font-size: 1rem;
+    min-width: 180px;
+    text-align: center;
+}
+
+.trip-select {
+    max-width: 250px;
+}
+
+/* Calendar Grid */
+.weekday-headers {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    margin-bottom: 0.25rem;
+}
+
+.weekday-header {
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    padding: 0.5rem 0;
+}
+
+.days-grid {
+    display: grid;
+    gap: 2px;
+}
+
+.days-grid.month {
+    grid-template-columns: repeat(7, 1fr);
+}
+
+.days-grid.week {
+    grid-template-columns: repeat(7, 1fr);
+}
+
+.days-grid.trip {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+}
+
+.calendar-day {
+    background-color: var(--surface-color);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    padding: 0.5rem;
+    min-height: 80px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.calendar-day:hover {
+    border-color: var(--primary-color);
+    background-color: rgba(59, 130, 246, 0.02);
+}
+
+.calendar-day.today {
+    border-color: var(--primary-color);
+    background-color: rgba(59, 130, 246, 0.05);
+}
+
+.calendar-day.today .cal-day-number {
+    background-color: var(--primary-color);
+    color: white;
+    border-radius: var(--radius-full);
+    padding: 0.1rem 0.4rem;
+}
+
+.calendar-day.in-trip {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.04), rgba(59, 130, 246, 0.04));
+}
+
+.calendar-day.selected {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.cal-day-number {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.cal-day-label {
+    font-size: 0.7rem;
+    color: var(--text-tertiary);
+    margin-left: 0.35rem;
+}
+
+.cal-day-dots {
+    display: flex;
+    gap: 3px;
+    margin-top: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.cal-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+}
+
+.cal-dot-more {
+    font-size: 0.6rem;
+    color: var(--text-tertiary);
+}
+
+/* Week/Trip expanded activities */
+.cal-day-activities {
+    margin-top: 0.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.cal-activity-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.15rem 0.35rem;
+    font-size: 0.7rem;
+    background-color: var(--border-light);
+    border-radius: var(--radius-sm);
+    border-left: 3px solid;
+    overflow: hidden;
+}
+
+.cal-activity-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Day Detail View */
+.day-detail-view {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.no-activities-cal {
+    text-align: center;
+    color: var(--text-tertiary);
+    padding: 2rem;
+    font-style: italic;
+}
+
+.day-detail-activity {
+    padding: 1.25rem;
+    border-left: 4px solid;
+}
+
+.detail-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.detail-emoji {
+    font-size: 1.5rem;
+}
+
+.detail-header h4 {
+    font-size: 1.1rem;
+}
+
+.detail-time {
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+}
+
+.detail-desc,
+.detail-location,
+.detail-cost,
+.detail-notes {
+    font-size: 0.85rem;
+    margin-top: 0.4rem;
+    color: var(--text-secondary);
+}
+
+.detail-cost {
+    color: var(--secondary-color);
+    font-weight: 600;
+}
+
+/* Selected Date Panel */
+.selected-date-panel {
+    margin-top: 1.5rem;
+    padding: 1.25rem;
+}
+
+.selected-date-panel h3 {
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.panel-activity {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border-left: 3px solid;
+    margin-bottom: 0.5rem;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    background-color: var(--border-light);
+}
+
+.panel-time {
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+}
+
+.panel-details {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: 0.2rem;
+}
+
+.calendar-trip-overlay {
+    margin-bottom: 0.25rem;
+}
+
+.trip-overlay-bar {
+    border-radius: 4px;
+    min-height: 18px;
+    opacity: 0.85;
+}
+
+.panel-activity-with-actions {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.panel-activity-content {
+    flex: 1;
+}
+
+.panel-activity-actions {
+    display: flex;
+    gap: 0.25rem;
+    flex-shrink: 0;
+}
+
+.selected-date-panel .add-activity-btn {
+    margin-bottom: 0.75rem;
+    width: 100%;
+}
+
+@media (max-width: 768px) {
+    .calendar-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .view-tabs {
+        justify-content: center;
+    }
+
+    .nav-controls {
+        justify-content: center;
+    }
+
+    .current-label {
+        font-size: 0.9rem;
+        min-width: auto;
+    }
+
+    .calendar-day {
+        min-height: 60px;
+        padding: 0.35rem;
+    }
+
+    .cal-day-number {
+        font-size: 0.7rem;
+    }
+
+    .days-grid.trip {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    }
+
+    .trip-select {
+        max-width: 100%;
+    }
+}
