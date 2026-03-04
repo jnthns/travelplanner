@@ -98,6 +98,10 @@
 
     .sidebar:not(.collapsed) {
         width: 250px;
+        position: absolute;
+        height: 100vh;
+        z-index: 100;
+        box-shadow: 4px 0 10px rgba(0, 0, 0, 0.1);
     }
 
     .sidebar:not(.collapsed) .logo-text,
