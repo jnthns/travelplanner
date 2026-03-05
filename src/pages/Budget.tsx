@@ -15,13 +15,6 @@ function formatCurrency(amount: number, currency: string): string {
     return `${currency} ${amount.toFixed(2)}`;
 }
 
-function mergeTotals(a: CurrencyTotal, b: CurrencyTotal): CurrencyTotal {
-    const result = { ...a };
-    for (const [cur, amt] of Object.entries(b)) {
-        result[cur] = (result[cur] || 0) + amt;
-    }
-    return result;
-}
 
 const Budget: React.FC = () => {
     const { trips } = useTrips();
