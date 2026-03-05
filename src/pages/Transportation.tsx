@@ -7,6 +7,7 @@ import { TRANSPORT_EMOJIS } from '../lib/types';
 import { generateWithGemini } from '../lib/gemini';
 import { useLocalStorageState } from '../lib/persist';
 import Markdown from '../components/Markdown';
+import { useToast } from '../components/Toast';
 import { logEvent } from '../lib/amplitude';
 import './Transportation.css';
 
@@ -14,7 +15,8 @@ const transportTypes = ['flight', 'train', 'bus', 'car', 'ferry', 'taxi', 'walk'
 
 const Transportation: React.FC = () => {
     const { trips } = useTrips();
-    const { routes, addRoute, updateRoute, deleteRoute, getRoutesByTrip } = useTransportRoutes();
+    const { routes, addRoute, updateRoute, deleteRoute, restoreRoute, getRoutesByTrip } = useTransportRoutes();
+    const { showToast } = useToast();
 
     const [selectedTripId, setSelectedTripId] = useLocalStorageState<string | null>(
         'travelplanner_transport_selectedTripId',
@@ -150,11 +152,14 @@ Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid 
     };
 
     const handleDelete = (id: string) => {
-        if (confirm('Delete this transport route?')) {
-            const route = routes.find(r => r.id === id);
-            deleteRoute(id);
-            logEvent('Route Deleted', { transport_type: route?.type, from: route?.from, to: route?.to });
-        }
+        const route = routes.find(r => r.id === id);
+        if (!route) return;
+        deleteRoute(id);
+        logEvent('Route Deleted', { transport_type: route.type, from: route.from, to: route.to });
+        showToast(`Route "${route.from} → ${route.to}" deleted`, () => {
+            restoreRoute(route);
+            logEvent('Route Delete Undone', { transport_type: route.type });
+        });
     };
 
     return (
@@ -164,12 +169,9 @@ Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid 
                     <h1>Transportation</h1>
                     <p>Track all your flights, trains, rides, and routes.</p>
                 </div>
-                <button className="btn btn-primary" onClick={openAddForm}>
-                    <Plus size={18} /> Add Route
-                </button>
             </header>
 
-            {/* Trip Filter */}
+            {/* Trip Filter + Add */}
             <div className="transport-filter">
                 <select
                     className="input-field"
@@ -181,6 +183,9 @@ Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid 
                         <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
                 </select>
+                <button className="btn btn-primary" onClick={openAddForm}>
+                    <Plus size={18} /> Add Route
+                </button>
             </div>
 
             {/* Cost Summary */}

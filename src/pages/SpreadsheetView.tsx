@@ -6,6 +6,7 @@ import type { Activity } from '../lib/types';
 import { CATEGORY_EMOJIS, CATEGORY_COLORS } from '../lib/types';
 import { useLocalStorageState } from '../lib/persist';
 import ActivityForm from '../components/ActivityForm';
+import { useToast } from '../components/Toast';
 import { logEvent } from '../lib/amplitude';
 import './SpreadsheetView.css';
 
@@ -28,7 +29,8 @@ function getTimeSlot(time?: string): TimeSlot {
 
 const SpreadsheetView: React.FC = () => {
     const { trips } = useTrips();
-    const { activities, addActivity, updateActivity, deleteActivity } = useActivities();
+    const { activities, addActivity, updateActivity, deleteActivity, restoreActivity } = useActivities();
+    const { showToast } = useToast();
 
     const [selectedTripId, setSelectedTripId] = useLocalStorageState<string | null>(
         'travelplanner_spreadsheet_selectedTripId',
@@ -114,9 +116,14 @@ const SpreadsheetView: React.FC = () => {
 
     const handleDeleteFromModal = (id: string) => {
         const act = tripActivities.find(a => a.id === id);
+        if (!act) return;
         deleteActivity(id);
-        logEvent('Activity Deleted', { activity_title: act?.title, source: 'spreadsheet' });
+        logEvent('Activity Deleted', { activity_title: act.title, source: 'spreadsheet' });
         setEditingActivity(null);
+        showToast(`"${act.title}" deleted`, () => {
+            restoreActivity(act);
+            logEvent('Activity Delete Undone', { activity_title: act.title });
+        });
     };
 
     const cellKey = (dateStr: string, slot: TimeSlot) => `${dateStr}__${slot}`;

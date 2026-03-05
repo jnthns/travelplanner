@@ -310,6 +310,45 @@ export function getResolvedTokens(config: ThemeConfig): ThemeTokens {
   return tokens;
 }
 
+function lightenHex(hex: string, amount = 0.2): string {
+  const c = hex.replace('#', '');
+  const num = parseInt(c, 16);
+  const r = Math.min(255, Math.round(((num >> 16) & 0xff) + (255 - ((num >> 16) & 0xff)) * amount));
+  const g = Math.min(255, Math.round(((num >> 8) & 0xff) + (255 - ((num >> 8) & 0xff)) * amount));
+  const b = Math.min(255, Math.round((num & 0xff) + (255 - (num & 0xff)) * amount));
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+}
+
+export function getDarkTokens(tokens: ThemeTokens): ThemeTokens {
+  const primary = tokens.primaryColor.startsWith('#') ? lightenHex(tokens.primaryColor, 0.15) : tokens.primaryColor;
+  const secondary = tokens.secondaryColor.startsWith('#') ? lightenHex(tokens.secondaryColor, 0.15) : tokens.secondaryColor;
+  const accent = tokens.accentColor.startsWith('#') ? lightenHex(tokens.accentColor, 0.1) : tokens.accentColor;
+
+  return {
+    ...tokens,
+    bgColor: '#0f172a',
+    surfaceColor: '#1e293b',
+    textPrimary: '#f1f5f9',
+    textSecondary: '#94a3b8',
+    textTertiary: '#64748b',
+    primaryColor: primary,
+    primaryHover: tokens.primaryColor,
+    secondaryColor: secondary,
+    secondaryHover: tokens.secondaryColor,
+    accentColor: accent,
+    accentHover: tokens.accentColor,
+    errorColor: '#f87171',
+    errorBg: '#450a0a',
+    borderColor: '#334155',
+    borderLight: '#1e293b',
+    glassBg: 'rgba(30, 41, 59, 0.75)',
+    glassBorder: 'rgba(51, 65, 85, 0.4)',
+    shadowSm: '0 1px 2px 0 rgb(0 0 0 / 0.3)',
+    shadowMd: '0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3)',
+    shadowLg: '0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.4)',
+  };
+}
+
 export function applyTheme(tokens: ThemeTokens): void {
   const root = document.documentElement;
 

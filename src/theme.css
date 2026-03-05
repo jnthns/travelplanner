@@ -393,6 +393,35 @@ p {
     cursor: grabbing;
 }
 
+/* Dark mode adjustments */
+body.dark-mode .input-field {
+  background-color: color-mix(in srgb, var(--surface-color) 80%, black);
+}
+
+body.dark-mode .input-field::placeholder {
+  color: var(--text-tertiary);
+}
+
+body.dark-mode .card {
+  border-color: var(--border-color);
+}
+
+body.dark-mode .btn-outline {
+  border-color: var(--border-color);
+}
+
+body.dark-mode .sidebar {
+  background-color: color-mix(in srgb, var(--surface-color) 90%, black);
+}
+
+body.dark-mode .preset-swatches .swatch {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode img {
+  opacity: 0.9;
+}
+
 @media (max-width: 768px) {
   .page-container {
     padding: 1rem;

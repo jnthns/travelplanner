@@ -1,0 +1,118 @@
+.toast-container {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    pointer-events: none;
+    max-width: min(420px, calc(100vw - 2rem));
+    width: 100%;
+}
+
+.toast {
+    pointer-events: auto;
+    background-color: var(--text-primary);
+    color: var(--surface-color);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+}
+
+.toast-enter {
+    animation: toastSlideIn 0.25s ease-out;
+}
+
+.toast-exit {
+    animation: toastSlideOut 0.2s ease-in forwards;
+}
+
+@keyframes toastSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(1rem) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes toastSlideOut {
+    from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(1rem) scale(0.95);
+    }
+}
+
+.toast-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+}
+
+.toast-message {
+    font-size: 0.875rem;
+    font-weight: 500;
+    flex: 1;
+}
+
+.toast-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.toast-undo-btn {
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    font-weight: 700;
+    font-size: 0.875rem;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    transition: background-color 0.15s ease;
+}
+
+.toast-undo-btn:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+.toast-dismiss-btn {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0.15rem 0.3rem;
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    transition: color 0.15s ease;
+}
+
+.toast-dismiss-btn:hover {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.toast-progress-track {
+    height: 3px;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.toast-progress-bar {
+    height: 100%;
+    background-color: var(--primary-color);
+    transition: width 0.05s linear;
+}

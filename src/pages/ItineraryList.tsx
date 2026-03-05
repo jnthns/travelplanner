@@ -9,6 +9,7 @@ import ActivityForm from '../components/ActivityForm';
 import TripForm from '../components/TripForm';
 import Markdown from '../components/Markdown';
 import DraggableList from '../components/DraggableList';
+import { useToast } from '../components/Toast';
 import { logEvent } from '../lib/amplitude';
 import './ItineraryList.css';
 
@@ -24,8 +25,9 @@ const safeFormatDate = (dateStr: string | undefined, fmt: string, fallback = 'â€
 };
 
 const ItineraryList: React.FC = () => {
-    const { trips, addTrip, updateTrip, deleteTrip } = useTrips();
-    const { addActivity, updateActivity, deleteActivity, reorderActivities, getActivitiesByTrip } = useActivities();
+    const { trips, addTrip, updateTrip, deleteTrip, restoreTrip } = useTrips();
+    const { addActivity, updateActivity, deleteActivity, restoreActivity, reorderActivities, getActivitiesByTrip } = useActivities();
+    const { showToast } = useToast();
 
     const [showTripForm, setShowTripForm] = useState(false);
     const [editingTrip, setEditingTrip] = useState<string | null>(null);
@@ -104,12 +106,18 @@ const ItineraryList: React.FC = () => {
     };
 
     const handleDeleteTrip = (id: string) => {
-        if (confirm('Delete this trip and all its activities?')) {
-            const trip = trips.find(t => t.id === id);
-            deleteTrip(id);
-            logEvent('Trip Deleted', { trip_name: trip?.name });
-            if (selectedTripId === id) setSelectedTripId(null);
-        }
+        const trip = trips.find(t => t.id === id);
+        if (!trip) return;
+        const tripActivities_ = getActivitiesByTrip(id);
+        deleteTrip(id);
+        tripActivities_.forEach(a => deleteActivity(a.id));
+        logEvent('Trip Deleted', { trip_name: trip.name });
+        if (selectedTripId === id) setSelectedTripId(null);
+        showToast(`"${trip.name}" deleted`, () => {
+            restoreTrip(trip);
+            tripActivities_.forEach(a => restoreActivity(a));
+            logEvent('Trip Delete Undone', { trip_name: trip.name });
+        });
     };
 
     const activitiesForDate = (dateStr: string): Activity[] => {
@@ -254,7 +262,15 @@ const ItineraryList: React.FC = () => {
                                                                 defaultCurrency={selectedTrip?.defaultCurrency}
                                                                 onSave={handleSaveActivity}
                                                                 onCancel={() => setEditingActivity(null)}
-                                                                onDelete={() => { if (confirm('Delete this activity?')) { deleteActivity(activity.id); setEditingActivity(null); logEvent('Activity Deleted', { activity_title: activity.title, category: activity.category }); } }}
+                                                                onDelete={() => {
+                                                                    deleteActivity(activity.id);
+                                                                    setEditingActivity(null);
+                                                                    logEvent('Activity Deleted', { activity_title: activity.title, category: activity.category });
+                                                                    showToast(`"${activity.title}" deleted`, () => {
+                                                                        restoreActivity(activity);
+                                                                        logEvent('Activity Delete Undone', { activity_title: activity.title });
+                                                                    });
+                                                                }}
                                                             />
                                                         ) : (
                                                             <div className="activity-content">

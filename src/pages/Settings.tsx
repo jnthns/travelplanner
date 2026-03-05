@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Check } from 'lucide-react';
+import { Check, Sun, Moon } from 'lucide-react';
 import {
   THEME_PRESETS,
   type ThemeConfig,
   loadThemeConfig,
   saveThemeConfig,
   getResolvedTokens,
+  getDarkTokens,
   applyTheme,
 } from '../design-system/themes';
 import { logEvent } from '../lib/amplitude';
@@ -16,6 +17,7 @@ const SETTINGS_STORAGE_KEY = 'travelplanner_settings';
 type SettingsState = {
   compactLayout: boolean;
   textSize: number;
+  darkMode: boolean;
 };
 
 const TEXT_SIZE_OPTIONS = [
@@ -29,11 +31,15 @@ const TEXT_SIZE_OPTIONS = [
 const loadSettings = (): SettingsState => {
   try {
     const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
-    if (!raw) return { compactLayout: false, textSize: 80 };
+    if (!raw) return { compactLayout: false, textSize: 80, darkMode: false };
     const parsed = JSON.parse(raw) as Partial<SettingsState>;
-    return { compactLayout: parsed.compactLayout ?? false, textSize: parsed.textSize ?? 80 };
+    return {
+      compactLayout: parsed.compactLayout ?? false,
+      textSize: parsed.textSize ?? 80,
+      darkMode: parsed.darkMode ?? false,
+    };
   } catch {
-    return { compactLayout: false, textSize: 80 };
+    return { compactLayout: false, textSize: 80, darkMode: false };
   }
 };
 
@@ -47,13 +53,16 @@ const Settings: React.FC = () => {
   useEffect(() => {
     localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
     document.body.classList.toggle('compact-layout', settings.compactLayout);
+    document.body.classList.toggle('dark-mode', settings.darkMode);
+    document.documentElement.style.setProperty('color-scheme', settings.darkMode ? 'dark' : 'light');
     document.documentElement.style.setProperty('--text-size', `${settings.textSize}%`);
-  }, [settings]);
 
-  useEffect(() => {
-    applyTheme(resolvedTokens);
+    const tokens = settings.darkMode
+      ? getDarkTokens(getResolvedTokens(themeConfig))
+      : getResolvedTokens(themeConfig);
+    applyTheme(tokens);
     saveThemeConfig(themeConfig);
-  }, [resolvedTokens, themeConfig]);
+  }, [settings, themeConfig]);
 
   const selectPreset = (presetId: string) => {
     setThemeConfig({ presetId, colorOverrides: {} });
@@ -88,6 +97,28 @@ const Settings: React.FC = () => {
           <p>Customize your TravelPlanner experience.</p>
         </div>
       </header>
+
+      <div className="card settings-section dark-mode-section">
+        <div className="dark-mode-toggle-row">
+          <div className="dark-mode-info">
+            <h2 className="section-heading">Appearance</h2>
+            <p className="section-hint">{settings.darkMode ? 'Dark mode is on — easy on the eyes.' : 'Light mode is on — bright and clear.'}</p>
+          </div>
+          <button
+            type="button"
+            className={`dark-mode-toggle ${settings.darkMode ? 'active' : ''}`}
+            onClick={() => {
+              setSettings(prev => ({ ...prev, darkMode: !prev.darkMode }));
+              logEvent('Dark Mode Toggled', { enabled: !settings.darkMode });
+            }}
+            aria-label={settings.darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            <span className="toggle-icon toggle-sun"><Sun size={16} /></span>
+            <span className="toggle-icon toggle-moon"><Moon size={16} /></span>
+            <span className="toggle-thumb" />
+          </button>
+        </div>
+      </div>
 
       <div className="card settings-section">
         <h2 className="section-heading">Theme</h2>

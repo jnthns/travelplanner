@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
     collection,
     addDoc,
+    setDoc,
     updateDoc,
     deleteDoc,
     doc,
@@ -58,7 +59,12 @@ export function useTrips() {
         await deleteDoc(doc(db, 'trips', id));
     }, []);
 
-    return { trips, loading, addTrip, updateTrip, deleteTrip };
+    const restoreTrip = useCallback(async (trip: Trip) => {
+        const { id, ...data } = trip;
+        await setDoc(doc(db, 'trips', id), stripUndefined(data));
+    }, []);
+
+    return { trips, loading, addTrip, updateTrip, deleteTrip, restoreTrip };
 }
 
 // ---- Activities ----
@@ -101,6 +107,11 @@ export function useActivities() {
         await deleteDoc(doc(db, 'activities', id));
     }, []);
 
+    const restoreActivity = useCallback(async (activity: Activity) => {
+        const { id, ...data } = activity;
+        await setDoc(doc(db, 'activities', id), stripUndefined(data));
+    }, []);
+
     const reorderActivities = useCallback(async (orderedIds: { id: string; order: number }[]) => {
         const batch = writeBatch(db);
         for (const { id, order } of orderedIds) {
@@ -125,7 +136,7 @@ export function useActivities() {
         [activities]
     );
 
-    return { activities, loading, addActivity, updateActivity, deleteActivity, reorderActivities, getActivitiesByDate, getActivitiesByTrip };
+    return { activities, loading, addActivity, updateActivity, deleteActivity, restoreActivity, reorderActivities, getActivitiesByDate, getActivitiesByTrip };
 }
 
 // ---- Transport Routes ----
@@ -168,10 +179,15 @@ export function useTransportRoutes() {
         await deleteDoc(doc(db, 'transportRoutes', id));
     }, []);
 
+    const restoreRoute = useCallback(async (route: TransportRoute) => {
+        const { id, ...data } = route;
+        await setDoc(doc(db, 'transportRoutes', id), stripUndefined(data));
+    }, []);
+
     const getRoutesByTrip = useCallback(
         (tripId: string) => routes.filter((r) => r.tripId === tripId).sort((a, b) => a.date.localeCompare(b.date)),
         [routes]
     );
 
-    return { routes, loading, addRoute, updateRoute, deleteRoute, getRoutesByTrip };
+    return { routes, loading, addRoute, updateRoute, deleteRoute, restoreRoute, getRoutesByTrip };
 }

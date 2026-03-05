@@ -1,10 +1,13 @@
 /* Transport Filter */
 .transport-filter {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
     margin-bottom: 1.5rem;
 }
 
 .transport-filter .input-field {
-    max-width: 300px;
+    max-width: 250px;
 }
 
 /* Cost Summary */
@@ -253,8 +256,17 @@
 }
 
 @media (max-width: 768px) {
+    .transport-filter {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: center;
+    }
+
     .transport-filter .input-field {
-        max-width: 100%;
+        max-width: none;
+        flex: 1;
+        min-width: 120px;
     }
 
     .route-path {
@@ -271,12 +283,18 @@
         margin-left: 5px;
     }
 
-    .form-row {
-        flex-direction: column;
+    .transport-form .form-row {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .transport-form .form-row .input-group {
+        min-width: 0;
     }
 
     .route-arrow {
-        display: none;
+        font-size: 1.2rem;
+        padding-top: 1.5rem;
     }
 
     .type-chip {

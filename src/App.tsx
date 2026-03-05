@@ -2,7 +2,8 @@ import React, { Suspense, useEffect, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import AnalyticsProvider from './lib/amplitude';
-import { loadThemeConfig, getResolvedTokens, applyTheme } from './design-system/themes';
+import { ToastProvider } from './components/Toast';
+import { loadThemeConfig, getResolvedTokens, getDarkTokens, applyTheme } from './design-system/themes';
 import './theme.css';
 
 const ItineraryList = lazy(() => import('./pages/ItineraryList'));
@@ -15,37 +16,45 @@ const Settings = lazy(() => import('./pages/Settings'));
 const App: React.FC = () => {
   useEffect(() => {
     const config = loadThemeConfig();
-    const tokens = getResolvedTokens(config);
-    applyTheme(tokens);
+    let tokens = getResolvedTokens(config);
 
     try {
       const raw = localStorage.getItem('travelplanner_settings');
       if (raw) {
-        const s = JSON.parse(raw) as { textSize?: number; compactLayout?: boolean };
+        const s = JSON.parse(raw) as { textSize?: number; compactLayout?: boolean; darkMode?: boolean };
         if (s.textSize) document.documentElement.style.setProperty('--text-size', `${s.textSize}%`);
         if (s.compactLayout) document.body.classList.add('compact-layout');
+        if (s.darkMode) {
+          tokens = getDarkTokens(tokens);
+          document.body.classList.add('dark-mode');
+          document.documentElement.style.setProperty('color-scheme', 'dark');
+        }
       }
     } catch { /* ignore */ }
+
+    applyTheme(tokens);
   }, []);
 
   return (
     <Router basename="/travelplanner/">
       <AnalyticsProvider />
-      <div className="app-container">
-        <Sidebar />
-        <main className="main-content">
-          <Suspense fallback={null}>
-            <Routes>
-              <Route path="/" element={<ItineraryList />} />
-              <Route path="/calendar" element={<CalendarView />} />
-              <Route path="/transportation" element={<Transportation />} />
-              <Route path="/spreadsheet" element={<SpreadsheetView />} />
-              <Route path="/budget" element={<Budget />} />
-              <Route path="/settings" element={<Settings />} />
-            </Routes>
-          </Suspense>
-        </main>
-      </div>
+      <ToastProvider>
+        <div className="app-container">
+          <Sidebar />
+          <main className="main-content">
+            <Suspense fallback={null}>
+              <Routes>
+                <Route path="/" element={<ItineraryList />} />
+                <Route path="/calendar" element={<CalendarView />} />
+                <Route path="/transportation" element={<Transportation />} />
+                <Route path="/spreadsheet" element={<SpreadsheetView />} />
+                <Route path="/budget" element={<Budget />} />
+                <Route path="/settings" element={<Settings />} />
+              </Routes>
+            </Suspense>
+          </main>
+        </div>
+      </ToastProvider>
     </Router>
   );
 };

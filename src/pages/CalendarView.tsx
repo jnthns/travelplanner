@@ -12,6 +12,7 @@ import { CATEGORY_EMOJIS, CATEGORY_COLORS } from '../lib/types';
 import ActivityForm from '../components/ActivityForm';
 import DraggableList from '../components/DraggableList';
 import Markdown from '../components/Markdown';
+import { useToast } from '../components/Toast';
 import { logEvent } from '../lib/amplitude';
 import './CalendarView.css';
 
@@ -45,7 +46,8 @@ function saveCalendarPrefs(viewMode: ViewMode, selectedTripId: string | null, cu
 
 const CalendarView: React.FC = () => {
     const { trips } = useTrips();
-    const { activities, addActivity, updateActivity, deleteActivity, reorderActivities } = useActivities();
+    const { activities, addActivity, updateActivity, deleteActivity, restoreActivity, reorderActivities } = useActivities();
+    const { showToast } = useToast();
 
     const savedPrefs = useMemo(() => loadCalendarPrefs(), []);
     const [currentDate, setCurrentDate] = useState(() => {
@@ -412,7 +414,15 @@ Be specific to the actual destinations and activities. Each highlight should be 
                                     defaultCurrency={selectedTrip?.defaultCurrency}
                                     onSave={handleSaveActivity}
                                     onCancel={() => setEditingActivityId(null)}
-                                    onDelete={() => { if (confirm('Delete this activity?')) { deleteActivity(act.id); setEditingActivityId(null); logEvent('Activity Deleted', { activity_title: act.title, category: act.category, source: 'calendar_day' }); } }}
+                                    onDelete={() => {
+                                        deleteActivity(act.id);
+                                        setEditingActivityId(null);
+                                        logEvent('Activity Deleted', { activity_title: act.title, category: act.category, source: 'calendar_day' });
+                                        showToast(`"${act.title}" deleted`, () => {
+                                            restoreActivity(act);
+                                            logEvent('Activity Delete Undone', { activity_title: act.title });
+                                        });
+                                    }}
                                 />
                             ) : (
                                 <div className="day-detail-activity card" style={{ borderLeftColor: getActivityColor(act) }}>
@@ -476,7 +486,15 @@ Be specific to the actual destinations and activities. Each highlight should be 
                                 defaultCurrency={selectedTrip?.defaultCurrency}
                                 onSave={handleSaveActivity}
                                 onCancel={() => setEditingActivityId(null)}
-                                onDelete={() => { if (confirm('Delete this activity?')) { deleteActivity(act.id); setEditingActivityId(null); logEvent('Activity Deleted', { activity_title: act.title, category: act.category, source: 'calendar' }); } }}
+                                onDelete={() => {
+                                    deleteActivity(act.id);
+                                    setEditingActivityId(null);
+                                    logEvent('Activity Deleted', { activity_title: act.title, category: act.category, source: 'calendar' });
+                                    showToast(`"${act.title}" deleted`, () => {
+                                        restoreActivity(act);
+                                        logEvent('Activity Delete Undone', { activity_title: act.title });
+                                    });
+                                }}
                             />
                         ) : (
                             <div key={act.id} className="panel-activity panel-activity-with-actions" style={{ borderLeftColor: getActivityColor(act) }}>
