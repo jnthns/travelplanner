@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { Activity } from '../lib/types';
 import { CATEGORY_EMOJIS, ACTIVITY_COLORS } from '../lib/types';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Trash2 } from 'lucide-react';
 import { generateWithGemini } from '../lib/gemini';
 import { logEvent } from '../lib/amplitude';
 import Markdown from './Markdown';
@@ -16,14 +16,41 @@ interface ActivityFormProps {
     defaultCurrency?: string;
     onSave: (activity: Omit<Activity, 'id'> | { id: string } & Partial<Activity>) => void;
     onCancel: () => void;
+    onDelete?: () => void;
 }
 
 const categories = ['sightseeing', 'food', 'accommodation', 'transport', 'shopping', 'other'] as const;
 
-const ActivityForm: React.FC<ActivityFormProps> = ({ tripId, date, existingActivity, nextOrder, defaultCurrency, onSave, onCancel }) => {
+const TIME_OPTIONS: { value: string; label: string }[] = (() => {
+    const opts: { value: string; label: string }[] = [{ value: '', label: 'No time' }];
+    for (let h = 0; h < 24; h++) {
+        for (const m of [0, 30]) {
+            const hh = String(h).padStart(2, '0');
+            const mm = String(m).padStart(2, '0');
+            const value = `${hh}:${mm}`;
+            const period = h < 12 ? 'AM' : 'PM';
+            const displayH = h === 0 ? 12 : h > 12 ? h - 12 : h;
+            const label = `${displayH}:${mm} ${period}`;
+            opts.push({ value, label });
+        }
+    }
+    return opts;
+})();
+
+function snapTo30(time: string): string {
+    if (!time) return '';
+    const [hStr, mStr] = time.split(':');
+    const minutes = parseInt(mStr ?? '0', 10);
+    const snapped = minutes < 15 ? '00' : minutes < 45 ? '30' : '00';
+    let hours = parseInt(hStr ?? '0', 10);
+    if (minutes >= 45) hours = (hours + 1) % 24;
+    return `${String(hours).padStart(2, '0')}:${snapped}`;
+}
+
+const ActivityForm: React.FC<ActivityFormProps> = ({ tripId, date, existingActivity, nextOrder, defaultCurrency, onSave, onCancel, onDelete }) => {
     const [title, setTitle] = useState(existingActivity?.title || '');
     const [details, setDetails] = useState(existingActivity?.details || '');
-    const [time, setTime] = useState(existingActivity?.time || '');
+    const [time, setTime] = useState(() => snapTo30(existingActivity?.time || ''));
     const [location, setLocation] = useState(existingActivity?.location || '');
     const [category, setCategory] = useState<Activity['category']>(existingActivity?.category || 'other');
     const [cost, setCost] = useState(existingActivity?.cost?.toString() || '');
@@ -43,8 +70,9 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ tripId, date, existingActiv
 
 Write a highly detailed and useful guide (maximum 100 words) in bullet point format with newlines for formatting, structured in this order:
 1. Start with specific, practical travel tips to optimize the experience — best time of the week/time of day to visit, how to avoid crowds, money-saving strategies, local etiquette, and efficiency tips for getting the most out of the visit.
-2. Then include lesser-known tips or details that a typical tourist might miss (nearby gems worth combining into the visit).
-3. End with a brief but rich historical, cultural, or geographical description of the location/activity.
+2. Include any culinary recommendations for the area.
+3. Then include lesser-known tips or details that a typical tourist might miss (nearby gems worth combining into the visit).
+4. End with a brief but rich historical, cultural, or geographical description of the location/activity.
 
 Prioritize actionable advice over general description. Use engaging but factual language. Output only the guide paragraphs, no headings or labels or ad recommendations. Use emojis for each point. Start with a newline and an underline line divider in your response. Apply markdown formatting to the response.`;
         logEvent('AI Suggestion Requested', { activity_title: title.trim() });
@@ -95,14 +123,17 @@ Prioritize actionable advice over general description. Use engaging but factual 
                         required
                     />
                 </div>
-                <div className="input-group" style={{ flex: 0, minWidth: '120px' }}>
+                <div className="input-group" style={{ flex: 0, minWidth: '130px' }}>
                     <label className="input-label">Time</label>
-                    <input
+                    <select
                         className="input-field"
-                        type="time"
                         value={time}
                         onChange={e => setTime(e.target.value)}
-                    />
+                    >
+                        {TIME_OPTIONS.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                    </select>
                 </div>
             </div>
 
@@ -119,7 +150,7 @@ Prioritize actionable advice over general description. Use engaging but factual 
                     <div className="ai-suggestion-block">
                         <button
                             type="button"
-                            className="btn btn-outline btn-sm"
+                            className="btn btn-sm ai-suggest-btn"
                             onClick={handleAiSuggest}
                             disabled={aiLoading}
                         >
@@ -214,10 +245,17 @@ Prioritize actionable advice over general description. Use engaging but factual 
             )}
 
             <div className="form-actions">
-                <button type="button" className="btn btn-ghost" onClick={onCancel}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={!title.trim()}>
-                    {existingActivity ? 'Save Changes' : 'Add Activity'}
-                </button>
+                {onDelete && (
+                    <button type="button" className="btn btn-danger btn-sm form-delete-btn" onClick={onDelete}>
+                        <Trash2 size={14} /> Delete
+                    </button>
+                )}
+                <div className="form-actions-right">
+                    <button type="button" className="btn btn-ghost" onClick={onCancel}>Cancel</button>
+                    <button type="submit" className="btn btn-primary" disabled={!title.trim()}>
+                        {existingActivity ? 'Save Changes' : 'Add Activity'}
+                    </button>
+                </div>
             </div>
         </form>
     );

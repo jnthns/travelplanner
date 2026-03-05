@@ -15,16 +15,25 @@ const SETTINGS_STORAGE_KEY = 'travelplanner_settings';
 
 type SettingsState = {
   compactLayout: boolean;
+  textSize: number;
 };
+
+const TEXT_SIZE_OPTIONS = [
+  { label: 'Small', value: 75 },
+  { label: 'Default', value: 80 },
+  { label: 'Medium', value: 90 },
+  { label: 'Large', value: 100 },
+  { label: 'Extra Large', value: 112 },
+];
 
 const loadSettings = (): SettingsState => {
   try {
     const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
-    if (!raw) return { compactLayout: false };
+    if (!raw) return { compactLayout: false, textSize: 80 };
     const parsed = JSON.parse(raw) as Partial<SettingsState>;
-    return { compactLayout: parsed.compactLayout ?? false };
+    return { compactLayout: parsed.compactLayout ?? false, textSize: parsed.textSize ?? 80 };
   } catch {
-    return { compactLayout: false };
+    return { compactLayout: false, textSize: 80 };
   }
 };
 
@@ -38,6 +47,7 @@ const Settings: React.FC = () => {
   useEffect(() => {
     localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
     document.body.classList.toggle('compact-layout', settings.compactLayout);
+    document.documentElement.style.setProperty('--text-size', `${settings.textSize}%`);
   }, [settings]);
 
   useEffect(() => {
@@ -158,6 +168,24 @@ const Settings: React.FC = () => {
           <p>
             Use tighter spacing to fit more information on screen.
           </p>
+        </div>
+        <div className="input-group" style={{ marginTop: '1rem' }}>
+          <label className="input-label">Text size</label>
+          <div className="text-size-options">
+            {TEXT_SIZE_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                className={`text-size-btn ${settings.textSize === opt.value ? 'active' : ''}`}
+                onClick={() => {
+                  setSettings((prev) => ({ ...prev, textSize: opt.value }));
+                  logEvent('Text Size Changed', { size: opt.label, value: opt.value });
+                }}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>

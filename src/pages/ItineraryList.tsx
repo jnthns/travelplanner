@@ -155,7 +155,10 @@ const ItineraryList: React.FC = () => {
                         role="button"
                         tabIndex={0}
                         className={`trip-card ${selectedTripId === trip.id ? 'selected' : ''}`}
-                        style={{ borderLeftColor: trip.color ?? TRIP_COLORS[idx % TRIP_COLORS.length], borderLeftWidth: '4px' }}
+                        style={{
+                            backgroundColor: `color-mix(in srgb, ${trip.color ?? TRIP_COLORS[idx % TRIP_COLORS.length]} 12%, var(--surface-color))`,
+                            borderColor: trip.color ?? TRIP_COLORS[idx % TRIP_COLORS.length],
+                        }}
                         onClick={() => setSelectedTripId(selectedTripId === trip.id ? null : trip.id)}
                         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedTripId(selectedTripId === trip.id ? null : trip.id); }}
                     >
@@ -209,8 +212,14 @@ const ItineraryList: React.FC = () => {
                                             <p className="no-activities">No activities yet for this day.</p>
                                         )}
 
-                                        {dayActivities.map(activity => (
-                                            <div key={activity.id} className="activity-item">
+                                        {dayActivities.map(activity => {
+                                            const actColor = activity.color ?? CATEGORY_COLORS[activity.category || 'other'];
+                                            return (
+                                            <div
+                                                key={activity.id}
+                                                className="activity-item"
+                                                style={{ backgroundColor: `color-mix(in srgb, ${actColor} 10%, transparent)`, borderLeft: `3px solid ${actColor}`, borderRadius: 'var(--radius-sm)', paddingLeft: '0.75rem' }}
+                                            >
                                                 {editingActivity === activity.id ? (
                                                     <ActivityForm
                                                         tripId={selectedTripId!}
@@ -220,6 +229,7 @@ const ItineraryList: React.FC = () => {
                                                         defaultCurrency={selectedTrip?.defaultCurrency}
                                                         onSave={handleSaveActivity}
                                                         onCancel={() => setEditingActivity(null)}
+                                                        onDelete={() => { if (confirm('Delete this activity?')) { deleteActivity(activity.id); setEditingActivity(null); logEvent('Activity Deleted', { activity_title: activity.title, category: activity.category }); } }}
                                                     />
                                                 ) : (
                                                     <div className="activity-content">
@@ -252,14 +262,12 @@ const ItineraryList: React.FC = () => {
                                                             <button className="btn btn-ghost btn-sm" onClick={() => setEditingActivity(activity.id)}>
                                                                 <Pencil size={14} />
                                                             </button>
-                                                            <button className="btn btn-ghost btn-sm" onClick={() => { deleteActivity(activity.id); logEvent('Activity Deleted', { activity_title: activity.title, category: activity.category }); }}>
-                                                                <Trash2 size={14} />
-                                                            </button>
                                                         </div>
                                                     </div>
                                                 )}
                                             </div>
-                                        ))}
+                                        );
+                                        })}
 
                                         {addingActivityDate === dateStr ? (
                                             <ActivityForm

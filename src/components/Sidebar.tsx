@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Plane, Calendar, Map, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plane, Calendar, Map, Table, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
 import './Sidebar.css';
 
 const Sidebar: React.FC = () => {
@@ -14,6 +14,7 @@ const Sidebar: React.FC = () => {
     { to: '/', icon: <Plane size={20} />, label: 'Itinerary' },
     { to: '/calendar', icon: <Calendar size={20} />, label: 'Calendar' },
     { to: '/transportation', icon: <Map size={20} />, label: 'Transportation' },
+    { to: '/spreadsheet', icon: <Table size={20} />, label: 'Spreadsheet' },
   ];
 
   return (

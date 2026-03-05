@@ -229,6 +229,14 @@
     flex-shrink: 0;
 }
 
+.activity-delete-row {
+    display: flex;
+    justify-content: flex-start;
+    margin-top: 0.4rem;
+    padding-top: 0.4rem;
+    border-top: 1px solid var(--border-light);
+}
+
 .btn-sm {
     padding: 0.3rem;
 }
