@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import type { Activity } from '../lib/types';
 import { CATEGORY_EMOJIS, ACTIVITY_COLORS } from '../lib/types';
+import { Loader2 } from 'lucide-react';
 import { generateWithGemini } from '../lib/gemini';
+import { logEvent } from '../lib/amplitude';
+import Markdown from './Markdown';
+import AutoTextarea from './AutoTextarea';
 import './ActivityForm.css';
 
 interface ActivityFormProps {
@@ -24,7 +28,6 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ tripId, date, existingActiv
     const [category, setCategory] = useState<Activity['category']>(existingActivity?.category || 'other');
     const [cost, setCost] = useState(existingActivity?.cost?.toString() || '');
     const [currency, setCurrency] = useState(existingActivity?.currency || defaultCurrency || 'USD');
-    const [notes, setNotes] = useState(existingActivity?.notes || '');
     const [color, setColor] = useState(existingActivity?.color || '');
     const [showOptional, setShowOptional] = useState(!!existingActivity);
     const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
@@ -38,12 +41,13 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ tripId, date, existingActiv
         setAiSuggestion(null);
         const prompt = `You are an expert travel assistant. For this activity: "${title.trim()}".
 
-Write a highly detailed and useful guide (maximum 200 words) in bullet point format with newlines for formatting, structured in this order:
-1. Start with specific, practical travel tips to optimize the experience — best time to visit, how to avoid crowds, money-saving strategies, local etiquette, and efficiency tips for getting the most out of the visit.
-2. Then include lesser-known tips or details that a typical tourist might miss (hidden features, local secrets, nearby gems worth combining into the visit).
+Write a highly detailed and useful guide (maximum 100 words) in bullet point format with newlines for formatting, structured in this order:
+1. Start with specific, practical travel tips to optimize the experience — best time of the week/time of day to visit, how to avoid crowds, money-saving strategies, local etiquette, and efficiency tips for getting the most out of the visit.
+2. Then include lesser-known tips or details that a typical tourist might miss (nearby gems worth combining into the visit).
 3. End with a brief but rich historical, cultural, or geographical description of the location/activity.
 
-Prioritize actionable advice over general description. Use engaging but factual language. Output only the guide paragraphs, no headings or labels. Start with a line divider in your response.`;
+Prioritize actionable advice over general description. Use engaging but factual language. Output only the guide paragraphs, no headings or labels or ad recommendations. Use emojis for each point. Start with a newline and an underline line divider in your response. Apply markdown formatting to the response.`;
+        logEvent('AI Suggestion Requested', { activity_title: title.trim() });
         try {
             const text = await generateWithGemini(prompt, 1500);
             setAiSuggestion(text);
@@ -69,7 +73,6 @@ Prioritize actionable advice over general description. Use engaging but factual 
             category,
             cost: cost ? parseFloat(cost) : undefined,
             currency: cost ? currency : undefined,
-            notes: notes.trim() || undefined,
             order: existingActivity?.order ?? nextOrder,
             color: color || undefined,
         };
@@ -105,12 +108,12 @@ Prioritize actionable advice over general description. Use engaging but factual 
 
             <div className="input-group">
                 <label className="input-label">Details</label>
-                <textarea
+                <AutoTextarea
                     className="input-field textarea"
                     value={details}
                     onChange={e => setDetails(e.target.value)}
                     placeholder="What's happening?"
-                    rows={2}
+                    minRows={6}
                 />
                 {title.trim() && (
                     <div className="ai-suggestion-block">
@@ -120,15 +123,15 @@ Prioritize actionable advice over general description. Use engaging but factual 
                             onClick={handleAiSuggest}
                             disabled={aiLoading}
                         >
-                            {aiLoading ? 'Getting suggestion…' : 'Suggest with AI'}
+                            {aiLoading ? <><Loader2 size={14} className="spin" /> Getting suggestion…</> : 'Suggest with AI'}
                         </button>
                         {aiError && <p className="ai-error">{aiError}</p>}
                         {aiSuggestion && (
                             <div className="ai-suggestion-card card">
-                                <p className="ai-suggestion-text">{aiSuggestion}</p>
+                                <Markdown className="ai-suggestion-text">{aiSuggestion}</Markdown>
                                 <div className="ai-suggestion-actions">
-                                    <button type="button" className="btn btn-primary btn-sm" onClick={() => { setDetails(aiSuggestion!); setAiSuggestion(null); }}>Accept</button>
-                                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setAiSuggestion(null)}>Decline</button>
+                                    <button type="button" className="btn btn-primary btn-sm" onClick={() => { setDetails(aiSuggestion!); setAiSuggestion(null); logEvent('AI Suggestion Accepted', { activity_title: title.trim() }); }}>Accept</button>
+                                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setAiSuggestion(null); logEvent('AI Suggestion Declined', { activity_title: title.trim() }); }}>Decline</button>
                                 </div>
                             </div>
                         )}
@@ -172,17 +175,17 @@ Prioritize actionable advice over general description. Use engaging but factual 
                             ))}
                         </div>
                     </div>
-                    <div className="input-group">
-                        <label className="input-label">Location</label>
-                        <input
-                            className="input-field"
-                            type="text"
-                            value={location}
-                            onChange={e => setLocation(e.target.value)}
-                            placeholder="e.g. Piazza del Colosseo"
-                        />
-                    </div>
                     <div className="form-row">
+                        <div className="input-group" style={{ flex: 2 }}>
+                            <label className="input-label">Location</label>
+                            <input
+                                className="input-field"
+                                type="text"
+                                value={location}
+                                onChange={e => setLocation(e.target.value)}
+                                placeholder="e.g. Piazza del Colosseo"
+                            />
+                        </div>
                         <div className="input-group" style={{ flex: 1 }}>
                             <label className="input-label">Cost</label>
                             <input
@@ -206,16 +209,6 @@ Prioritize actionable advice over general description. Use engaging but factual 
                                 <option value="AUD">AUD</option>
                             </select>
                         </div>
-                    </div>
-                    <div className="input-group">
-                        <label className="input-label">Notes</label>
-                        <textarea
-                            className="input-field textarea"
-                            value={notes}
-                            onChange={e => setNotes(e.target.value)}
-                            placeholder="Any extra notes..."
-                            rows={2}
-                        />
                     </div>
                 </div>
             )}

@@ -17,6 +17,8 @@ import { useTrips, useActivities } from '../lib/store';
 import { CATEGORY_EMOJIS, CATEGORY_COLORS, TRIP_COLORS } from '../lib/types';
 import type { Trip } from '../lib/types';
 import ActivityForm from '../components/ActivityForm';
+import Markdown from '../components/Markdown';
+import { logEvent } from '../lib/amplitude';
 import './CalendarView.css';
 
 const CALENDAR_VIEW_KEY = 'travelplanner_calendar_view';
@@ -151,6 +153,7 @@ const CalendarView: React.FC = () => {
     ) => {
         if ('id' in activityData && activityData.id) {
             updateActivity(activityData.id, activityData);
+            logEvent('Activity Updated', { activity_title: activityData.title, category: activityData.category, source: 'calendar' });
         } else if (selectedTripId && selectedDate) {
             addActivity({
                 ...activityData,
@@ -159,6 +162,7 @@ const CalendarView: React.FC = () => {
                 order: ('order' in activityData ? activityData.order : dayDetails.length) ?? dayDetails.length,
                 title: ('title' in activityData ? activityData.title : '') || 'Activity',
             } as Omit<import('../lib/types').Activity, 'id'>);
+            logEvent('Activity Created', { activity_title: activityData.title, category: activityData.category, date: selectedDate, source: 'calendar' });
         }
         setAddingActivityForDate(null);
         setEditingActivityId(null);
@@ -180,7 +184,7 @@ const CalendarView: React.FC = () => {
                         <button
                             key={mode}
                             className={`view-tab ${viewMode === mode ? 'active' : ''}`}
-                            onClick={() => setViewMode(mode)}
+                            onClick={() => { setViewMode(mode); logEvent('Calendar View Changed', { view_mode: mode }); }}
                         >
                             {mode.charAt(0).toUpperCase() + mode.slice(1)}
                         </button>
@@ -316,10 +320,10 @@ const CalendarView: React.FC = () => {
                                         {act.time && <span className="detail-time">{act.time}</span>}
                                     </div>
                                 </div>
-                                {act.details && <p className="detail-desc">{act.details}</p>}
+                                {act.details && <Markdown className="detail-desc">{act.details}</Markdown>}
                                 {act.location && <p className="detail-location">📍 {act.location}</p>}
                                 {act.cost != null && <p className="detail-cost">💰 {act.currency || '$'}{act.cost.toFixed(2)}</p>}
-                                {act.notes && <p className="detail-notes">{act.notes}</p>}
+                                {act.notes && <Markdown className="detail-notes">{act.notes}</Markdown>}
                             </div>
                         ));
                     })()}
@@ -371,11 +375,11 @@ const CalendarView: React.FC = () => {
                                         <div className="panel-activity-content">
                                             <strong>{act.title}</strong>
                                             {act.time && <span className="panel-time"> at {act.time}</span>}
-                                            {act.details && <p className="panel-details">{act.details}</p>}
+                                            {act.details && <Markdown className="panel-details">{act.details}</Markdown>}
                                         </div>
                                         <div className="panel-activity-actions">
                                             <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingActivityId(act.id)} aria-label="Edit"><Pencil size={14} /></button>
-                                            <button type="button" className="btn btn-ghost btn-sm" onClick={() => { if (confirm('Delete this activity?')) deleteActivity(act.id); }} aria-label="Delete"><Trash2 size={14} /></button>
+                                            <button type="button" className="btn btn-ghost btn-sm" onClick={() => { if (confirm('Delete this activity?')) { deleteActivity(act.id); logEvent('Activity Deleted', { activity_title: act.title, category: act.category, source: 'calendar' }); } }} aria-label="Delete"><Trash2 size={14} /></button>
                                         </div>
                                     </div>
                                 )
@@ -392,7 +396,7 @@ const CalendarView: React.FC = () => {
                                     <div>
                                         <strong>{act.title}</strong>
                                         {act.time && <span className="panel-time"> at {act.time}</span>}
-                                        {act.details && <p className="panel-details">{act.details}</p>}
+                                        {act.details && <Markdown className="panel-details">{act.details}</Markdown>}
                                     </div>
                                 </div>
                             ))

@@ -55,6 +55,7 @@ export async function generateWithGemini(prompt: string, maxTokens = 500): Promi
           throw new Error(data.error || `Proxy returned ${response.status}`);
         }
 
+        console.log('Gemini raw response:', data);
         const text = data.text?.trim() ?? '';
         if (!text) throw new Error('Empty response from AI proxy');
         return text;

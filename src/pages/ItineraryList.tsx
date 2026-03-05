@@ -7,6 +7,8 @@ import { CATEGORY_EMOJIS, CATEGORY_COLORS, TRIP_COLORS } from '../lib/types';
 import { useLocalStorageState } from '../lib/persist';
 import ActivityForm from '../components/ActivityForm';
 import TripForm from '../components/TripForm';
+import Markdown from '../components/Markdown';
+import { logEvent } from '../lib/amplitude';
 import './ItineraryList.css';
 
 const safeFormatDate = (dateStr: string | undefined, fmt: string, fallback = '—'): string => {
@@ -69,9 +71,11 @@ const ItineraryList: React.FC = () => {
     const handleSaveTrip = async (tripData: Trip | Omit<Trip, 'id'>) => {
         if ('id' in tripData) {
             await updateTrip(tripData.id, tripData);
+            logEvent('Trip Updated', { trip_name: tripData.name, start_date: tripData.startDate, end_date: tripData.endDate });
         } else {
             const newTrip = await addTrip(tripData);
             setSelectedTripId(newTrip.id);
+            logEvent('Trip Created', { trip_name: tripData.name, start_date: tripData.startDate, end_date: tripData.endDate, default_currency: tripData.defaultCurrency });
         }
         setShowTripForm(false);
         setEditingTrip(null);
@@ -82,8 +86,10 @@ const ItineraryList: React.FC = () => {
     ) => {
         if ('id' in activityData) {
             updateActivity(activityData.id, activityData);
+            logEvent('Activity Updated', { activity_title: activityData.title, category: activityData.category });
         } else {
             addActivity(activityData);
+            logEvent('Activity Created', { activity_title: activityData.title, category: activityData.category, date: activityData.date, trip_id: activityData.tripId });
         }
         setAddingActivityDate(null);
         setEditingActivity(null);
@@ -91,7 +97,9 @@ const ItineraryList: React.FC = () => {
 
     const handleDeleteTrip = (id: string) => {
         if (confirm('Delete this trip and all its activities?')) {
+            const trip = trips.find(t => t.id === id);
             deleteTrip(id);
+            logEvent('Trip Deleted', { trip_name: trip?.name });
             if (selectedTripId === id) setSelectedTripId(null);
         }
     };
@@ -142,11 +150,14 @@ const ItineraryList: React.FC = () => {
             {/* Trip Selector */}
             <div className="trip-selector">
                 {trips.map((trip, idx) => (
-                    <button
+                    <div
                         key={trip.id}
+                        role="button"
+                        tabIndex={0}
                         className={`trip-card ${selectedTripId === trip.id ? 'selected' : ''}`}
                         style={{ borderLeftColor: trip.color ?? TRIP_COLORS[idx % TRIP_COLORS.length], borderLeftWidth: '4px' }}
                         onClick={() => setSelectedTripId(selectedTripId === trip.id ? null : trip.id)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedTripId(selectedTripId === trip.id ? null : trip.id); }}
                     >
                         <div className="trip-card-header">
                             <h3>{trip.name}</h3>
@@ -162,8 +173,8 @@ const ItineraryList: React.FC = () => {
                         <p className="trip-dates">
                             {safeFormatDate(trip.startDate, 'MMM d')} – {safeFormatDate(trip.endDate, 'MMM d, yyyy')}
                         </p>
-                        {trip.description && <p className="trip-desc">{trip.description}</p>}
-                    </button>
+                        {trip.description && <Markdown className="trip-desc">{trip.description}</Markdown>}
+                    </div>
                 ))}
             </div>
 
@@ -221,7 +232,7 @@ const ItineraryList: React.FC = () => {
                                                             </span>
                                                             <div>
                                                                 <h4 className="activity-title">{activity.title}</h4>
-                                                                {activity.details && <p className="activity-details">{activity.details}</p>}
+                                                                {activity.details && <Markdown className="activity-details">{activity.details}</Markdown>}
                                                                 <div className="activity-meta">
                                                                     {activity.time && (
                                                                         <span className="meta-item"><Clock size={13} /> {activity.time}</span>
@@ -241,7 +252,7 @@ const ItineraryList: React.FC = () => {
                                                             <button className="btn btn-ghost btn-sm" onClick={() => setEditingActivity(activity.id)}>
                                                                 <Pencil size={14} />
                                                             </button>
-                                                            <button className="btn btn-ghost btn-sm" onClick={() => deleteActivity(activity.id)}>
+                                                            <button className="btn btn-ghost btn-sm" onClick={() => { deleteActivity(activity.id); logEvent('Activity Deleted', { activity_title: activity.title, category: activity.category }); }}>
                                                                 <Trash2 size={14} />
                                                             </button>
                                                         </div>

@@ -245,11 +245,20 @@
     }
 
     .activity-content {
-        flex-direction: column;
         gap: 0.5rem;
     }
 
-    .activity-actions {
-        align-self: flex-end;
+    .activity-item {
+        padding: 0.5rem 0;
+    }
+
+    .activity-category-dot {
+        width: 28px;
+        height: 28px;
+        font-size: 0.85rem;
+    }
+
+    .activity-actions .btn-sm {
+        padding: 0.2rem;
     }
 }

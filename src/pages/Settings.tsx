@@ -8,6 +8,7 @@ import {
   getResolvedTokens,
   applyTheme,
 } from '../design-system/themes';
+import { logEvent } from '../lib/amplitude';
 import './Settings.css';
 
 const SETTINGS_STORAGE_KEY = 'travelplanner_settings';
@@ -46,6 +47,7 @@ const Settings: React.FC = () => {
 
   const selectPreset = (presetId: string) => {
     setThemeConfig({ presetId, colorOverrides: {} });
+    logEvent('Theme Preset Selected', { preset: presetId });
   };
 
   const updateColor = (key: 'primaryColor' | 'secondaryColor' | 'accentColor', value: string) => {
@@ -53,6 +55,7 @@ const Settings: React.FC = () => {
       ...prev,
       colorOverrides: { ...prev.colorOverrides, [key]: value },
     }));
+    logEvent('Theme Color Customized', { color_key: key, color_value: value });
   };
 
   const resetColors = () => {
@@ -144,9 +147,10 @@ const Settings: React.FC = () => {
               id="compact-layout-toggle"
               type="checkbox"
               checked={settings.compactLayout}
-              onChange={(e) =>
-                setSettings((prev) => ({ ...prev, compactLayout: e.target.checked }))
-              }
+              onChange={(e) => {
+                setSettings((prev) => ({ ...prev, compactLayout: e.target.checked }));
+                logEvent('Compact Layout Toggled', { enabled: e.target.checked });
+              }}
               style={{ marginRight: '0.5rem' }}
             />
             Compact layout

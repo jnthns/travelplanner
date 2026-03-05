@@ -254,6 +254,15 @@ p {
   animation: fadeIn 0.4s ease-out forwards;
 }
 
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
 .trip-color-picker {
   display: flex;
   flex-wrap: wrap;
@@ -273,6 +282,62 @@ p {
   border-color: var(--text-primary);
   box-shadow: 0 0 0 1px var(--surface-color);
 }
+
+/* Markdown content */
+.markdown-content {
+  font-size: inherit;
+  color: inherit;
+  line-height: 1.6;
+}
+
+.markdown-content p {
+  margin-bottom: 0.5em;
+  color: inherit;
+}
+
+.markdown-content p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  margin: 0.4em 0;
+  padding-left: 1.5em;
+}
+
+.markdown-content li {
+  margin-bottom: 0.2em;
+}
+
+.markdown-content strong {
+  font-weight: 600;
+}
+
+.markdown-content code {
+  background-color: var(--border-light);
+  padding: 0.1em 0.35em;
+  border-radius: var(--radius-sm);
+  font-size: 0.9em;
+}
+
+.markdown-content blockquote {
+  border-left: 3px solid var(--primary-color);
+  padding-left: 0.75em;
+  margin: 0.5em 0;
+  color: var(--text-secondary);
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4 {
+  margin-top: 0.6em;
+  margin-bottom: 0.3em;
+}
+
+.markdown-content h1 { font-size: 1.3em; }
+.markdown-content h2 { font-size: 1.15em; }
+.markdown-content h3 { font-size: 1.05em; }
 
 @media (max-width: 768px) {
   .page-container {

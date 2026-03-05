@@ -1,11 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { useTrips, useTransportRoutes } from '../lib/store';
 import type { TransportRoute } from '../lib/types';
 import { TRANSPORT_EMOJIS } from '../lib/types';
 import { generateWithGemini } from '../lib/gemini';
 import { useLocalStorageState } from '../lib/persist';
+import Markdown from '../components/Markdown';
+import { logEvent } from '../lib/amplitude';
 import './Transportation.css';
 
 const transportTypes = ['flight', 'train', 'bus', 'car', 'ferry', 'taxi', 'walk', 'other'] as const;
@@ -101,7 +103,8 @@ const Transportation: React.FC = () => {
         setAiRoutesLoading(true);
         setAiRoutesError(null);
         setAiRoutesSuggestion(null);
-        const prompt = `From "${formData.from.trim()}" to "${formData.to.trim()}", list the 2-3 most practical transport options.
+        logEvent('AI Route Suggestion Requested', { from: formData.from.trim(), to: formData.to.trim() });
+        const prompt = `From "${formData.from.trim()}" to "${formData.to.trim()}", list the 2-3 most practical transport options. 
 
 For each option use a bullet with:
 - Sub-bullets: approximate duration, typical cost range, popularity (e.g. common/niche), and one line description.
@@ -138,15 +141,19 @@ Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid 
 
         if (editingRoute) {
             await updateRoute(editingRoute.id, routeData);
+            logEvent('Route Updated', { transport_type: routeData.type, from: routeData.from, to: routeData.to, date: routeData.date });
         } else {
             await addRoute(routeData);
+            logEvent('Route Created', { transport_type: routeData.type, from: routeData.from, to: routeData.to, date: routeData.date, cost: routeData.cost, currency: routeData.currency });
         }
         resetForm();
     };
 
     const handleDelete = (id: string) => {
         if (confirm('Delete this transport route?')) {
+            const route = routes.find(r => r.id === id);
             deleteRoute(id);
+            logEvent('Route Deleted', { transport_type: route?.type, from: route?.from, to: route?.to });
         }
     };
 
@@ -242,15 +249,15 @@ Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid 
                                 onClick={handleSuggestRoutes}
                                 disabled={aiRoutesLoading}
                             >
-                                {aiRoutesLoading ? 'Finding options…' : 'Suggest optimal routes'}
+                                {aiRoutesLoading ? <><Loader2 size={14} className="spin" /> Finding options…</> : 'Suggest optimal routes'}
                             </button>
                             {aiRoutesError && <p className="ai-error">{aiRoutesError}</p>}
                             {aiRoutesSuggestion && (
                                 <div className="transport-ai-card card">
-                                    <pre className="transport-ai-text">{aiRoutesSuggestion}</pre>
+                                    <Markdown className="transport-ai-text">{aiRoutesSuggestion}</Markdown>
                                     <div className="ai-suggestion-actions">
-                                        <button type="button" className="btn btn-primary btn-sm" onClick={() => { setFormData(p => ({ ...p, notes: (p.notes ? p.notes + '\n\n' : '') + aiRoutesSuggestion })); setAiRoutesSuggestion(null); }}>Accept</button>
-                                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setAiRoutesSuggestion(null)}>Decline</button>
+                                        <button type="button" className="btn btn-primary btn-sm" onClick={() => { setFormData(p => ({ ...p, notes: (p.notes ? p.notes + '\n\n' : '') + aiRoutesSuggestion })); setAiRoutesSuggestion(null); logEvent('AI Route Suggestion Accepted', { from: formData.from.trim(), to: formData.to.trim() }); }}>Accept</button>
+                                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setAiRoutesSuggestion(null); logEvent('AI Route Suggestion Declined', { from: formData.from.trim(), to: formData.to.trim() }); }}>Decline</button>
                                     </div>
                                 </div>
                             )}
@@ -403,7 +410,7 @@ Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid 
                                 </div>
                             </div>
 
-                            {route.notes && <p className="route-notes">{route.notes}</p>}
+                            {route.notes && <Markdown className="route-notes">{route.notes}</Markdown>}
                         </div>
                     ))}
                 </div>
