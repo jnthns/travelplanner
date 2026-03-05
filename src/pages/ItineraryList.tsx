@@ -39,6 +39,7 @@ const ItineraryList: React.FC = () => {
     );
     const [addingActivityDate, setAddingActivityDate] = useState<string | null>(null);
     const [editingActivity, setEditingActivity] = useState<string | null>(null);
+    const [tripFormError, setTripFormError] = useState<string | null>(null);
 
     const selectedTrip = trips.find(t => t.id === selectedTripId);
     const expandedDays = useMemo(() => new Set(expandedDayList), [expandedDayList]);
@@ -70,16 +71,22 @@ const ItineraryList: React.FC = () => {
     };
 
     const handleSaveTrip = async (tripData: Trip | Omit<Trip, 'id'>) => {
-        if ('id' in tripData) {
-            await updateTrip(tripData.id, tripData);
-            logEvent('Trip Updated', { trip_name: tripData.name, start_date: tripData.startDate, end_date: tripData.endDate });
-        } else {
-            const newTrip = await addTrip(tripData);
-            setSelectedTripId(newTrip.id);
-            logEvent('Trip Created', { trip_name: tripData.name, start_date: tripData.startDate, end_date: tripData.endDate, default_currency: tripData.defaultCurrency });
+        setTripFormError(null);
+        try {
+            if ('id' in tripData) {
+                await updateTrip(tripData.id, tripData);
+                logEvent('Trip Updated', { trip_name: tripData.name, start_date: tripData.startDate, end_date: tripData.endDate });
+            } else {
+                const newTrip = await addTrip(tripData);
+                setSelectedTripId(newTrip.id);
+                logEvent('Trip Created', { trip_name: tripData.name, start_date: tripData.startDate, end_date: tripData.endDate, default_currency: tripData.defaultCurrency });
+            }
+            setShowTripForm(false);
+            setEditingTrip(null);
+        } catch (err) {
+            console.error('Failed to save trip:', err);
+            setTripFormError(err instanceof Error ? err.message : 'Failed to save trip. Check your connection and try again.');
         }
-        setShowTripForm(false);
-        setEditingTrip(null);
     };
 
     const handleSaveActivity = (
@@ -151,11 +158,14 @@ const ItineraryList: React.FC = () => {
             </header>
 
             {showTripForm && (
-                <TripForm
-                    existing={editingTrip ? trips.find(t => t.id === editingTrip) : undefined}
-                    onSave={handleSaveTrip}
-                    onCancel={() => { setShowTripForm(false); setEditingTrip(null); }}
-                />
+                <>
+                    {tripFormError && <p className="form-error-msg">{tripFormError}</p>}
+                    <TripForm
+                        existing={editingTrip ? trips.find(t => t.id === editingTrip) : undefined}
+                        onSave={handleSaveTrip}
+                        onCancel={() => { setShowTripForm(false); setEditingTrip(null); setTripFormError(null); }}
+                    />
+                </>
             )}
 
             {/* Trip Selector */}

@@ -67,7 +67,7 @@ Format as a concise bullet list. Maximum 200 words. Be specific and practical.`;
     };
 
     return (
-        <form className="activity-form animate-fade-in" onSubmit={handleSubmit}>
+        <form className="activity-form animate-fade-in" onSubmit={handleSubmit} noValidate>
             <div className="input-group">
                 <label className="input-label">Trip Name *</label>
                 <input className="input-field" type="text" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Summer in Italy" required autoFocus />

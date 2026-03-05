@@ -105,6 +105,12 @@ p {
   text-decoration: none;
 }
 
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .btn-primary {
   background-color: var(--primary-color);
   color: white;
@@ -168,6 +174,16 @@ p {
 
 .btn-danger:hover {
   background-color: color-mix(in srgb, var(--error-color) 85%, black);
+}
+
+.form-error-msg {
+  background-color: var(--error-bg);
+  color: var(--error-color);
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: 0.75rem;
 }
 
 /* Cards */
