@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { format, eachDayOfInterval, parseISO } from 'date-fns';
-import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, MapPin, Clock } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, MapPin, Clock, GripVertical } from 'lucide-react';
 import { useTrips, useActivities } from '../lib/store';
 import type { Activity, Trip } from '../lib/types';
 import { CATEGORY_EMOJIS, CATEGORY_COLORS, TRIP_COLORS } from '../lib/types';
@@ -8,6 +8,7 @@ import { useLocalStorageState } from '../lib/persist';
 import ActivityForm from '../components/ActivityForm';
 import TripForm from '../components/TripForm';
 import Markdown from '../components/Markdown';
+import DraggableList from '../components/DraggableList';
 import { logEvent } from '../lib/amplitude';
 import './ItineraryList.css';
 
@@ -24,7 +25,7 @@ const safeFormatDate = (dateStr: string | undefined, fmt: string, fallback = 'â€
 
 const ItineraryList: React.FC = () => {
     const { trips, addTrip, updateTrip, deleteTrip } = useTrips();
-    const { addActivity, updateActivity, deleteActivity, getActivitiesByTrip } = useActivities();
+    const { addActivity, updateActivity, deleteActivity, reorderActivities, getActivitiesByTrip } = useActivities();
 
     const [showTripForm, setShowTripForm] = useState(false);
     const [editingTrip, setEditingTrip] = useState<string | null>(null);
@@ -106,6 +107,16 @@ const ItineraryList: React.FC = () => {
 
     const activitiesForDate = (dateStr: string): Activity[] => {
         return tripActivities.filter(a => a.date === dateStr);
+    };
+
+    const handleReorderActivities = (reordered: Activity[]) => {
+        const updates = reordered
+            .map((act, idx) => ({ id: act.id, order: idx }))
+            .filter((u, idx) => reordered[idx].order !== u.order);
+        if (updates.length > 0) {
+            reorderActivities(updates);
+            logEvent('Activities Reordered', { count: updates.length });
+        }
     };
 
     // No trips yet - show welcome
@@ -212,62 +223,70 @@ const ItineraryList: React.FC = () => {
                                             <p className="no-activities">No activities yet for this day.</p>
                                         )}
 
-                                        {dayActivities.map(activity => {
-                                            const actColor = activity.color ?? CATEGORY_COLORS[activity.category || 'other'];
-                                            return (
-                                            <div
-                                                key={activity.id}
-                                                className="activity-item"
-                                                style={{ backgroundColor: `color-mix(in srgb, ${actColor} 10%, transparent)`, borderLeft: `3px solid ${actColor}`, borderRadius: 'var(--radius-sm)', paddingLeft: '0.75rem' }}
-                                            >
-                                                {editingActivity === activity.id ? (
-                                                    <ActivityForm
-                                                        tripId={selectedTripId!}
-                                                        date={dateStr}
-                                                        existingActivity={activity}
-                                                        nextOrder={activity.order}
-                                                        defaultCurrency={selectedTrip?.defaultCurrency}
-                                                        onSave={handleSaveActivity}
-                                                        onCancel={() => setEditingActivity(null)}
-                                                        onDelete={() => { if (confirm('Delete this activity?')) { deleteActivity(activity.id); setEditingActivity(null); logEvent('Activity Deleted', { activity_title: activity.title, category: activity.category }); } }}
-                                                    />
-                                                ) : (
-                                                    <div className="activity-content">
-                                                        <div className="activity-left">
-                                                            <span
-                                                                className="activity-category-dot"
-                                                                style={{ backgroundColor: activity.color ?? CATEGORY_COLORS[activity.category || 'other'] }}
-                                                            >
-                                                                {CATEGORY_EMOJIS[activity.category || 'other']}
-                                                            </span>
-                                                            <div>
-                                                                <h4 className="activity-title">{activity.title}</h4>
-                                                                {activity.details && <Markdown className="activity-details">{activity.details}</Markdown>}
-                                                                <div className="activity-meta">
-                                                                    {activity.time && (
-                                                                        <span className="meta-item"><Clock size={13} /> {activity.time}</span>
-                                                                    )}
-                                                                    {activity.location && (
-                                                                        <span className="meta-item"><MapPin size={13} /> {activity.location}</span>
-                                                                    )}
-                                                                    {activity.cost != null && (
-                                                                        <span className="meta-item cost-tag">
-                                                                            {activity.currency || '$'}{activity.cost.toFixed(2)}
-                                                                        </span>
-                                                                    )}
+                                        <DraggableList
+                                            items={dayActivities}
+                                            keyFn={a => a.id}
+                                            onReorder={handleReorderActivities}
+                                            disabled={editingActivity !== null}
+                                            renderItem={(activity, _idx, dragHandleProps) => {
+                                                const actColor = activity.color ?? CATEGORY_COLORS[activity.category || 'other'];
+                                                return (
+                                                    <div
+                                                        className="activity-item"
+                                                        style={{ backgroundColor: `color-mix(in srgb, ${actColor} 10%, transparent)`, borderLeft: `3px solid ${actColor}`, borderRadius: 'var(--radius-sm)', paddingLeft: '0.75rem' }}
+                                                    >
+                                                        {editingActivity === activity.id ? (
+                                                            <ActivityForm
+                                                                tripId={selectedTripId!}
+                                                                date={dateStr}
+                                                                existingActivity={activity}
+                                                                nextOrder={activity.order}
+                                                                defaultCurrency={selectedTrip?.defaultCurrency}
+                                                                onSave={handleSaveActivity}
+                                                                onCancel={() => setEditingActivity(null)}
+                                                                onDelete={() => { if (confirm('Delete this activity?')) { deleteActivity(activity.id); setEditingActivity(null); logEvent('Activity Deleted', { activity_title: activity.title, category: activity.category }); } }}
+                                                            />
+                                                        ) : (
+                                                            <div className="activity-content">
+                                                                <span className="drag-handle" {...dragHandleProps}>
+                                                                    <GripVertical size={16} />
+                                                                </span>
+                                                                <div className="activity-left">
+                                                                    <span
+                                                                        className="activity-category-dot"
+                                                                        style={{ backgroundColor: activity.color ?? CATEGORY_COLORS[activity.category || 'other'] }}
+                                                                    >
+                                                                        {CATEGORY_EMOJIS[activity.category || 'other']}
+                                                                    </span>
+                                                                    <div>
+                                                                        <h4 className="activity-title">{activity.title}</h4>
+                                                                        {activity.details && <Markdown className="activity-details">{activity.details}</Markdown>}
+                                                                        <div className="activity-meta">
+                                                                            {activity.time && (
+                                                                                <span className="meta-item"><Clock size={13} /> {activity.time}</span>
+                                                                            )}
+                                                                            {activity.location && (
+                                                                                <span className="meta-item"><MapPin size={13} /> {activity.location}</span>
+                                                                            )}
+                                                                            {activity.cost != null && (
+                                                                                <span className="meta-item cost-tag">
+                                                                                    {activity.currency || '$'}{activity.cost.toFixed(2)}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="activity-actions">
+                                                                    <button className="btn btn-ghost btn-sm" onClick={() => setEditingActivity(activity.id)}>
+                                                                        <Pencil size={14} />
+                                                                    </button>
                                                                 </div>
                                                             </div>
-                                                        </div>
-                                                        <div className="activity-actions">
-                                                            <button className="btn btn-ghost btn-sm" onClick={() => setEditingActivity(activity.id)}>
-                                                                <Pencil size={14} />
-                                                            </button>
-                                                        </div>
+                                                        )}
                                                     </div>
-                                                )}
-                                            </div>
-                                        );
-                                        })}
+                                                );
+                                            }}
+                                        />
 
                                         {addingActivityDate === dateStr ? (
                                             <ActivityForm

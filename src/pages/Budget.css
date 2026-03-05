@@ -1,0 +1,257 @@
+.budget-controls {
+    margin-bottom: 1.5rem;
+}
+
+.budget-controls .input-field {
+    max-width: 300px;
+}
+
+/* Grand total card */
+.budget-total-card {
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    background: linear-gradient(135deg,
+        color-mix(in srgb, var(--secondary-color) 6%, var(--surface-color)),
+        color-mix(in srgb, var(--primary-color) 6%, var(--surface-color)));
+    text-align: center;
+}
+
+.budget-total-card h3 {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.75rem;
+}
+
+.budget-total-amounts {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.budget-total-badge {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.budget-total-count {
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+}
+
+.budget-no-data {
+    font-size: 0.9rem;
+    color: var(--text-tertiary);
+    font-style: italic;
+    margin-bottom: 0.5rem;
+}
+
+/* Sections */
+.budget-section {
+    margin-bottom: 2rem;
+}
+
+.budget-section-title {
+    font-size: 1.15rem;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+}
+
+/* Category breakdown */
+.budget-category-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.budget-category-row {
+    display: grid;
+    grid-template-columns: 160px 1fr auto;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.budget-category-row:last-child {
+    border-bottom: none;
+}
+
+.budget-cat-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.budget-cat-emoji {
+    font-size: 1.1rem;
+}
+
+.budget-cat-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: capitalize;
+    color: var(--text-primary);
+}
+
+.budget-cat-bar-track {
+    height: 10px;
+    border-radius: var(--radius-full);
+    background-color: var(--border-light);
+    overflow: hidden;
+}
+
+.budget-cat-bar-fill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    transition: width 0.4s ease;
+    min-width: 4px;
+}
+
+.budget-cat-amounts {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.1rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    min-width: 100px;
+    text-align: right;
+}
+
+/* Daily breakdown */
+.budget-daily-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.budget-day-card {
+    padding: 1rem 1.25rem;
+}
+
+.budget-day-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.budget-day-date {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+}
+
+.budget-day-name {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--primary-color);
+}
+
+.budget-day-full {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.budget-day-total {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.budget-day-amount {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--secondary-color);
+}
+
+.budget-day-bar-track {
+    height: 6px;
+    border-radius: var(--radius-full);
+    background-color: var(--border-light);
+    overflow: hidden;
+    margin-bottom: 0.75rem;
+}
+
+.budget-day-bar-fill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+    transition: width 0.4s ease;
+    min-width: 4px;
+}
+
+/* Individual expense items */
+.budget-day-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.budget-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.3rem 0.5rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--border-light);
+    font-size: 0.8rem;
+}
+
+.budget-item-emoji {
+    flex-shrink: 0;
+}
+
+.budget-item-title {
+    flex: 1;
+    font-weight: 500;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.budget-item-cost {
+    font-weight: 700;
+    color: var(--secondary-color);
+    flex-shrink: 0;
+}
+
+/* Empty state */
+.budget-controls + .empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+    .budget-controls .input-field {
+        max-width: 100%;
+    }
+
+    .budget-total-badge {
+        font-size: 1.5rem;
+    }
+
+    .budget-category-row {
+        grid-template-columns: 1fr;
+        gap: 0.4rem;
+    }
+
+    .budget-cat-amounts {
+        align-items: flex-start;
+        min-width: auto;
+    }
+
+    .budget-day-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+}

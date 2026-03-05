@@ -5,6 +5,7 @@ import ItineraryList from './pages/ItineraryList';
 import CalendarView from './pages/CalendarView';
 import Transportation from './pages/Transportation';
 import SpreadsheetView from './pages/SpreadsheetView';
+import Budget from './pages/Budget';
 import Settings from './pages/Settings';
 import AnalyticsProvider from './lib/amplitude';
 import { loadThemeConfig, getResolvedTokens, applyTheme } from './design-system/themes';
@@ -37,6 +38,7 @@ const App: React.FC = () => {
             <Route path="/calendar" element={<CalendarView />} />
             <Route path="/transportation" element={<Transportation />} />
             <Route path="/spreadsheet" element={<SpreadsheetView />} />
+            <Route path="/budget" element={<Budget />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>
         </main>

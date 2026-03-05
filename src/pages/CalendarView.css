@@ -52,6 +52,74 @@
     max-width: 250px;
 }
 
+/* Day navigation wrapper */
+.day-nav-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.75rem;
+    flex: 1;
+    min-width: 0;
+}
+
+/* Day pills */
+.day-pills {
+    display: flex;
+    gap: 0.25rem;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+    scrollbar-width: thin;
+}
+
+.day-pill {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.1rem;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    background: var(--surface-color);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: inherit;
+    min-width: 42px;
+    flex-shrink: 0;
+}
+
+.day-pill:hover {
+    border-color: var(--primary-color);
+    background-color: color-mix(in srgb, var(--primary-color) 5%, transparent);
+}
+
+.day-pill.active {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+}
+
+.day-pill.active .day-pill-dow {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.day-pill.today:not(.active) {
+    border-color: var(--primary-color);
+}
+
+.day-pill-num {
+    font-size: 0.85rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.day-pill-dow {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    font-weight: 500;
+    line-height: 1;
+}
+
 /* Calendar Grid */
 .days-grid {
     display: grid;
@@ -320,6 +388,15 @@
         min-width: auto;
     }
 
+    .day-pill {
+        padding: 0.3rem 0.4rem;
+        min-width: 36px;
+    }
+
+    .day-pill-num {
+        font-size: 0.75rem;
+    }
+
     .calendar-day {
         min-height: 100px;
         padding: 0.5rem;
@@ -336,4 +413,43 @@
     .trip-select {
         max-width: 100%;
     }
+}
+
+.day-summary-section {
+    margin-bottom: 1rem;
+}
+
+.trip-summary-header {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-tertiary);
+    margin: 0 0 0.5rem;
+}
+
+.trip-summary-text {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.55;
+    margin: 0 0 0.5rem;
+}
+
+.trip-summary-highlights {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.trip-summary-highlights li {
+    font-size: 0.82rem;
+    color: var(--text-primary);
+    padding: 0.4rem 0.6rem;
+    background: var(--bg-highlight, color-mix(in srgb, var(--primary-color) 8%, transparent));
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--primary-color);
+    line-height: 1.4;
 }

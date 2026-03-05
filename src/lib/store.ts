@@ -6,6 +6,7 @@ import {
     deleteDoc,
     doc,
     onSnapshot,
+    writeBatch,
     type Unsubscribe,
 } from 'firebase/firestore';
 import { db } from './firebase';
@@ -100,6 +101,14 @@ export function useActivities() {
         await deleteDoc(doc(db, 'activities', id));
     }, []);
 
+    const reorderActivities = useCallback(async (orderedIds: { id: string; order: number }[]) => {
+        const batch = writeBatch(db);
+        for (const { id, order } of orderedIds) {
+            batch.update(doc(db, 'activities', id), { order });
+        }
+        await batch.commit();
+    }, []);
+
     const getActivitiesByDate = useCallback(
         (date: string) => activities.filter((a) => a.date === date).sort((a, b) => a.order - b.order),
         [activities]
@@ -116,7 +125,7 @@ export function useActivities() {
         [activities]
     );
 
-    return { activities, loading, addActivity, updateActivity, deleteActivity, getActivitiesByDate, getActivitiesByTrip };
+    return { activities, loading, addActivity, updateActivity, deleteActivity, reorderActivities, getActivitiesByDate, getActivitiesByTrip };
 }
 
 // ---- Transport Routes ----

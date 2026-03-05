@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
+import { Loader2 } from 'lucide-react';
 import type { Trip } from '../lib/types';
 import { TRIP_COLORS } from '../lib/types';
+import { generateWithGemini } from '../lib/gemini';
+import { logEvent } from '../lib/amplitude';
+import Markdown from './Markdown';
 
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD'] as const;
 
@@ -17,6 +21,36 @@ const TripForm: React.FC<TripFormProps> = ({ existing, onSave, onCancel }) => {
     const [description, setDescription] = useState(existing?.description || '');
     const [defaultCurrency, setDefaultCurrency] = useState(existing?.defaultCurrency || 'USD');
     const [color, setColor] = useState(existing?.color || TRIP_COLORS[0]);
+    const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
+    const [aiLoading, setAiLoading] = useState(false);
+    const [aiError, setAiError] = useState<string | null>(null);
+
+    const handleAiAutofill = async () => {
+        if (!name.trim()) return;
+        setAiLoading(true);
+        setAiError(null);
+        setAiSuggestion(null);
+        const dateRange = startDate && endDate ? ` from ${startDate} to ${endDate}` : '';
+        const prompt = `For a trip to "${name.trim()}"${dateRange}, suggest popular activities and highlights.
+
+Include:
+- Must-see attractions and landmarks
+- Local food and dining experiences
+- Cultural or seasonal events worth attending
+- Neighborhoods or areas to explore
+- Day-trip options nearby
+
+Format as a concise bullet list. Maximum 200 words. Be specific and practical.`;
+        logEvent('AI Trip Autofill Requested', { trip_name: name.trim() });
+        try {
+            const text = await generateWithGemini(prompt, 600);
+            setAiSuggestion(text);
+        } catch (e) {
+            setAiError(e instanceof Error ? e.message : 'AI suggestion failed');
+        } finally {
+            setAiLoading(false);
+        }
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -76,6 +110,28 @@ const TripForm: React.FC<TripFormProps> = ({ existing, onSave, onCancel }) => {
             <div className="input-group">
                 <label className="input-label">Description</label>
                 <textarea className="input-field textarea" value={description} onChange={e => setDescription(e.target.value)} placeholder="Brief description..." rows={2} />
+                {name.trim() && (
+                    <div className="ai-suggestion-block">
+                        <button
+                            type="button"
+                            className="btn btn-sm ai-suggest-btn"
+                            onClick={handleAiAutofill}
+                            disabled={aiLoading}
+                        >
+                            {aiLoading ? <><Loader2 size={14} className="spin" /> Generating ideas…</> : 'Suggest activities for destination'}
+                        </button>
+                        {aiError && <p className="ai-error">{aiError}</p>}
+                        {aiSuggestion && (
+                            <div className="ai-suggestion-card card" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                                <Markdown className="ai-suggestion-text">{aiSuggestion}</Markdown>
+                                <div className="ai-suggestion-actions">
+                                    <button type="button" className="btn btn-primary btn-sm" onClick={() => { setDescription(aiSuggestion); setAiSuggestion(null); logEvent('AI Trip Autofill Accepted', { trip_name: name.trim() }); }}>Use as description</button>
+                                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setAiSuggestion(null); logEvent('AI Trip Autofill Declined', { trip_name: name.trim() }); }}>Dismiss</button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
             <div className="form-actions">
                 <button type="button" className="btn btn-ghost" onClick={onCancel}>Cancel</button>

@@ -352,6 +352,31 @@ p {
 .markdown-content h2 { font-size: 1.15em; }
 .markdown-content h3 { font-size: 1.05em; }
 
+/* Drag-and-drop */
+.draggable-item.drag-over {
+    border-top: 2px solid var(--primary-color);
+}
+
+.drag-handle {
+    cursor: grab;
+    color: var(--text-tertiary);
+    display: flex;
+    align-items: center;
+    padding: 0.25rem;
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+    touch-action: none;
+}
+
+.drag-handle:hover {
+    color: var(--text-secondary);
+    background-color: var(--border-light);
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
 @media (max-width: 768px) {
   .page-container {
     padding: 1rem;
