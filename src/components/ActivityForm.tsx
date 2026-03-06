@@ -14,7 +14,7 @@ interface ActivityFormProps {
     existingActivity?: Activity;
     nextOrder: number;
     defaultCurrency?: string;
-    onSave: (activity: Omit<Activity, 'id'> | { id: string } & Partial<Activity>) => void;
+    onSave: (activity: Omit<Activity, 'id' | 'userId'> | ({ id: string } & Partial<Omit<Activity, 'userId'>>)) => void;
     onCancel: () => void;
     onDelete?: () => void;
 }
@@ -56,6 +56,7 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ tripId, date, existingActiv
     const [cost, setCost] = useState(existingActivity?.cost?.toString() || '');
     const [currency, setCurrency] = useState(existingActivity?.currency || defaultCurrency || 'USD');
     const [color, setColor] = useState(existingActivity?.color || '');
+    const [tags, setTags] = useState(existingActivity?.tags?.join(', ') || '');
     const [showOptional, setShowOptional] = useState(!!existingActivity);
     const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
     const [aiLoading, setAiLoading] = useState(false);
@@ -90,6 +91,7 @@ Prioritize actionable advice over general description. Use engaging but factual 
         e.preventDefault();
         if (!title.trim()) return;
 
+        const parsedTags = tags.split(',').map(t => t.trim()).filter(Boolean);
         const activityData = {
             ...(existingActivity ? { id: existingActivity.id } : {}),
             tripId,
@@ -103,6 +105,7 @@ Prioritize actionable advice over general description. Use engaging but factual 
             currency: cost ? currency : undefined,
             order: existingActivity?.order ?? nextOrder,
             color: color || undefined,
+            tags: parsedTags.length > 0 ? parsedTags : undefined,
         };
 
         onSave(activityData);
@@ -261,6 +264,17 @@ Prioritize actionable advice over general description. Use engaging but factual 
                                 <option value="AUD">AUD</option>
                             </select>
                         </div>
+                    </div>
+                    <div className="input-group">
+                        <label className="input-label">Tags</label>
+                        <input
+                            className="input-field"
+                            type="text"
+                            value={tags}
+                            onChange={e => setTags(e.target.value)}
+                            placeholder="e.g. shared, reimbursable, splurge"
+                        />
+                        <span className="input-hint">Comma-separated</span>
                     </div>
                 </div>
             )}

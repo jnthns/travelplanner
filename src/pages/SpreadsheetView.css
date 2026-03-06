@@ -205,6 +205,40 @@
     color: var(--primary-color);
 }
 
+.sheet-day-location {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    margin-top: 0.2rem;
+    color: var(--text-tertiary);
+}
+
+.day-location-input {
+    border: none;
+    background: transparent;
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    text-align: center;
+    width: 100%;
+    max-width: 110px;
+    padding: 0.1rem 0.2rem;
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    outline: none;
+    transition: background-color 0.15s ease;
+}
+
+.day-location-input::placeholder {
+    color: var(--text-tertiary);
+    opacity: 0.6;
+}
+
+.day-location-input:hover,
+.day-location-input:focus {
+    background-color: color-mix(in srgb, var(--primary-color) 5%, transparent);
+}
+
 .sheet-day-date {
     display: block;
     font-size: 0.7rem;

@@ -10,7 +10,7 @@ const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD'] as const;
 
 interface TripFormProps {
     existing?: Trip;
-    onSave: (trip: Omit<Trip, 'id'> | Trip) => void;
+    onSave: (trip: Omit<Trip, 'id' | 'userId'> | (Pick<Trip, 'id'> & Partial<Omit<Trip, 'id' | 'userId'>>)) => void;
     onCancel: () => void;
 }
 

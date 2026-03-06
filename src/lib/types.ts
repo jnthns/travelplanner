@@ -5,12 +5,16 @@ export const TRIP_COLORS = [
 
 export interface Trip {
     id: string;
+    userId: string;
     name: string;
     startDate: string; // ISO date
     endDate: string;   // ISO date
     description?: string;
     defaultCurrency?: string;
     color?: string; // hex for calendar overlay and UI
+    dayLocations?: Record<string, string>; // "YYYY-MM-DD" -> location name
+    budgetTarget?: number;
+    budgetCurrency?: string;
 }
 
 export const ACTIVITY_COLORS = [
@@ -20,6 +24,7 @@ export const ACTIVITY_COLORS = [
 
 export interface Activity {
     id: string;
+    userId: string;
     tripId: string;
     date: string; // ISO date YYYY-MM-DD
     title: string;
@@ -32,10 +37,12 @@ export interface Activity {
     notes?: string;
     order: number; // for sorting within a day
     color?: string; // optional override for prioritization/organization
+    tags?: string[];
 }
 
 export interface TransportRoute {
     id: string;
+    userId: string;
     tripId: string;
     date: string;
     type: 'flight' | 'train' | 'bus' | 'car' | 'ferry' | 'taxi' | 'walk' | 'other';
@@ -48,6 +55,25 @@ export interface TransportRoute {
     bookingRef?: string;
     notes?: string;
 }
+
+export interface Note {
+    id: string;
+    userId: string;
+    tripId: string;
+    title: string;
+    content: string;
+    format: 'freeform' | 'bullet' | 'numbered';
+    order: number;
+    color?: string;
+    images?: string[]; // Firebase Storage download URLs
+    createdAt: string; // ISO datetime
+    updatedAt: string; // ISO datetime
+}
+
+export const NOTE_COLORS = [
+    '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
+    '#ec4899', '#06b6d4', '#84cc16', '#64748b',
+];
 
 export const CATEGORY_COLORS: Record<string, string> = {
     sightseeing: '#3b82f6',

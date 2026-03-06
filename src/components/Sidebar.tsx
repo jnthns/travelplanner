@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Calendar, Map, Table, Wallet, Upload, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Map, Table, Wallet, StickyNote, Upload, Settings, ChevronLeft, ChevronRight, LogOut, User } from 'lucide-react';
+import { useAuth } from '../lib/AuthContext';
 import './Sidebar.css';
 
 const Sidebar: React.FC = () => {
+  const { user, signOut } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches
   );
@@ -15,7 +17,7 @@ const Sidebar: React.FC = () => {
     { to: '/calendar', icon: <Calendar size={20} />, label: 'Calendar' },
     { to: '/transportation', icon: <Map size={20} />, label: 'Transportation' },
     { to: '/budget', icon: <Wallet size={20} />, label: 'Budget' },
-    { to: '/import', icon: <Upload size={20} />, label: 'Import' },
+    { to: '/notes', icon: <StickyNote size={20} />, label: 'Notes' },
   ];
 
   return (
@@ -50,12 +52,37 @@ const Sidebar: React.FC = () => {
 
       <div className="sidebar-bottom">
         <NavLink
+          to="/import"
+          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+        >
+          <span className="nav-icon"><Upload size={20} /></span>
+          <span className="nav-label">Import</span>
+        </NavLink>
+        <NavLink
           to="/settings"
           className={({ isActive }) => `nav-item nav-item-settings ${isActive ? 'active' : ''}`}
         >
           <span className="nav-icon"><Settings size={20} /></span>
           <span className="nav-label">Settings</span>
         </NavLink>
+
+        {user && (
+          <div className="sidebar-user">
+            <div className="sidebar-user-info">
+              {user.photoURL ? (
+                <img src={user.photoURL} alt="" className="sidebar-avatar" referrerPolicy="no-referrer" />
+              ) : (
+                <span className="sidebar-avatar-placeholder"><User size={14} /></span>
+              )}
+              <span className="nav-label sidebar-user-name">
+                {user.isAnonymous ? 'Guest' : (user.displayName || user.email || 'User')}
+              </span>
+            </div>
+            <button type="button" className="btn btn-ghost btn-sm sidebar-signout" onClick={signOut} aria-label="Sign out">
+              <LogOut size={16} />
+            </button>
+          </div>
+        )}
       </div>
     </aside>
   );

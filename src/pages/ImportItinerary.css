@@ -257,7 +257,79 @@
     background-color: color-mix(in srgb, var(--error-color) 8%, transparent);
 }
 
-/* Actions bar */
+/* Loading jokes */
+.import-loading-jokes {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 4rem 2rem;
+    gap: 1.25rem;
+}
+
+.import-loading-plane {
+    color: var(--primary-color);
+    animation: plane-bob 2s ease-in-out infinite;
+}
+
+@keyframes plane-bob {
+    0%, 100% { transform: translateY(0) rotate(-5deg); }
+    50% { transform: translateY(-12px) rotate(5deg); }
+}
+
+.import-loading-progress {
+    font-size: 0.85rem;
+    color: var(--text-tertiary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.import-loading-progress::before {
+    content: '';
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border-color);
+    border-top-color: var(--primary-color);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+.import-loading-joke {
+    max-width: 480px;
+    font-size: 0.9rem;
+    font-style: italic;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    min-height: 3em;
+    display: flex;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.import-loading-joke.visible {
+    opacity: 1;
+}
+
+/* Sticky action bar at top of preview/done */
+.import-sticky-actions {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 1rem;
+    background: color-mix(in srgb, var(--bg-primary) 92%, transparent);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    margin-bottom: 0.5rem;
+}
+
+/* Actions bar (legacy bottom actions removed, now using sticky) */
 .import-actions {
     display: flex;
     justify-content: space-between;
@@ -319,10 +391,10 @@
     margin-bottom: 0.5rem;
 }
 
-.import-done .import-actions {
-    border-top: none;
-    padding-top: 0;
-    justify-content: center;
+.import-done-actions {
+    position: relative;
+    top: unset;
+    margin-bottom: 1.5rem;
 }
 
 @media (max-width: 768px) {
@@ -374,5 +446,23 @@
 
     .import-discard-btn {
         width: 100%;
+    }
+
+    .import-sticky-actions {
+        flex-wrap: wrap;
+        padding: 0.5rem 0.75rem;
+    }
+
+    .import-sticky-actions .import-actions-right {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .import-loading-jokes {
+        padding: 3rem 1rem;
+    }
+
+    .import-loading-joke {
+        font-size: 0.85rem;
     }
 }

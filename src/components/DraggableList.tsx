@@ -6,6 +6,7 @@ interface DraggableListProps<T> {
     onReorder: (reordered: T[]) => void;
     renderItem: (item: T, index: number, dragHandleProps: DragHandleProps) => React.ReactNode;
     disabled?: boolean;
+    className?: string;
 }
 
 export interface DragHandleProps {
@@ -14,7 +15,7 @@ export interface DragHandleProps {
     onDragEnd: (e: React.DragEvent) => void;
 }
 
-function DraggableList<T>({ items, keyFn, onReorder, renderItem, disabled }: DraggableListProps<T>) {
+function DraggableList<T>({ items, keyFn, onReorder, renderItem, disabled, className }: DraggableListProps<T>) {
     const [dragIndex, setDragIndex] = useState<number | null>(null);
     const [overIndex, setOverIndex] = useState<number | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -56,7 +57,7 @@ function DraggableList<T>({ items, keyFn, onReorder, renderItem, disabled }: Dra
     }, [dragIndex, items, onReorder]);
 
     return (
-        <div ref={containerRef}>
+        <div ref={containerRef} className={className}>
             {items.map((item, index) => {
                 const isOver = overIndex === index && dragIndex !== null && dragIndex !== index;
                 const dragHandleProps: DragHandleProps = {

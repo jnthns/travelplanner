@@ -422,6 +422,13 @@ body.dark-mode img {
   opacity: 0.9;
 }
 
+.input-hint {
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+  margin-top: 0.15rem;
+  display: block;
+}
+
 @media (max-width: 768px) {
   .page-container {
     padding: 1rem;

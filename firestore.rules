@@ -2,14 +2,33 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isOwner() {
+      return request.auth != null && request.auth.uid == resource.data.userId;
+    }
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
     match /trips/{tripId} {
-      allow read, write: if true;
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isOwner();
     }
     match /activities/{activityId} {
-      allow read, write: if true;
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isOwner();
     }
     match /transportRoutes/{routeId} {
-      allow read, write: if true;
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isOwner();
+    }
+    match /notes/{noteId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isOwner();
     }
   }
 }

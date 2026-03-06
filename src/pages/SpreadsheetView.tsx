@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { format, eachDayOfInterval, isSameDay, parseISO } from 'date-fns';
-import { Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Sunrise, Sun, Sunset, Clock } from 'lucide-react';
+import { Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Sunrise, Sun, Sunset, Clock, MapPin } from 'lucide-react';
 import { useTrips, useActivities } from '../lib/store';
 import type { Activity, Trip } from '../lib/types';
 import { CATEGORY_EMOJIS, CATEGORY_COLORS, TRIP_COLORS } from '../lib/types';
@@ -156,7 +156,7 @@ const SpreadsheetView: React.FC = () => {
         });
     };
 
-    const handleSaveActivity = (data: Omit<Activity, 'id'> | ({ id: string } & Partial<Activity>)) => {
+    const handleSaveActivity = (data: Omit<Activity, 'id' | 'userId'> | ({ id: string } & Partial<Omit<Activity, 'userId'>>)) => {
         if ('id' in data) {
             updateActivity(data.id, data);
             logEvent('Activity Updated', { activity_title: data.title, source: 'spreadsheet' });
@@ -182,7 +182,7 @@ const SpreadsheetView: React.FC = () => {
 
     const cellKey = (dateStr: string, slot: TimeSlot) => `${dateStr}__${slot}`;
 
-    const handleSaveTrip = async (tripData: Trip | Omit<Trip, 'id'>) => {
+    const handleSaveTrip = async (tripData: Omit<Trip, 'id' | 'userId'> | (Pick<Trip, 'id'> & Partial<Omit<Trip, 'id' | 'userId'>>)) => {
         setTripFormError(null);
         try {
             if ('id' in tripData) {
@@ -215,6 +215,13 @@ const SpreadsheetView: React.FC = () => {
             logEvent('Trip Delete Undone', { trip_name: trip.name });
         });
     };
+
+    const handleUpdateDayLocation = useCallback((dateStr: string, location: string) => {
+        if (!selectedTrip) return;
+        const dayLocations = { ...selectedTrip.dayLocations, [dateStr]: location };
+        if (!location.trim()) delete dayLocations[dateStr];
+        updateTrip(selectedTrip.id, { dayLocations });
+    }, [selectedTrip, updateTrip]);
 
     if (tripsLoading) {
         return <div className="page-container animate-fade-in spreadsheet-page" />;
@@ -359,10 +366,27 @@ const SpreadsheetView: React.FC = () => {
                         <div className="sheet-header-cell sheet-corner" />
                         {tripDays.map((day, idx) => {
                             const isFocused = isSameDay(day, focusedDate);
+                            const dateStr = format(day, 'yyyy-MM-dd');
+                            const dayLocation = selectedTrip?.dayLocations?.[dateStr] ?? '';
                             return (
                                 <div key={idx} className={`sheet-header-cell${isFocused ? ' focused' : ''}`}>
                                     <span className="sheet-day-label">Day {idx + 1}</span>
                                     <span className="sheet-day-date">{format(day, 'EEE, MMM d')}</span>
+                                    <div className="sheet-day-location">
+                                        <MapPin size={10} />
+                                        <input
+                                            type="text"
+                                            className="day-location-input"
+                                            placeholder="Location..."
+                                            defaultValue={dayLocation}
+                                            key={`${selectedTripId}-${dateStr}`}
+                                            onBlur={e => {
+                                                const val = e.target.value.trim();
+                                                if (val !== dayLocation) handleUpdateDayLocation(dateStr, val);
+                                            }}
+                                            onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                                        />
+                                    </div>
                                 </div>
                             );
                         })}

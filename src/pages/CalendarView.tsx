@@ -58,7 +58,6 @@ const CalendarView: React.FC = () => {
     });
     const [viewMode, setViewMode] = useState<ViewMode>(savedPrefs.viewMode);
     const [selectedTripId, setSelectedTripId] = useState<string | null>(savedPrefs.selectedTripId);
-    const [selectedDate, setSelectedDate] = useState<string | null>(null);
     const [addingActivityForDate, setAddingActivityForDate] = useState<string | null>(null);
     const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
     const [tripSummary, setTripSummary] = useState<{ summary: string; highlights: string[] } | null>(null);
@@ -144,10 +143,6 @@ const CalendarView: React.FC = () => {
         }
     };
 
-    const dayDetails = selectedDate
-        ? activities.filter(a => a.date === selectedDate).sort((a, b) => a.order - b.order)
-        : [];
-
     const getActivityColor = (activity: { category?: string; color?: string }) =>
         activity.color ?? CATEGORY_COLORS[activity.category ?? 'other'];
 
@@ -157,14 +152,14 @@ const CalendarView: React.FC = () => {
         .sort((a, b) => a.order - b.order);
 
     const handleSaveActivity = (
-        activityData: Omit<import('../lib/types').Activity, 'id'> | ({ id: string } & Partial<import('../lib/types').Activity>),
+        activityData: Omit<import('../lib/types').Activity, 'id' | 'userId'> | ({ id: string } & Partial<Omit<import('../lib/types').Activity, 'userId'>>),
         forDate?: string,
     ) => {
-        const targetDate = forDate ?? selectedDate;
+        const targetDate = forDate ?? currentDateStr;
         if ('id' in activityData && activityData.id) {
             updateActivity(activityData.id, activityData);
         } else if (selectedTripId && targetDate) {
-            const orderFallback = viewMode === 'day' ? dayViewActivities.length : dayDetails.length;
+            const orderFallback = dayViewActivities.length;
             addActivity({
                 ...activityData,
                 tripId: selectedTripId,
@@ -281,6 +276,9 @@ Be specific to the actual destinations and activities. Each highlight should be 
                             </button>
                             <span className="current-label">
                                 {format(currentDate, 'EEEE, MMM d, yyyy')}
+                                {selectedTrip?.dayLocations?.[currentDateStr] && (
+                                    <span className="current-label-location">📍 {selectedTrip.dayLocations[currentDateStr]}</span>
+                                )}
                             </span>
                             <button className="btn btn-ghost" onClick={() => navigate(1)}>
                                 <ChevronRight size={20} />
@@ -313,18 +311,18 @@ Be specific to the actual destinations and activities. Each highlight should be 
                             const dateStr = format(day, 'yyyy-MM-dd');
                             const dayActs = getActivitiesForDate(day);
                             const isToday = isSameDay(day, new Date());
-                            const isSelected = selectedDate === dateStr;
+                            const dayLocation = selectedTrip?.dayLocations?.[dateStr];
 
                             return (
                                 <div
                                     key={idx}
-                                    className={`calendar-day trip-card ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}`}
-                                    onClick={() => setSelectedDate(isSelected ? null : dateStr)}
-                                    onDoubleClick={() => { setCurrentDate(day); setViewMode('day'); logEvent('Calendar View Changed', { view_mode: 'day', source: 'trip_card_drill_down' }); }}
+                                    className={`calendar-day trip-card ${isToday ? 'today' : ''}`}
+                                    onClick={() => { setCurrentDate(day); setViewMode('day'); logEvent('Calendar View Changed', { view_mode: 'day', source: 'trip_card_click' }); }}
                                 >
                                     <div className="trip-card-header">
                                         <span className="cal-day-number">{format(day, 'd')}</span>
                                         <span className="cal-day-label">{format(day, 'EEE')}</span>
+                                        {dayLocation && <span className="cal-day-location">📍 {dayLocation}</span>}
                                     </div>
                                     {dayActs.length > 0 ? (
                                         <div className="cal-day-activities">
@@ -448,70 +446,6 @@ Be specific to the actual destinations and activities. Each highlight should be 
                 </div>
             )}
 
-            {/* Selected Date Panel (trip view CRUD) */}
-            {selectedDate && viewMode === 'trip' && selectedTripId && (
-                <div className="selected-date-panel card animate-fade-in">
-                    <h3>{(() => { try { return format(parseISO(selectedDate), 'EEEE, MMMM d, yyyy'); } catch { return selectedDate; } })()}</h3>
-                    {addingActivityForDate === selectedDate ? (
-                        <ActivityForm
-                            tripId={selectedTripId}
-                            date={selectedDate}
-                            nextOrder={dayDetails.length}
-                            defaultCurrency={selectedTrip?.defaultCurrency}
-                            onSave={handleSaveActivity}
-                            onCancel={() => setAddingActivityForDate(null)}
-                        />
-                    ) : (
-                        <button
-                            type="button"
-                            className="btn btn-outline add-activity-btn"
-                            onClick={() => setAddingActivityForDate(selectedDate)}
-                        >
-                            <Plus size={16} /> Add activity
-                        </button>
-                    )}
-                    {dayDetails.length === 0 && !addingActivityForDate && (
-                        <p className="no-activities-cal">No activities planned for this day.</p>
-                    )}
-                    {dayDetails.map((act) =>
-                        editingActivityId === act.id ? (
-                            <ActivityForm
-                                key={act.id}
-                                tripId={selectedTripId}
-                                date={selectedDate}
-                                existingActivity={act}
-                                nextOrder={act.order}
-                                defaultCurrency={selectedTrip?.defaultCurrency}
-                                onSave={handleSaveActivity}
-                                onCancel={() => setEditingActivityId(null)}
-                                onDelete={() => {
-                                    deleteActivity(act.id);
-                                    setEditingActivityId(null);
-                                    logEvent('Activity Deleted', { activity_title: act.title, category: act.category, source: 'calendar' });
-                                    showToast(`"${act.title}" deleted`, () => {
-                                        restoreActivity(act);
-                                        logEvent('Activity Delete Undone', { activity_title: act.title });
-                                    });
-                                }}
-                            />
-                        ) : (
-                            <div key={act.id} className="panel-activity panel-activity-with-actions" style={{ borderLeftColor: getActivityColor(act) }}>
-                                <div className="panel-activity-top">
-                                    <span>{CATEGORY_EMOJIS[act.category || 'other']}</span>
-                                    <div className="panel-activity-content">
-                                        <strong>{act.title}</strong>
-                                        {act.time && <span className="panel-time"> at {act.time}</span>}
-                                        {act.details && <Markdown className="panel-details">{act.details}</Markdown>}
-                                    </div>
-                                    <div className="panel-activity-actions">
-                                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingActivityId(act.id)} aria-label="Edit"><Pencil size={14} /></button>
-                                    </div>
-                                </div>
-                            </div>
-                        )
-                    )}
-                </div>
-            )}
         </div>
     );
 };

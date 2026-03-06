@@ -279,6 +279,9 @@ Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid 
                                 onChange={e => setFormData(p => ({ ...p, date: e.target.value }))}
                                 required
                             />
+                            {selectedTrip?.dayLocations?.[formData.date] && (
+                                <span className="day-location-hint">📍 {selectedTrip.dayLocations[formData.date]}</span>
+                            )}
                         </div>
                         <div className="input-group" style={{ flex: 0, minWidth: '120px' }}>
                             <label className="input-label">Departure</label>
@@ -360,7 +363,7 @@ Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid 
                 </form>
             )}
 
-            {/* Routes List */}
+            {/* Routes Grid */}
             {tripRoutes.length === 0 && !showForm ? (
                 <div className="empty-state">
                     <div className="empty-icon">🚀</div>
@@ -368,43 +371,13 @@ Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid 
                     <p>Add your first transport route to start tracking.</p>
                 </div>
             ) : (
-                <div className="routes-list">
+                <div className="routes-grid">
                     {tripRoutes.map(route => (
-                        <div key={route.id} className="route-card card">
-                            <div className="route-header">
+                        <div key={route.id} className="route-tile card">
+                            <div className="tile-top">
                                 <span className="route-type-badge">
                                     {TRANSPORT_EMOJIS[route.type]} {route.type}
                                 </span>
-                                <span className="route-date">{format(parseISO(route.date), 'MMM d, yyyy')}</span>
-                            </div>
-
-                            <div className="route-path">
-                                <div className="route-point">
-                                    <div className="route-dot start" />
-                                    <div>
-                                        <strong>{route.from}</strong>
-                                        {route.departureTime && <span className="route-time">{route.departureTime}</span>}
-                                    </div>
-                                </div>
-                                <div className="route-line" />
-                                <div className="route-point">
-                                    <div className="route-dot end" />
-                                    <div>
-                                        <strong>{route.to}</strong>
-                                        {route.arrivalTime && <span className="route-time">{route.arrivalTime}</span>}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="route-footer">
-                                <div className="route-meta">
-                                    {route.cost != null && (
-                                        <span className="route-cost">{route.currency || 'USD'} {route.cost.toFixed(2)}</span>
-                                    )}
-                                    {route.bookingRef && (
-                                        <span className="route-ref">Ref: {route.bookingRef}</span>
-                                    )}
-                                </div>
                                 <div className="route-actions">
                                     <button className="btn btn-ghost btn-sm" onClick={() => openEditForm(route)}>
                                         <Pencil size={14} />
@@ -414,8 +387,23 @@ Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid 
                                     </button>
                                 </div>
                             </div>
-
-                            {route.notes && <Markdown className="route-notes">{route.notes}</Markdown>}
+                            <div className="tile-route">
+                                <strong>{route.from}</strong>
+                                {route.departureTime && <span className="route-time">{route.departureTime}</span>}
+                                <span className="tile-arrow">→</span>
+                                <strong>{route.to}</strong>
+                                {route.arrivalTime && <span className="route-time">{route.arrivalTime}</span>}
+                            </div>
+                            <div className="tile-meta">
+                                <span className="route-date">{format(parseISO(route.date), 'MMM d, yyyy')}</span>
+                                {route.cost != null && (
+                                    <span className="route-cost">{route.currency || 'USD'} {route.cost.toFixed(2)}</span>
+                                )}
+                                {route.bookingRef && (
+                                    <span className="route-ref">Ref: {route.bookingRef}</span>
+                                )}
+                            </div>
+                            {route.notes && <Markdown className="route-notes tile-notes">{route.notes}</Markdown>}
                         </div>
                     ))}
                 </div>

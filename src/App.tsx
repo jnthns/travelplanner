@@ -1,17 +1,43 @@
 import React, { Suspense, useEffect, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
+import { AuthProvider, useAuth } from './lib/AuthContext';
 import AnalyticsProvider from './lib/amplitude';
 import { ToastProvider } from './components/Toast';
 import { loadThemeConfig, getResolvedTokens, getDarkTokens, applyTheme } from './design-system/themes';
+import { Loader2 } from 'lucide-react';
 import './theme.css';
 
+const Login = lazy(() => import('./pages/Login'));
 const CalendarView = lazy(() => import('./pages/CalendarView'));
 const Transportation = lazy(() => import('./pages/Transportation'));
 const SpreadsheetView = lazy(() => import('./pages/SpreadsheetView'));
 const Budget = lazy(() => import('./pages/Budget'));
+const Notes = lazy(() => import('./pages/Notes'));
 const Settings = lazy(() => import('./pages/Settings'));
 const ImportItinerary = lazy(() => import('./pages/ImportItinerary'));
+
+function AuthGate({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+        <Loader2 size={32} className="spin" style={{ color: 'var(--primary-color)' }} />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <Suspense fallback={null}>
+        <Login />
+      </Suspense>
+    );
+  }
+
+  return <>{children}</>;
+}
 
 const App: React.FC = () => {
   useEffect(() => {
@@ -37,26 +63,31 @@ const App: React.FC = () => {
 
   return (
     <Router basename="/travelplanner/">
-      <AnalyticsProvider />
-      <ToastProvider>
-        <div className="app-container">
-          <Sidebar />
-          <main className="main-content">
-            <Suspense fallback={null}>
-              <Routes>
-                <Route path="/" element={<Navigate to="/spreadsheet" replace />} />
-                <Route path="/calendar" element={<CalendarView />} />
-                <Route path="/transportation" element={<Transportation />} />
-                <Route path="/spreadsheet" element={<SpreadsheetView />} />
-                <Route path="/budget" element={<Budget />} />
-                <Route path="/import" element={<ImportItinerary />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="*" element={<Navigate to="/spreadsheet" replace />} />
-              </Routes>
-            </Suspense>
-          </main>
-        </div>
-      </ToastProvider>
+      <AuthProvider>
+        <AnalyticsProvider />
+        <ToastProvider>
+          <AuthGate>
+            <div className="app-container">
+              <Sidebar />
+              <main className="main-content">
+                <Suspense fallback={null}>
+                  <Routes>
+                    <Route path="/" element={<Navigate to="/spreadsheet" replace />} />
+                    <Route path="/calendar" element={<CalendarView />} />
+                    <Route path="/transportation" element={<Transportation />} />
+                    <Route path="/spreadsheet" element={<SpreadsheetView />} />
+                    <Route path="/budget" element={<Budget />} />
+                    <Route path="/notes" element={<Notes />} />
+                    <Route path="/import" element={<ImportItinerary />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="*" element={<Navigate to="/spreadsheet" replace />} />
+                  </Routes>
+                </Suspense>
+              </main>
+            </div>
+          </AuthGate>
+        </ToastProvider>
+      </AuthProvider>
     </Router>
   );
 };

@@ -1,12 +1,35 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Check, AlertCircle, Plus, X } from 'lucide-react';
+import { Loader2, Check, AlertCircle, Plus, X, Plane } from 'lucide-react';
 import { useTrips, useActivities } from '../lib/store';
 import { CATEGORY_EMOJIS } from '../lib/types';
 import type { Activity } from '../lib/types';
 import { generateWithGemini } from '../lib/gemini';
 import { logEvent } from '../lib/amplitude';
 import './ImportItinerary.css';
+
+const TRAVEL_JOKES = [
+    "My travel budget is like my liver — absolutely destroyed by the end of every trip.",
+    "TSA took my dignity, my water bottle, and somehow still missed the emotional baggage.",
+    "I told my boss I needed a trip to find myself. Turns out I was at the hotel bar the whole time.",
+    "The only thing getting laid on this vacation is my suitcase — flat on the airport floor.",
+    "Jet lag is just your body saying 'what the hell did you do to me' in every time zone.",
+    "My travel philosophy: if you haven't ugly-cried in a foreign airport, you haven't truly lived.",
+    "The hostel said 'shared bathroom.' They didn't mention I'd be sharing it with the devil himself.",
+    "Nothing says 'vacation' like diarrhea in a country where you can't read the pharmacy signs.",
+    "I spent $200 on a 'scenic tour' that was basically a drunk guy with a van and strong opinions.",
+    "My packing list: clothes, passport, poor decisions, and an unreasonable amount of Imodium.",
+    "Airplane wine is just grape-flavored regret served at 35,000 feet.",
+    "I don't always get upgraded, but when I do, it's because someone threw up in first class.",
+    "Hotel 'continental breakfast' is just sad croissants and the crushing weight of expectations.",
+    "I came for the culture. I stayed because I couldn't figure out the damn bus schedule.",
+    "The resort called it an 'infinity pool.' Infinite was also how long I waited for a damn towel.",
+    "My Uber driver in Bali had no GPS, no AC, and absolutely no f***s to give.",
+    "Customs asked if I had anything to declare. I said 'just my crippling fear of commitment.'",
+    "Middle seat, crying baby, broken AC — the holy trinity of air travel suffering.",
+    "I booked a 'beachfront' hotel. The beach was a lie. The front was a parking lot.",
+    "They say travel broadens the mind. Mine just broadened my credit card statement.",
+];
 
 interface ParsedActivity {
     date: string;
@@ -144,6 +167,34 @@ function formatDate(dateStr: string): string {
         return dateStr;
     }
 }
+
+const LoadingJokes: React.FC<{ progress: string }> = ({ progress }) => {
+    const [jokeIdx, setJokeIdx] = useState(() => Math.floor(Math.random() * TRAVEL_JOKES.length));
+    const [fade, setFade] = useState(true);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setFade(false);
+            setTimeout(() => {
+                setJokeIdx(prev => (prev + 1) % TRAVEL_JOKES.length);
+                setFade(true);
+            }, 300);
+        }, 4000);
+        return () => clearInterval(interval);
+    }, []);
+
+    return (
+        <div className="import-loading-jokes">
+            <div className="import-loading-plane">
+                <Plane size={48} />
+            </div>
+            <p className="import-loading-progress">{progress || 'Parsing itinerary...'}</p>
+            <div className={`import-loading-joke ${fade ? 'visible' : ''}`}>
+                "{TRAVEL_JOKES[jokeIdx]}"
+            </div>
+        </div>
+    );
+};
 
 const ImportItinerary: React.FC = () => {
     const navigate = useNavigate();
@@ -317,7 +368,7 @@ const ImportItinerary: React.FC = () => {
                         location: act.location || undefined,
                         category: act.category || 'other',
                         order: startOrder + i,
-                    } as Omit<Activity, 'id'>);
+                    } as Omit<Activity, 'id' | 'userId'>);
                     addedCount++;
                 }
             }
@@ -376,7 +427,7 @@ const ImportItinerary: React.FC = () => {
             </header>
 
             {/* Input Stage */}
-            {stage === 'input' && (
+            {stage === 'input' && !loading && (
                 <div className="import-input-section">
                     {isAppending && (
                         <div className="import-append-banner">
@@ -412,19 +463,40 @@ const ImportItinerary: React.FC = () => {
                         <button
                             className="btn btn-primary import-parse-btn"
                             onClick={handleParse}
-                            disabled={!rawText.trim() || loading}
+                            disabled={!rawText.trim()}
                         >
-                            {loading
-                                ? <><Loader2 size={18} className="spin" /> {parseProgress || 'Parsing...'}</>
-                                : 'Parse with AI'}
+                            Parse with AI
                         </button>
                     </div>
                 </div>
             )}
 
+            {/* Loading / Parsing Stage */}
+            {stage === 'input' && loading && (
+                <LoadingJokes progress={parseProgress} />
+            )}
+
             {/* Preview Stage */}
             {stage === 'preview' && parsed && grouped && (() => { globalIdx = 0; return true; })() && (
                 <div className="import-preview">
+                    <div className="import-sticky-actions">
+                        <button className="btn btn-ghost import-discard-btn" onClick={handleDiscard}>
+                            Discard
+                        </button>
+                        <div className="import-actions-right">
+                            <button className="btn btn-ghost" onClick={() => { setStage('input'); setError(null); }}>
+                                Re-paste
+                            </button>
+                            <button
+                                className="btn btn-primary"
+                                onClick={handleConfirm}
+                                disabled={parsed.activities.length === 0 || !parsed.tripName.trim()}
+                            >
+                                {isAppending ? 'Add Activities' : 'Create Trip'}
+                            </button>
+                        </div>
+                    </div>
+
                     <div className="import-preview-header card">
                         {isAppending ? (
                             <>
@@ -542,24 +614,6 @@ const ImportItinerary: React.FC = () => {
                             <span>{error}</span>
                         </div>
                     )}
-
-                    <div className="import-actions">
-                        <button className="btn btn-ghost import-discard-btn" onClick={handleDiscard}>
-                            Discard
-                        </button>
-                        <div className="import-actions-right">
-                            <button className="btn btn-ghost" onClick={() => { setStage('input'); setError(null); }}>
-                                Re-paste
-                            </button>
-                            <button
-                                className="btn btn-primary"
-                                onClick={handleConfirm}
-                                disabled={parsed.activities.length === 0 || !parsed.tripName.trim()}
-                            >
-                                {isAppending ? 'Add Activities' : 'Create Trip'}
-                            </button>
-                        </div>
-                    </div>
                 </div>
             )}
 
@@ -574,22 +628,24 @@ const ImportItinerary: React.FC = () => {
             {/* Done Stage */}
             {stage === 'done' && parsed && (
                 <div className="import-done">
+                    <div className="import-sticky-actions import-done-actions">
+                        <button className="btn btn-ghost" onClick={handleAddMore}>
+                            Add More Days
+                        </button>
+                        <div className="import-actions-right">
+                            <button className="btn btn-ghost" onClick={handleStartFresh}>
+                                New Trip
+                            </button>
+                            <button className="btn btn-primary" onClick={() => navigate('/spreadsheet')}>
+                                View Trips
+                            </button>
+                        </div>
+                    </div>
                     <div className="import-done-icon"><Check size={40} /></div>
                     <h2>{isAppending ? 'Activities Added' : 'Trip Created'}</h2>
                     <p>
                         "{activeTripName ?? parsed.tripName}" now has {totalImported} activit{totalImported === 1 ? 'y' : 'ies'}.
                     </p>
-                    <div className="import-actions">
-                        <button className="btn btn-ghost" onClick={handleAddMore}>
-                            Add More Days
-                        </button>
-                        <button className="btn btn-ghost" onClick={handleStartFresh}>
-                            New Trip
-                        </button>
-                        <button className="btn btn-primary" onClick={() => navigate('/spreadsheet')}>
-                            View Trips
-                        </button>
-                    </div>
                 </div>
             )}
         </div>
