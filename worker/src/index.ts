@@ -51,7 +51,7 @@ export default {
             return json({ error: 'prompt is required' }, 400);
         }
 
-        const clampedTokens = Math.min(Math.max(1, maxTokens), 4096);
+        const clampedTokens = Math.min(Math.max(1, maxTokens), 16384);
 
         try {
             const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });

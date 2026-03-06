@@ -12,6 +12,7 @@ const Transportation = lazy(() => import('./pages/Transportation'));
 const SpreadsheetView = lazy(() => import('./pages/SpreadsheetView'));
 const Budget = lazy(() => import('./pages/Budget'));
 const Settings = lazy(() => import('./pages/Settings'));
+const ImportItinerary = lazy(() => import('./pages/ImportItinerary'));
 
 const App: React.FC = () => {
   useEffect(() => {
@@ -49,6 +50,7 @@ const App: React.FC = () => {
                 <Route path="/transportation" element={<Transportation />} />
                 <Route path="/spreadsheet" element={<SpreadsheetView />} />
                 <Route path="/budget" element={<Budget />} />
+                <Route path="/import" element={<ImportItinerary />} />
                 <Route path="/settings" element={<Settings />} />
               </Routes>
             </Suspense>
