@@ -1,12 +1,11 @@
 import React, { Suspense, useEffect, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import AnalyticsProvider from './lib/amplitude';
 import { ToastProvider } from './components/Toast';
 import { loadThemeConfig, getResolvedTokens, getDarkTokens, applyTheme } from './design-system/themes';
 import './theme.css';
 
-const ItineraryList = lazy(() => import('./pages/ItineraryList'));
 const CalendarView = lazy(() => import('./pages/CalendarView'));
 const Transportation = lazy(() => import('./pages/Transportation'));
 const SpreadsheetView = lazy(() => import('./pages/SpreadsheetView'));
@@ -45,13 +44,14 @@ const App: React.FC = () => {
           <main className="main-content">
             <Suspense fallback={null}>
               <Routes>
-                <Route path="/" element={<ItineraryList />} />
+                <Route path="/" element={<Navigate to="/spreadsheet" replace />} />
                 <Route path="/calendar" element={<CalendarView />} />
                 <Route path="/transportation" element={<Transportation />} />
                 <Route path="/spreadsheet" element={<SpreadsheetView />} />
                 <Route path="/budget" element={<Budget />} />
                 <Route path="/import" element={<ImportItinerary />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="*" element={<Navigate to="/spreadsheet" replace />} />
               </Routes>
             </Suspense>
           </main>

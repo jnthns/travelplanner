@@ -106,6 +106,27 @@ Prioritize actionable advice over general description. Use engaging but factual 
         };
 
         onSave(activityData);
+
+        const hasCost = !!activityData.cost;
+        if (existingActivity) {
+            logEvent('Activity Updated', {
+                activity_title: activityData.title,
+                category: activityData.category,
+                has_cost: hasCost,
+                has_time: !!activityData.time,
+                has_location: !!activityData.location,
+            });
+        } else {
+            logEvent('Activity Created', {
+                activity_title: activityData.title,
+                category: activityData.category,
+                has_cost: hasCost,
+                has_time: !!activityData.time,
+                has_location: !!activityData.location,
+                trip_id: activityData.tripId,
+                date: activityData.date,
+            });
+        }
     };
 
     return (

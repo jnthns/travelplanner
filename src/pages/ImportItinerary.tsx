@@ -586,8 +586,8 @@ const ImportItinerary: React.FC = () => {
                         <button className="btn btn-ghost" onClick={handleStartFresh}>
                             New Trip
                         </button>
-                        <button className="btn btn-primary" onClick={() => navigate('/')}>
-                            View Itinerary
+                        <button className="btn btn-primary" onClick={() => navigate('/spreadsheet')}>
+                            View Trips
                         </button>
                     </div>
                 </div>

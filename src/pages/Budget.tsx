@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { format, parseISO, eachDayOfInterval } from 'date-fns';
 import { useTrips, useActivities, useTransportRoutes } from '../lib/store';
 import { CATEGORY_EMOJIS, CATEGORY_COLORS } from '../lib/types';
 import { useLocalStorageState } from '../lib/persist';
+import { logEvent } from '../lib/amplitude';
 import './Budget.css';
 
 const CATEGORIES = ['sightseeing', 'food', 'accommodation', 'transport', 'shopping', 'other'] as const;
@@ -135,6 +136,39 @@ const Budget: React.FC = () => {
     }, [categoryBreakdown]);
 
     const totalExpenses = costedActivities.length + costedRoutes.length;
+
+    // Fire Budget Viewed when the user selects a trip, with completeness stats
+    useEffect(() => {
+        if (!selectedTrip) return;
+        let tripDays: string[] = [];
+        try {
+            tripDays = eachDayOfInterval({
+                start: parseISO(selectedTrip.startDate),
+                end: parseISO(selectedTrip.endDate),
+            }).map(d => format(d, 'yyyy-MM-dd'));
+        } catch { return; }
+
+        const daysWithCost = new Set(costedActivities.map(a => a.date));
+        const daysWithActivity = new Set(tripActivities.map(a => a.date));
+        const daysWithAnyCost = tripDays.filter(d => daysWithCost.has(d)).length;
+        const daysWithAnyActivity = tripDays.filter(d => daysWithActivity.has(d)).length;
+
+        logEvent('Budget Viewed', {
+            trip_id: selectedTrip.id,
+            trip_name: selectedTrip.name,
+            duration_days: tripDays.length,
+            total_activities: tripActivities.length,
+            costed_activities: costedActivities.length,
+            total_expense_items: totalExpenses,
+            days_with_any_activity: daysWithAnyActivity,
+            days_with_any_cost: daysWithAnyCost,
+            all_days_have_cost: daysWithAnyCost === tripDays.length,
+            costed_activity_rate: tripActivities.length > 0
+                ? Math.round((costedActivities.length / tripActivities.length) * 100)
+                : 0,
+        });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedTripId]);
 
     if (trips.length === 0) {
         return (

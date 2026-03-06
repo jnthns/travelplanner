@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Plane, Calendar, Map, Table, Wallet, Upload, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Map, Table, Wallet, Upload, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
 import './Sidebar.css';
 
 const Sidebar: React.FC = () => {
@@ -11,10 +11,9 @@ const Sidebar: React.FC = () => {
   const toggleCollapse = () => setIsCollapsed((prev) => !prev);
 
   const navLinks = [
-    { to: '/', icon: <Plane size={20} />, label: 'Itinerary' },
+    { to: '/spreadsheet', icon: <Table size={20} />, label: 'Trips' },
     { to: '/calendar', icon: <Calendar size={20} />, label: 'Calendar' },
     { to: '/transportation', icon: <Map size={20} />, label: 'Transportation' },
-    { to: '/spreadsheet', icon: <Table size={20} />, label: 'Spreadsheet' },
     { to: '/budget', icon: <Wallet size={20} />, label: 'Budget' },
     { to: '/import', icon: <Upload size={20} />, label: 'Import' },
   ];

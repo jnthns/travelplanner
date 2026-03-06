@@ -163,7 +163,6 @@ const CalendarView: React.FC = () => {
         const targetDate = forDate ?? selectedDate;
         if ('id' in activityData && activityData.id) {
             updateActivity(activityData.id, activityData);
-            logEvent('Activity Updated', { activity_title: activityData.title, category: activityData.category, source: 'calendar' });
         } else if (selectedTripId && targetDate) {
             const orderFallback = viewMode === 'day' ? dayViewActivities.length : dayDetails.length;
             addActivity({
@@ -173,7 +172,6 @@ const CalendarView: React.FC = () => {
                 order: ('order' in activityData ? activityData.order : orderFallback) ?? orderFallback,
                 title: ('title' in activityData ? activityData.title : '') || 'Activity',
             } as Omit<import('../lib/types').Activity, 'id'>);
-            logEvent('Activity Created', { activity_title: activityData.title, category: activityData.category, date: targetDate, source: 'calendar' });
         }
         setAddingActivityForDate(null);
         setEditingActivityId(null);

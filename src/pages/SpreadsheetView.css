@@ -1,13 +1,165 @@
 .spreadsheet-page {
     max-width: 100%;
+    --sheet-label-width: 100px;
 }
 
-.spreadsheet-controls {
+/* Trip Selector */
+.trip-selector {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.trip-card {
+    text-align: left;
+    background-color: var(--surface-color);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: var(--shadow-sm);
+}
+
+.trip-card:hover {
+    border-color: var(--primary-color);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+.trip-card.selected {
+    border-color: var(--primary-color);
+    background: linear-gradient(135deg,
+        color-mix(in srgb, var(--primary-color) 5%, transparent),
+        color-mix(in srgb, var(--secondary-color) 5%, transparent));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color) 15%, transparent);
+}
+
+.trip-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.trip-card-header h3 {
+    font-size: 1.1rem;
+    margin-bottom: 0.25rem;
+}
+
+.trip-card-actions {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.trip-dates {
+    font-size: 0.85rem;
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.trip-desc {
+    font-size: 0.8rem;
+    margin-top: 0.5rem;
+}
+
+/* Mobile trip dropdown (hidden on desktop) */
+.trip-selector-mobile {
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
     margin-bottom: 1.5rem;
 }
 
-.spreadsheet-controls .input-field {
-    max-width: 300px;
+.trip-selector-mobile .input-field {
+    flex: 1;
+    min-width: 0;
+}
+
+.trip-mobile-actions {
+    display: flex;
+    gap: 0.15rem;
+    flex-shrink: 0;
+}
+
+/* Day picker (from Calendar Day View) */
+.spreadsheet-page .day-nav-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+    min-width: 0;
+    margin-bottom: 1rem;
+}
+
+.spreadsheet-page .nav-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.spreadsheet-page .current-label {
+    font-weight: 600;
+    font-size: 0.95rem;
+    white-space: nowrap;
+}
+
+.spreadsheet-page .day-pills {
+    display: flex;
+    gap: 0.25rem;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+    scrollbar-width: thin;
+    max-width: 100%;
+}
+
+.spreadsheet-page .day-pill {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.1rem;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    background: var(--surface-color);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: inherit;
+    min-width: 42px;
+    flex-shrink: 0;
+}
+
+.spreadsheet-page .day-pill:hover {
+    border-color: var(--primary-color);
+    background-color: color-mix(in srgb, var(--primary-color) 5%, transparent);
+}
+
+.spreadsheet-page .day-pill.active {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+}
+
+.spreadsheet-page .day-pill.active .day-pill-dow {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.spreadsheet-page .day-pill.today:not(.active) {
+    border-color: var(--primary-color);
+}
+
+.spreadsheet-page .day-pill-num {
+    font-size: 0.85rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.spreadsheet-page .day-pill-dow {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    font-weight: 500;
+    line-height: 1;
 }
 
 /* Scrollable wrapper */
@@ -81,6 +233,15 @@
 .slot-evening { color: var(--secondary-color); }
 .slot-unscheduled { color: var(--text-tertiary); }
 
+.slot-icon {
+    display: none;
+    flex-shrink: 0;
+}
+
+.slot-text {
+    display: inline;
+}
+
 /* Cells */
 .sheet-cell {
     min-height: 60px;
@@ -100,8 +261,17 @@
     border-right: none;
 }
 
-.sheet-cell:hover {
-    background-color: color-mix(in srgb, var(--primary-color) 3%, transparent);
+.sheet-header-cell.focused {
+    background-color: color-mix(in srgb, var(--primary-color) 12%, var(--border-light));
+}
+
+.sheet-cell.focused {
+    background-color: color-mix(in srgb, var(--primary-color) 5%, transparent);
+}
+
+.sheet-cell:hover,
+.sheet-cell.focused:hover {
+    background-color: color-mix(in srgb, var(--primary-color) 8%, transparent);
 }
 
 .sheet-cell.drag-over {
@@ -234,14 +404,52 @@
 }
 
 @media (max-width: 768px) {
-    .spreadsheet-controls .input-field {
-        max-width: 100%;
+    .trip-selector-desktop {
+        display: none;
+    }
+
+    .trip-selector-mobile {
+        display: flex;
+    }
+
+    .spreadsheet-page .day-nav-wrapper {
+        gap: 0.35rem;
+    }
+
+    .spreadsheet-page .current-label {
+        font-size: 0.85rem;
+    }
+
+    .spreadsheet-page .day-pill {
+        padding: 0.25rem 0.4rem;
+        min-width: 36px;
+    }
+
+    .spreadsheet-page .day-pill-num {
+        font-size: 0.8rem;
+    }
+
+    .spreadsheet-page .day-pill-dow {
+        font-size: 0.55rem;
+    }
+
+    .spreadsheet-page {
+        --sheet-label-width: 44px;
+    }
+
+    .slot-text {
+        display: none;
+    }
+
+    .slot-icon {
+        display: flex;
     }
 
     .sheet-row-label {
         min-height: 50px;
         font-size: 0.7rem;
         padding: 0.4rem;
+        justify-content: center;
     }
 
     .sheet-header-cell {

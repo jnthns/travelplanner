@@ -102,6 +102,26 @@ export const logEvent = (event: string, eventProps: Record<string, unknown> = {}
   amplitude.track(event, eventProps);
 };
 
+export const identifyUser = (uid: string, properties: {
+  sign_in_provider: 'google' | 'anonymous';
+  display_name?: string;
+  email?: string;
+}) => {
+  amplitude.setUserId(uid);
+  const identifyObj = new amplitude.Identify();
+  identifyObj.set('sign_in_provider', properties.sign_in_provider);
+  if (properties.display_name) identifyObj.set('display_name', properties.display_name);
+  if (properties.email) identifyObj.set('email', properties.email);
+  identifyObj.setOnce('first_seen_at', new Date().toISOString());
+  identifyObj.set('last_seen_at', new Date().toISOString());
+  amplitude.identify(identifyObj);
+};
+
+export const clearUser = () => {
+  amplitude.setUserId(undefined);
+  amplitude.reset();
+};
+
 const AnalyticsProvider = () => {
   useEffect(() => {
     initializeAnalytics();
