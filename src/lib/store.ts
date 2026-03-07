@@ -40,7 +40,7 @@ export function useTrips() {
             unsub = onSnapshot(
                 q,
                 (snapshot) => {
-                    const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Trip);
+                    const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data(), _pendingWrite: d.metadata.hasPendingWrites }) as Trip);
                     setTrips(data);
                     setLoading(false);
                 },
@@ -96,7 +96,7 @@ export function useActivities() {
             unsub = onSnapshot(
                 q,
                 (snapshot) => {
-                    const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Activity);
+                    const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data(), _pendingWrite: d.metadata.hasPendingWrites }) as Activity);
                     setActivities(data);
                     setLoading(false);
                 },
@@ -176,7 +176,7 @@ export function useTransportRoutes() {
             unsub = onSnapshot(
                 q,
                 (snapshot) => {
-                    const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as TransportRoute);
+                    const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data(), _pendingWrite: d.metadata.hasPendingWrites }) as TransportRoute);
                     setRoutes(data);
                     setLoading(false);
                 },
@@ -237,7 +237,7 @@ export function useNotes() {
             unsub = onSnapshot(
                 q,
                 (snapshot) => {
-                    const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Note);
+                    const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data(), _pendingWrite: d.metadata.hasPendingWrites }) as Note);
                     setNotes(data);
                     setLoading(false);
                 },

@@ -27,8 +27,14 @@ async function sleep(ms: number) {
  * Single-flight + spaced calls + retry-on-429 wrapper.
  * Calls the Cloudflare Worker proxy instead of Gemini directly.
  */
-export async function generateWithGemini(prompt: string, maxTokens = 500): Promise<string> {
-  const key = `${maxTokens}:${prompt}`;
+export async function generateWithGemini(
+  prompt: string,
+  options?: { maxTokens?: number; systemInstruction?: string; responseMimeType?: 'text/plain' | 'application/json' } | number
+): Promise<string> {
+  const opts = typeof options === 'number' ? { maxTokens: options } : (options || {});
+  const { maxTokens = 500, systemInstruction, responseMimeType } = opts;
+
+  const key = `${maxTokens}:${responseMimeType || 'text/plain'}:${systemInstruction || ''}:${prompt}`;
   const existing = inflight.get(key);
   if (existing) return existing;
 
@@ -46,7 +52,7 @@ export async function generateWithGemini(prompt: string, maxTokens = 500): Promi
         const response = await fetch(`${proxyUrl}/generate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt, maxTokens }),
+          body: JSON.stringify({ prompt, maxTokens, systemInstruction, responseMimeType }),
         });
 
         const data = await response.json() as { text?: string; error?: string };

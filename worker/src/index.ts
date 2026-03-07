@@ -45,22 +45,24 @@ export default {
             return json({ error: 'Invalid JSON body' }, 400);
         }
 
-        const { prompt, maxTokens = 500 } = body;
+        const { prompt, maxTokens = 500, systemInstruction, responseMimeType } = body as RequestBody & { systemInstruction?: string, responseMimeType?: string };
 
         if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
             return json({ error: 'prompt is required' }, 400);
         }
 
-        const clampedTokens = Math.min(Math.max(1, maxTokens), 16384);
+        const clampedTokens = Math.min(Math.max(1, maxTokens), 65536);
 
         try {
             const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
             const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
+                model: 'gemini-3-flash-preview',
                 contents: prompt,
                 config: {
                     maxOutputTokens: clampedTokens,
                     temperature: 0.4,
+                    ...(systemInstruction ? { systemInstruction } : {}),
+                    ...(responseMimeType ? { responseMimeType } : {}),
                 },
             });
 

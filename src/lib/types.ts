@@ -15,6 +15,7 @@ export interface Trip {
     dayLocations?: Record<string, string>; // "YYYY-MM-DD" -> location name
     budgetTarget?: number;
     budgetCurrency?: string;
+    _pendingWrite?: boolean;
 }
 
 export const ACTIVITY_COLORS = [
@@ -38,6 +39,7 @@ export interface Activity {
     order: number; // for sorting within a day
     color?: string; // optional override for prioritization/organization
     tags?: string[];
+    _pendingWrite?: boolean;
 }
 
 export interface TransportRoute {
@@ -54,6 +56,7 @@ export interface TransportRoute {
     currency?: string;
     bookingRef?: string;
     notes?: string;
+    _pendingWrite?: boolean;
 }
 
 export interface Note {
@@ -68,6 +71,7 @@ export interface Note {
     images?: string[]; // Firebase Storage download URLs
     createdAt: string; // ISO datetime
     updatedAt: string; // ISO datetime
+    _pendingWrite?: boolean;
 }
 
 export const NOTE_COLORS = [

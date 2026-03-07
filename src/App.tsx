@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './lib/AuthContext';
 import AnalyticsProvider from './lib/amplitude';
 import { ToastProvider } from './components/Toast';
 import { loadThemeConfig, getResolvedTokens, getDarkTokens, applyTheme } from './design-system/themes';
+import OnlineStatus from './components/OnlineStatus';
 import { Loader2 } from 'lucide-react';
 import './theme.css';
 
@@ -67,6 +68,7 @@ const App: React.FC = () => {
         <AnalyticsProvider />
         <ToastProvider>
           <AuthGate>
+            <OnlineStatus />
             <div className="app-container">
               <Sidebar />
               <main className="main-content">

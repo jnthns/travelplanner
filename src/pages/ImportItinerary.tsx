@@ -54,7 +54,7 @@ const CURRENCY_LIST = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'KRW', 'TWD', '
 
 function buildPrompt(raw: string): string {
     const year = new Date().getFullYear();
-    return `Parse this travel itinerary into structured JSON. Return ONLY valid JSON — no markdown fences, no explanation.
+    return `Parse this travel itinerary into structured JSON.
 Be concise: omit fields that are null/empty, keep details under 80 chars.
 
 {
@@ -77,21 +77,9 @@ Itinerary:
 ${raw}`;
 }
 
-function extractJSON(text: string): string {
-    const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (fenced) return fenced[1].trim();
-    const braceStart = text.indexOf('{');
-    const braceEnd = text.lastIndexOf('}');
-    if (braceStart !== -1 && braceEnd > braceStart) {
-        return text.slice(braceStart, braceEnd + 1);
-    }
-    return text.trim();
-}
-
 function tryParseJSON(text: string): ParsedItinerary | null {
     try {
-        const jsonStr = extractJSON(text);
-        const data = JSON.parse(jsonStr) as ParsedItinerary;
+        const data = JSON.parse(text) as ParsedItinerary;
         if (data.tripName && data.startDate && data.endDate && Array.isArray(data.activities) && data.activities.length > 0) {
             return data;
         }
@@ -245,7 +233,10 @@ const ImportItinerary: React.FC = () => {
     }, []);
 
     async function parseChunk(text: string): Promise<ParsedItinerary> {
-        const response = await generateWithGemini(buildPrompt(text), 8000);
+        const response = await generateWithGemini(buildPrompt(text), {
+            maxTokens: 8000,
+            responseMimeType: 'application/json'
+        });
         const result = tryParseJSON(response);
         if (!result) {
             const isTruncated = !/}\s*$/.test(response);

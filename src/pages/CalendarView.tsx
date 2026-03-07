@@ -197,7 +197,7 @@ const CalendarView: React.FC = () => {
 
 ${itinerary}
 
-Respond with ONLY a JSON object (no markdown fences, no preamble) matching this exact schema:
+Respond with a JSON object matching this exact schema:
 {
   "summary": "A 2-3 sentence overview covering route optimization, expected travel/wait times between activities, and suggested improvements to the day's plan. 80 words max.",
   "highlights": [
@@ -211,20 +211,11 @@ Be specific to the actual destinations and activities. Each highlight should be 
 
         logEvent('Trip Summary Requested', { trip_name: selectedTrip.name, activity_count: tripActivitiesForSummary.length });
         try {
-            const raw = await generateWithGemini(prompt, 2048);
-            const cleaned = raw.replace(/^```json?\s*/i, '').replace(/```\s*$/, '').trim();
-            let parsed: { summary: string; highlights: string[] };
-            try {
-                parsed = JSON.parse(cleaned);
-            } catch {
-                // Truncated JSON — attempt to salvage by closing open strings/arrays/objects
-                const patched = cleaned
-                    .replace(/,\s*$/, '')           // trailing comma
-                    .replace(/"[^"]*$/, '"')         // close an unterminated string
-                    + (cleaned.includes('[') && !cleaned.includes(']') ? ']' : '')
-                    + (cleaned.includes('{') && !cleaned.includes('}') ? '}' : '');
-                parsed = JSON.parse(patched);
-            }
+            const raw = await generateWithGemini(prompt, {
+                maxTokens: 2048,
+                responseMimeType: 'application/json'
+            });
+            const parsed = JSON.parse(raw) as { summary: string; highlights: string[] };
             if (!parsed.summary || !Array.isArray(parsed.highlights)) throw new Error('Invalid response format');
             setTripSummary(parsed);
         } catch (e) {

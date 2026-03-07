@@ -43,7 +43,10 @@ Include:
 Format as a concise bullet list. Maximum 200 words. Be specific and practical.`;
         logEvent('AI Trip Autofill Requested', { trip_name: name.trim() });
         try {
-            const text = await generateWithGemini(prompt, 600);
+            const text = await generateWithGemini(prompt, {
+                maxTokens: 600,
+                systemInstruction: "You are an expert travel planner."
+            });
             setAiSuggestion(text);
         } catch (e) {
             setAiError(e instanceof Error ? e.message : 'AI suggestion failed');
