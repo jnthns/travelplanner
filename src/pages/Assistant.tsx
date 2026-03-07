@@ -3,7 +3,6 @@ import { generateWithGemini } from '../lib/gemini';
 import { useTrips, useActivities } from '../lib/store';
 import { Send, Bot, User, Loader2 } from 'lucide-react';
 import Markdown from '../components/Markdown';
-import './Assistant.css';
 
 interface Message {
     id: string;
@@ -75,13 +74,19 @@ ${tripActs || "None planned yet."}`;
 
         try {
             const systemInstruction = `You are a direct, concise travel assistant. Adhere strictly to these rules: 
-1. Answer in 200 words maximum.
-2. Be direct and avoid superlative chatter or overly enthusiastic language.
-3. Use bullet points heavily.
-4. Use emojis.
-5. Base your answers on the user's active trip context below.
+            1. Answer in 200 words maximum.
+            2. Be direct and avoid superlative chatter or overly enthusiastic language.
+            3. Use bullet points heavily.
+            4. Use emojis.
+            5. Base your answers on the user's active trip context below.
 
-${tripContext}`;
+            When you are asked to generate or suggest an itinerary, you must return the data following this structure so it is compatible with the app's format:
+            - Activities must have a title, an explicit category (sightseeing, food, accommodation, transport, shopping, other), and explicit 24-hour time HH:mm format.
+            - Anchor times specifically around Morning (09:00), Afternoon (13:00), and Evening (18:00) blocks if unknown.
+            - Add "transport" category activities to account for geographic travel times between distant points.
+            - Limit sightseeing to 3-6 heavy activities per day to prioritize realistic pacing.
+
+            ${tripContext}`;
 
             const responseText = await generateWithGemini(prompt, {
                 maxTokens: 500,
@@ -97,17 +102,17 @@ ${tripContext}`;
     };
 
     return (
-        <div className="page-container assistant-page animate-fade-in">
-            <header className="page-header">
+        <div className="page-container flex flex-col h-full overflow-hidden animate-fade-in" style={{ maxHeight: 'calc(100vh - 100px)' }}>
+            <header className="page-header mb-md">
                 <div>
                     <h1>Travel Assistant</h1>
                     <p>Context-aware AI help for your planning.</p>
                 </div>
             </header>
 
-            <div className="assistant-controls card">
+            <div className="card p-md mb-md">
                 <select
-                    className="input-field trip-select"
+                    className="input-field w-full"
                     value={selectedTripId || ''}
                     onChange={e => setSelectedTripId(e.target.value || null)}
                 >
@@ -118,22 +123,36 @@ ${tripContext}`;
                 </select>
             </div>
 
-            <div className="chat-container card">
-                <div className="chat-messages">
+            <div className="card flex flex-col flex-1 overflow-hidden p-0" style={{ marginBottom: '1rem' }}>
+                <div className="flex-1 overflow-y-auto p-lg flex flex-col gap-lg">
                     {messages.map((msg) => (
-                        <div key={msg.id} className={`chat-message ${msg.role}`}>
-                            <div className="message-avatar">
+                        <div key={msg.id} className={`flex gap-md items-start ${msg.role === 'user' ? 'flex-row-reverse self-end' : ''}`} style={{ maxWidth: '85%' }}>
+                            <div className="flex items-center justify-center shrink-0 rounded-full bg-surface-1"
+                                style={{
+                                    width: '36px', height: '36px', border: '1px solid var(--border-color)', color: 'var(--text-secondary)',
+                                    ...(msg.role === 'user' ? { backgroundColor: 'var(--primary-color)', color: 'white', borderColor: 'var(--primary-color)' } : {})
+                                }}>
                                 {msg.role === 'model' ? <Bot size={20} /> : <User size={20} />}
                             </div>
-                            <div className="message-bubble">
+                            <div className="bg-surface-1 border-b"
+                                style={{
+                                    padding: '1rem 1.25rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)',
+                                    lineHeight: 1.5,
+                                    ...(msg.role === 'user' ? {
+                                        backgroundColor: 'var(--primary-color)', color: 'white', borderColor: 'var(--primary-color)',
+                                        borderTopRightRadius: '4px', borderTopLeftRadius: 'var(--radius-lg)'
+                                    } : { borderTopLeftRadius: '4px' })
+                                }}>
                                 <Markdown>{msg.content}</Markdown>
                             </div>
                         </div>
                     ))}
                     {isLoading && (
-                        <div className="chat-message model">
-                            <div className="message-avatar"><Bot size={20} /></div>
-                            <div className="message-bubble loading-bubble">
+                        <div className="flex gap-md items-start" style={{ maxWidth: '85%' }}>
+                            <div className="flex items-center justify-center shrink-0 rounded-full bg-surface-1" style={{ width: '36px', height: '36px', border: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
+                                <Bot size={20} />
+                            </div>
+                            <div className="flex items-center gap-sm text-secondary" style={{ fontStyle: 'italic' }}>
                                 <Loader2 size={16} className="spin" /> Thinking...
                             </div>
                         </div>
@@ -141,10 +160,10 @@ ${tripContext}`;
                     <div ref={messagesEndRef} />
                 </div>
 
-                <form className="chat-input-area" onSubmit={handleSubmit}>
+                <form className="flex gap-md p-md bg-surface-1 border-t" style={{ borderBottomLeftRadius: 'var(--radius-lg)', borderBottomRightRadius: 'var(--radius-lg)' }} onSubmit={handleSubmit}>
                     <input
                         type="text"
-                        className="input-field"
+                        className="input-field flex-1 mb-0"
                         placeholder="Ask about your itinerary..."
                         value={input}
                         onChange={(e) => setInput(e.target.value)}

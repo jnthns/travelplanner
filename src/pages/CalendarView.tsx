@@ -15,7 +15,7 @@ import Markdown from '../components/Markdown';
 import SwipeableItem from '../components/SwipeableItem';
 import { useToast } from '../components/Toast';
 import { logEvent } from '../lib/amplitude';
-import './CalendarView.css';
+import styles from './CalendarView.module.css';
 
 const CALENDAR_VIEW_KEY = 'travelplanner_calendar_view';
 
@@ -280,8 +280,8 @@ Ensure all provided activity IDs are included in the optimizedOrder array.`;
             </header>
 
             {/* Controls */}
-            <div className="calendar-controls">
-                <div className="view-tabs">
+            <div className={styles['calendar-controls']}>
+                <div className={styles['view-tabs']}>
                     {(['trip', 'day'] as ViewMode[]).map(mode => (
                         <button
                             key={mode}
@@ -294,7 +294,7 @@ Ensure all provided activity IDs are included in the optimizedOrder array.`;
                 </div>
 
                 <select
-                    className="input-field trip-select"
+                    className={`input-field ${styles['trip-select']}`}
                     value={selectedTripId || ''}
                     onChange={e => handleSelectTrip(e.target.value || null)}
                 >
@@ -304,16 +304,16 @@ Ensure all provided activity IDs are included in the optimizedOrder array.`;
                     ))}
                 </select>
 
-                {viewMode === 'day' && (
-                    <div className="day-nav-wrapper">
-                        <div className="nav-controls">
+                {selectedTrip && calendarDays.length > 0 && (
+                    <div className={styles['day-nav-wrapper']}>
+                        <div className={styles['nav-controls']}>
                             <button className="btn btn-ghost" onClick={() => navigate(-1)}>
                                 <ChevronLeft size={20} />
                             </button>
-                            <span className="current-label">
+                            <span className={styles['current-label']}>
                                 {format(currentDate, 'EEEE, MMM d, yyyy')}
                                 {selectedTrip?.dayLocations?.[currentDateStr] && (
-                                    <span className="current-label-location">📍 {selectedTrip.dayLocations[currentDateStr]}</span>
+                                    <span className={styles['current-label-location']}>📍 {selectedTrip.dayLocations[currentDateStr]}</span>
                                 )}
                             </span>
                             <button className="btn btn-ghost" onClick={() => navigate(1)}>
@@ -321,7 +321,7 @@ Ensure all provided activity IDs are included in the optimizedOrder array.`;
                             </button>
                         </div>
                         {tripDays.length > 0 && (
-                            <div className="day-pills">
+                            <div className={styles['day-pills']}>
                                 {tripDays.map((day, idx) => (
                                     <button
                                         key={idx}
@@ -329,8 +329,8 @@ Ensure all provided activity IDs are included in the optimizedOrder array.`;
                                         onClick={() => setCurrentDate(day)}
                                         title={format(day, 'EEEE, MMM d')}
                                     >
-                                        <span className="day-pill-num">{format(day, 'd')}</span>
-                                        <span className="day-pill-dow">{format(day, 'EEE')}</span>
+                                        <span className={styles['day-pill-num']}>{format(day, 'd')}</span>
+                                        <span className={styles['day-pill-dow']}>{format(day, 'EEE')}</span>
                                     </button>
                                 ))}
                             </div>
@@ -341,9 +341,9 @@ Ensure all provided activity IDs are included in the optimizedOrder array.`;
 
             {/* Trip Grid View */}
             {viewMode === 'trip' && (
-                <div className="calendar-grid trip">
-                    <div className="days-grid trip">
-                        {calendarDays.map((day, idx) => {
+                <div className={`${styles['calendar-grid']} ${styles.trip}`}>
+                    <div className={`${styles['days-grid']} ${styles.trip}`}>
+                        {tripDays.map((day, idx) => {
                             const dateStr = format(day, 'yyyy-MM-dd');
                             const dayActs = getActivitiesForDate(day);
                             const isToday = isSameDay(day, new Date());
@@ -355,23 +355,23 @@ Ensure all provided activity IDs are included in the optimizedOrder array.`;
                                     className={`calendar-day trip-card ${isToday ? 'today' : ''}`}
                                     onClick={() => { setCurrentDate(day); setViewMode('day'); logEvent('Calendar View Changed', { view_mode: 'day', source: 'trip_card_click' }); }}
                                 >
-                                    <div className="trip-card-header">
-                                        <span className="cal-day-number">{format(day, 'd')}</span>
-                                        <span className="cal-day-label">{format(day, 'EEE')}</span>
-                                        {dayLocation && <span className="cal-day-location">📍 {dayLocation}</span>}
+                                    <div className={styles['trip-card-header']}>
+                                        <span className={styles['cal-day-number']}>{format(day, 'd')}</span>
+                                        <span className={styles['cal-day-label']}>{format(day, 'EEE')}</span>
+                                        {dayLocation && <span className={styles['cal-day-location']}>📍 {dayLocation}</span>}
                                     </div>
                                     {dayActs.length > 0 ? (
-                                        <div className="cal-day-activities">
+                                        <div className={styles['cal-day-activities']}>
                                             {dayActs.map(act => (
-                                                <div key={act.id} className="cal-activity-chip" style={{ borderLeftColor: getActivityColor(act) }}>
+                                                <div key={act.id} className={styles['cal-activity-chip']} style={{ borderLeftColor: getActivityColor(act) }}>
                                                     <span>{CATEGORY_EMOJIS[act.category || 'other']}</span>
-                                                    <span className="cal-activity-title">{act.title}</span>
-                                                    {act.time && <span className="cal-activity-time">{act.time}</span>}
+                                                    <span className={styles['cal-activity-title']}>{act.title}</span>
+                                                    {act.time && <span className={styles['cal-activity-time']}>{act.time}</span>}
                                                 </div>
                                             ))}
                                         </div>
                                     ) : (
-                                        <p className="trip-card-empty">No activities</p>
+                                        <p className={styles['trip-card-empty']}>No activities</p>
                                     )}
                                 </div>
                             );
@@ -382,9 +382,9 @@ Ensure all provided activity IDs are included in the optimizedOrder array.`;
 
             {/* Day Detail View */}
             {viewMode === 'day' && (
-                <div className="day-detail-view">
+                <div className={styles['day-detail-view']}>
                     {selectedTripId && tripActivitiesForSummary.length > 0 && (
-                        <div className="day-summary-section">
+                        <div className={styles['day-summary-section']}>
                             <div className="ai-buttons-row" style={{ display: 'flex', gap: '0.5rem' }}>
                                 <button
                                     type="button"
@@ -405,15 +405,15 @@ Ensure all provided activity IDs are included in the optimizedOrder array.`;
                                     </button>
                                 )}
                             </div>
-                            {summaryError && <p className="ai-error">{summaryError}</p>}
-                            {optimizationError && <p className="ai-error">{optimizationError}</p>}
+                            {summaryError && <p className="text-red-500 text-sm mt-2">{summaryError}</p>}
+                            {optimizationError && <p className="text-red-500 text-sm mt-2">{optimizationError}</p>}
 
                             {tripSummary && (
                                 <div className="trip-summary-card card" style={{ padding: '1rem', marginTop: '0.75rem' }}>
-                                    <h4 className="trip-summary-header">AI Trip Summary</h4>
-                                    <p className="trip-summary-text">{tripSummary.summary}</p>
+                                    <h4 className={styles['trip-summary-header']}>AI Trip Summary</h4>
+                                    <p className={styles['trip-summary-text']}>{tripSummary.summary}</p>
                                     {tripSummary.highlights.length > 0 && (
-                                        <ul className="trip-summary-highlights">
+                                        <ul className={styles['trip-summary-highlights']}>
                                             {tripSummary.highlights.map((h, i) => <li key={i}>{h}</li>)}
                                         </ul>
                                     )}
@@ -423,9 +423,9 @@ Ensure all provided activity IDs are included in the optimizedOrder array.`;
 
                             {optimizedRoute && (
                                 <div className="trip-summary-card card" style={{ padding: '1rem', marginTop: '0.75rem', borderLeft: '3px solid var(--primary-color)' }}>
-                                    <h4 className="trip-summary-header">AI Route Suggestion</h4>
-                                    <p className="trip-summary-text">{optimizedRoute.recommendation}</p>
-                                    <ul className="trip-summary-highlights" style={{ marginTop: '0.5rem' }}>
+                                    <h4 className={styles['trip-summary-header']}>AI Route Suggestion</h4>
+                                    <p className={styles['trip-summary-text']}>{optimizedRoute.recommendation}</p>
+                                    <ul className={styles['trip-summary-highlights']} style={{ marginTop: '0.5rem' }}>
                                         {optimizedRoute.optimizedOrder.map(id => {
                                             const act = activities.find(a => a.id === id);
                                             return act ? <li key={id}>{act.title} {act.time ? `(${act.time})` : ''}</li> : null;
@@ -463,7 +463,7 @@ Ensure all provided activity IDs are included in the optimizedOrder array.`;
                         ) : (
                             <button
                                 type="button"
-                                className="btn btn-outline add-activity-btn"
+                                className={`btn btn-outline ${styles['add-activity-btn']}`}
                                 onClick={() => setAddingActivityForDate(currentDateStr)}
                             >
                                 <Plus size={16} /> Add activity
@@ -471,7 +471,7 @@ Ensure all provided activity IDs are included in the optimizedOrder array.`;
                         )
                     )}
                     {dayViewActivities.length === 0 && !addingActivityForDate && (
-                        <p className="no-activities-cal">No activities planned for this day.</p>
+                        <p className={styles['no-activities-cal']}>No activities planned for this day.</p>
                     )}
                     <DraggableList
                         items={dayViewActivities}
@@ -510,24 +510,24 @@ Ensure all provided activity IDs are included in the optimizedOrder array.`;
                                         });
                                     }}
                                 >
-                                    <div className="day-detail-activity card" style={{ borderLeftColor: getActivityColor(act) }}>
-                                        <div className="detail-header">
+                                    <div className={`${styles['day-detail-activity']} card`} style={{ borderLeftColor: getActivityColor(act) }}>
+                                        <div className={styles['detail-header']}>
                                             <span className="drag-handle" {...dragHandleProps}>
                                                 <GripVertical size={16} />
                                             </span>
-                                            <span className="detail-emoji">{CATEGORY_EMOJIS[act.category || 'other']}</span>
+                                            <span className={styles['detail-emoji']}>{CATEGORY_EMOJIS[act.category || 'other']}</span>
                                             <div>
                                                 <h4>{act.title}</h4>
-                                                {act.time && <span className="detail-time">{act.time}</span>}
+                                                {act.time && <span className={styles['detail-time']}>{act.time}</span>}
                                             </div>
-                                            <div className="detail-actions">
+                                            <div className={styles['detail-actions']}>
                                                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingActivityId(act.id)} aria-label="Edit"><Pencil size={16} /></button>
                                             </div>
                                         </div>
-                                        {act.details && <Markdown className="detail-desc">{act.details}</Markdown>}
-                                        {act.location && <p className="detail-location">📍 {act.location}</p>}
-                                        {act.cost != null && <p className="detail-cost">💰 {act.currency || '$'}{act.cost.toFixed(2)}</p>}
-                                        {act.notes && <Markdown className="detail-notes">{act.notes}</Markdown>}
+                                        {act.details && <Markdown className={styles['detail-desc']}>{act.details}</Markdown>}
+                                        {act.location && <p className={styles['detail-location']}>📍 {act.location}</p>}
+                                        {act.cost != null && <p className={styles['detail-cost']}>💰 {act.currency || '$'}{act.cost.toFixed(2)}</p>}
+                                        {act.notes && <Markdown className={styles['detail-notes']}>{act.notes}</Markdown>}
                                     </div>
                                 </SwipeableItem>
                             )

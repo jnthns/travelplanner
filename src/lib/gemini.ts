@@ -9,6 +9,9 @@ function getProxyUrl(): string {
   if (!url?.trim()) {
     throw new Error('AI proxy URL is not set. Add VITE_AI_PROXY_URL to your environment.');
   }
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    throw new Error(`AI proxy URL must be an absolute address (e.g. https://your-worker.workers.dev). Currently set to: "${url}"`);
+  }
   return url.replace(/\/+$/, '');
 }
 

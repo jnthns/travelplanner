@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { Loader2 } from 'lucide-react';
-import './Login.css';
 
 const Login: React.FC = () => {
     const { signInWithGoogle, signInAnonymously } = useAuth();
@@ -22,17 +21,18 @@ const Login: React.FC = () => {
     };
 
     return (
-        <div className="login-page">
-            <div className="login-card card">
-                <div className="login-logo">✈️</div>
-                <h1>TravelPlanner</h1>
-                <p className="login-subtitle">Plan, organize, and track your trips in one place.</p>
+        <div className="flex items-center justify-center p-md bg-surface-2" style={{ minHeight: '100vh' }}>
+            <div className="card w-full text-center" style={{ maxWidth: '380px', padding: '2.5rem 2rem' }}>
+                <div className="mb-sm" style={{ fontSize: '3rem', lineHeight: 1 }}>✈️</div>
+                <h1 className="text-xl mb-xs">TravelPlanner</h1>
+                <p className="text-sm text-secondary mb-xl">Plan, organize, and track your trips in one place.</p>
 
-                {error && <div className="login-error">{error}</div>}
+                {error && <div className="text-sm p-sm rounded-md mb-md" style={{ color: 'var(--error-color)', backgroundColor: 'color-mix(in srgb, var(--error-color) 12%, transparent)' }}>{error}</div>}
 
-                <div className="login-actions">
+                <div className="flex flex-col gap-sm">
                     <button
-                        className="btn btn-primary login-btn"
+                        className="btn btn-primary w-full justify-center text-sm"
+                        style={{ padding: '0.65rem 1rem' }}
                         onClick={() => handle(signInWithGoogle)}
                         disabled={busy}
                     >
@@ -40,12 +40,15 @@ const Login: React.FC = () => {
                         Sign in with Google
                     </button>
 
-                    <div className="login-divider">
+                    <div className="flex items-center gap-md text-xs text-tertiary my-xs">
+                        <div className="flex-1" style={{ height: '1px', backgroundColor: 'var(--border-color)' }}></div>
                         <span>or</span>
+                        <div className="flex-1" style={{ height: '1px', backgroundColor: 'var(--border-color)' }}></div>
                     </div>
 
                     <button
-                        className="btn btn-outline login-btn"
+                        className="btn btn-outline w-full justify-center text-sm"
+                        style={{ padding: '0.65rem 1rem' }}
                         onClick={() => handle(signInAnonymously)}
                         disabled={busy}
                     >
@@ -53,7 +56,7 @@ const Login: React.FC = () => {
                     </button>
                 </div>
 
-                <p className="login-note">
+                <p className="text-tertiary leading-relaxed" style={{ marginTop: '1.25rem', fontSize: '0.72rem' }}>
                     Guest accounts are temporary. Sign in with Google to save your data long-term.
                 </p>
             </div>

@@ -8,7 +8,6 @@ import { useLocalStorageState } from '../lib/persist';
 import DraggableList from '../components/DraggableList';
 import { useToast } from '../components/Toast';
 import { logEvent } from '../lib/amplitude';
-import './Notes.css';
 
 const FORMAT_OPTIONS: { value: Note['format']; label: string; icon: React.ReactNode }[] = [
     { value: 'freeform', label: 'Freeform', icon: <AlignLeft size={14} /> },
@@ -17,23 +16,23 @@ const FORMAT_OPTIONS: { value: Note['format']; label: string; icon: React.ReactN
 ];
 
 function renderContent(content: string, fmt: Note['format']): React.ReactNode {
-    if (!content.trim()) return <span className="note-placeholder">Empty note</span>;
+    if (!content.trim()) return <span className="text-tertiary italic">Empty note</span>;
     const lines = content.split('\n');
     if (fmt === 'bullet') {
         return (
-            <ul className="note-list">
-                {lines.map((line, i) => line.trim() ? <li key={i}>{line}</li> : null)}
+            <ul className="pl-6 m-0 list-disc">
+                {lines.map((line, i) => line.trim() ? <li key={i} className="mb-1">{line}</li> : null)}
             </ul>
         );
     }
     if (fmt === 'numbered') {
         return (
-            <ol className="note-list">
-                {lines.map((line, i) => line.trim() ? <li key={i}>{line}</li> : null)}
+            <ol className="pl-6 m-0 list-decimal">
+                {lines.map((line, i) => line.trim() ? <li key={i} className="mb-1">{line}</li> : null)}
             </ol>
         );
     }
-    return <div className="note-freeform">{content}</div>;
+    return <div style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>{content}</div>;
 }
 
 const Notes: React.FC = () => {
@@ -125,9 +124,10 @@ const Notes: React.FC = () => {
                 </div>
             </header>
 
-            <div className="notes-controls">
+            <div className="flex flex-wrap items-center gap-md mb-xl">
                 <select
                     className="input-field"
+                    style={{ flex: '1 1 120px', maxWidth: '250px' }}
                     value={selectedTripId || ''}
                     onChange={e => setSelectedTripId(e.target.value || null)}
                 >
@@ -142,16 +142,16 @@ const Notes: React.FC = () => {
             </div>
 
             {error && (
-                <div className="notes-error">
+                <div className="flex items-center justify-between gap-md p-md mb-md rounded-md font-medium text-sm text-danger" style={{ backgroundColor: 'color-mix(in srgb, var(--error-color) 10%, var(--surface-color))', border: '1px solid color-mix(in srgb, var(--error-color) 30%, transparent)' }}>
                     <span>{error}</span>
                     <button type="button" className="btn btn-ghost btn-sm" onClick={() => setError(null)}>Dismiss</button>
                 </div>
             )}
 
             {!selectedTrip && (
-                <div className="empty-state">
-                    <div className="empty-icon">📝</div>
-                    <h2>Select a trip</h2>
+                <div className="text-center p-xl mx-auto" style={{ maxWidth: '400px' }}>
+                    <div className="text-xl mb-md" style={{ fontSize: '3rem', lineHeight: 1 }}>📝</div>
+                    <h2 className="mb-sm">Select a trip</h2>
                     <p>Choose a trip above to view or create notes.</p>
                 </div>
             )}
@@ -165,9 +165,9 @@ const Notes: React.FC = () => {
             )}
 
             {selectedTrip && tripNotes.length === 0 && !showNewForm && (
-                <div className="empty-state">
-                    <div className="empty-icon">📝</div>
-                    <h2>No notes yet</h2>
+                <div className="text-center p-xl mx-auto" style={{ maxWidth: '400px' }}>
+                    <div className="text-xl mb-md" style={{ fontSize: '3rem', lineHeight: 1 }}>📝</div>
+                    <h2 className="mb-sm">No notes yet</h2>
                     <p>Add your first note to start organizing your trip thoughts.</p>
                 </div>
             )}
@@ -178,7 +178,7 @@ const Notes: React.FC = () => {
                     keyFn={n => n.id}
                     onReorder={handleReorder}
                     disabled={editingNoteId !== null}
-                    className="notes-grid"
+                    className="grid grid-cols-auto-280 gap-md"
                     renderItem={(note, _idx, dragHandleProps) => (
                         editingNoteId === note.id ? (
                             <NoteEditor
@@ -188,13 +188,13 @@ const Notes: React.FC = () => {
                                 onDelete={() => handleDeleteNote(note)}
                             />
                         ) : (
-                            <div className="note-card card" style={note.color ? { borderTopColor: note.color } : undefined}>
-                                <div className="note-card-header">
-                                    <span className="drag-handle" {...dragHandleProps}>
+                            <div className="card p-md flex flex-col h-full hover:shadow-md transition-shadow" style={{ borderTop: note.color ? `3px solid ${note.color}` : '3px solid var(--border-light)' }}>
+                                <div className="flex items-center gap-xs mb-sm">
+                                    <span className="cursor-grab text-tertiary shrink-0 p-xs" {...dragHandleProps}>
                                         <GripVertical size={16} />
                                     </span>
-                                    <h3 className="note-card-title">{note.title || 'Untitled'}</h3>
-                                    <div className="note-card-actions">
+                                    <h3 className="flex-1 text-base font-bold text-primary truncate">{note.title || 'Untitled'}</h3>
+                                    <div className="flex gap-xs shrink-0">
                                         <button className="btn btn-ghost btn-sm" onClick={() => setEditingNoteId(note.id)}>
                                             <Pencil size={14} />
                                         </button>
@@ -203,13 +203,13 @@ const Notes: React.FC = () => {
                                         </button>
                                     </div>
                                 </div>
-                                <div className="note-card-body">
+                                <div className="text-sm text-secondary flex-1" style={{ lineHeight: 1.55, wordWrap: 'break-word', overflowWrap: 'break-word' }}>
                                     {renderContent(note.content, note.format)}
                                 </div>
                                 {note.images && note.images.length > 0 && (
-                                    <div className="note-card-images">
+                                    <div className="flex flex-wrap gap-xs mt-sm">
                                         {note.images.map((url, i) => (
-                                            <img key={i} src={url} alt="" className="note-card-img" loading="lazy" />
+                                            <img key={i} src={url} alt="" className="rounded-sm object-cover cursor-pointer transition-opacity hover:opacity-85" style={{ maxWidth: '100%', maxHeight: '200px' }} loading="lazy" />
                                         ))}
                                     </div>
                                 )}

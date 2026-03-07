@@ -11,7 +11,7 @@ import TripForm from '../components/TripForm';
 import Markdown from '../components/Markdown';
 import { useToast } from '../components/Toast';
 import { logEvent } from '../lib/amplitude';
-import './SpreadsheetView.css';
+import styles from './SpreadsheetView.module.css';
 
 type TimeSlot = 'morning' | 'afternoon' | 'evening' | 'unscheduled';
 
@@ -96,7 +96,7 @@ const SpreadsheetView: React.FC = () => {
         if (!wrapper || tripDays.length === 0) return;
         const dayIndex = tripDays.findIndex(d => isSameDay(d, focusedDate));
         if (dayIndex < 0) return;
-        const headerCells = wrapper.querySelectorAll('.sheet-header-cell:not(.sheet-corner)');
+        const headerCells = wrapper.querySelectorAll('[class*="sheet-header-cell"]:not([class*="sheet-corner"])');
         const target = headerCells[dayIndex] as HTMLElement | undefined;
         if (!target) return;
         const targetLeft = target.offsetLeft;
@@ -224,14 +224,14 @@ const SpreadsheetView: React.FC = () => {
     }, [selectedTrip, updateTrip]);
 
     if (tripsLoading) {
-        return <div className="page-container animate-fade-in spreadsheet-page" />;
+        return <div className={`page-container animate-fade-in ${styles['spreadsheet-page']}`} />;
     }
 
     if (trips.length === 0 && !showTripForm) {
         return (
-            <div className="page-container animate-fade-in spreadsheet-page">
-                <div className="empty-state">
-                    <div className="empty-icon">🌴</div>
+            <div className={`page-container animate-fade-in ${styles['spreadsheet-page']}`}>
+                <div className={styles['empty-state']}>
+                    <div className={styles['empty-icon']}>🌴</div>
                     <h2>Plan your next adventure</h2>
                     <p>Create your first trip to get started.</p>
                     <button className="btn btn-primary" onClick={() => setShowTripForm(true)}>
@@ -246,7 +246,7 @@ const SpreadsheetView: React.FC = () => {
     }
 
     return (
-        <div className="page-container animate-fade-in spreadsheet-page">
+        <div className={`page-container animate-fade-in ${styles['spreadsheet-page']}`}>
             <header className="page-header">
                 <div>
                     <h1>Your Trips</h1>
@@ -269,7 +269,7 @@ const SpreadsheetView: React.FC = () => {
             )}
 
             {/* Desktop: card grid */}
-            <div className="trip-selector trip-selector-desktop">
+            <div className={`${styles['trip-selector']} ${styles['trip-selector-desktop'] || ''}`}>
                 {trips.map((trip, idx) => (
                     <div
                         key={trip.id}
@@ -283,9 +283,9 @@ const SpreadsheetView: React.FC = () => {
                         onClick={() => setSelectedTripId(selectedTripId === trip.id ? null : trip.id)}
                         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedTripId(selectedTripId === trip.id ? null : trip.id); }}
                     >
-                        <div className="trip-card-header">
+                        <div className={styles['trip-card-header']}>
                             <h3>{trip.name}</h3>
-                            <div className="trip-card-actions" onClick={e => e.stopPropagation()}>
+                            <div className={styles['trip-card-actions']} onClick={e => e.stopPropagation()}>
                                 <button className="btn btn-ghost btn-sm" onClick={() => { setEditingTrip(trip.id); setShowTripForm(true); }}>
                                     <Pencil size={14} />
                                 </button>
@@ -294,16 +294,16 @@ const SpreadsheetView: React.FC = () => {
                                 </button>
                             </div>
                         </div>
-                        <p className="trip-dates">
+                        <p className={styles['trip-dates']}>
                             {safeFormatDate(trip.startDate, 'MMM d')} – {safeFormatDate(trip.endDate, 'MMM d, yyyy')}
                         </p>
-                        {trip.description && <Markdown className="trip-desc">{trip.description}</Markdown>}
+                        {trip.description && <Markdown className={styles['trip-desc']}>{trip.description}</Markdown>}
                     </div>
                 ))}
             </div>
 
             {/* Mobile: compact dropdown */}
-            <div className="trip-selector-mobile">
+            <div className={styles['trip-selector-mobile']}>
                 <select
                     className="input-field"
                     value={selectedTripId || ''}
@@ -317,7 +317,7 @@ const SpreadsheetView: React.FC = () => {
                     ))}
                 </select>
                 {selectedTripId && (
-                    <div className="trip-mobile-actions">
+                    <div className={styles['trip-mobile-actions']}>
                         <button className="btn btn-ghost btn-sm" onClick={() => { setEditingTrip(selectedTripId); setShowTripForm(true); }}>
                             <Pencil size={14} />
                         </button>
@@ -330,19 +330,19 @@ const SpreadsheetView: React.FC = () => {
 
             {selectedTrip && tripDays.length > 0 && (
                 <>
-                    <div className="day-nav-wrapper">
-                        <div className="nav-controls">
+                    <div className={styles['day-nav-wrapper']}>
+                        <div className={styles['nav-controls']}>
                             <button type="button" className="btn btn-ghost" onClick={() => navigateDay(-1)} aria-label="Previous day">
                                 <ChevronLeft size={20} />
                             </button>
-                            <span className="current-label">
+                            <span className={styles['current-label']}>
                                 {format(focusedDate, 'EEEE, MMM d, yyyy')}
                             </span>
                             <button type="button" className="btn btn-ghost" onClick={() => navigateDay(1)} aria-label="Next day">
                                 <ChevronRight size={20} />
                             </button>
                         </div>
-                        <div className="day-pills">
+                        <div className={styles['day-pills']}>
                             {tripDays.map((day, idx) => (
                                 <button
                                     key={idx}
@@ -351,32 +351,32 @@ const SpreadsheetView: React.FC = () => {
                                     onClick={() => setFocusedDate(day)}
                                     title={format(day, 'EEEE, MMM d')}
                                 >
-                                    <span className="day-pill-num">{format(day, 'd')}</span>
-                                    <span className="day-pill-dow">{format(day, 'EEE')}</span>
+                                    <span className={styles['day-pill-num']}>{format(day, 'd')}</span>
+                                    <span className={styles['day-pill-dow']}>{format(day, 'EEE')}</span>
                                 </button>
                             ))}
                         </div>
                     </div>
-                    <div className="spreadsheet-wrapper" ref={spreadsheetWrapperRef}>
+                    <div className={styles['spreadsheet-wrapper']} ref={spreadsheetWrapperRef}>
                     <div
-                        className="spreadsheet-grid"
+                        className={styles['spreadsheet-grid']}
                         style={{ gridTemplateColumns: `var(--sheet-label-width) repeat(${tripDays.length}, minmax(140px, 1fr))` }}
                     >
                         {/* Header row */}
-                        <div className="sheet-header-cell sheet-corner" />
+                        <div className={`${styles['sheet-header-cell']} ${styles['sheet-corner']}`} />
                         {tripDays.map((day, idx) => {
                             const isFocused = isSameDay(day, focusedDate);
                             const dateStr = format(day, 'yyyy-MM-dd');
                             const dayLocation = selectedTrip?.dayLocations?.[dateStr] ?? '';
                             return (
                                 <div key={idx} className={`sheet-header-cell${isFocused ? ' focused' : ''}`}>
-                                    <span className="sheet-day-label">Day {idx + 1}</span>
-                                    <span className="sheet-day-date">{format(day, 'EEE, MMM d')}</span>
-                                    <div className="sheet-day-location">
+                                    <span className={styles['sheet-day-label']}>Day {idx + 1}</span>
+                                    <span className={styles['sheet-day-date']}>{format(day, 'EEE, MMM d')}</span>
+                                    <div className={styles['sheet-day-location']}>
                                         <MapPin size={10} />
                                         <input
                                             type="text"
-                                            className="day-location-input"
+                                            className={styles['day-location-input']}
                                             placeholder="Location..."
                                             defaultValue={dayLocation}
                                             key={`${selectedTripId}-${dateStr}`}
@@ -395,8 +395,8 @@ const SpreadsheetView: React.FC = () => {
                         {TIME_SLOTS.map(slot => (
                             <React.Fragment key={slot.key}>
                                 <div className={`sheet-row-label slot-${slot.key}`} title={slot.label}>
-                                    <span className="slot-icon">{slot.icon}</span>
-                                    <span className="slot-text">{slot.label}</span>
+                                    <span className={styles['slot-icon']}>{slot.icon}</span>
+                                    <span className={styles['slot-text']}>{slot.label}</span>
                                 </div>
                                 {tripDays.map((day) => {
                                     const dateStr = format(day, 'yyyy-MM-dd');
@@ -413,23 +413,23 @@ const SpreadsheetView: React.FC = () => {
                                             onDragLeave={handleDragLeave}
                                             onDrop={e => handleDrop(e, dateStr, slot.key)}
                                             onClick={(e) => {
-                                                if ((e.target as HTMLElement).closest('.sheet-activity')) return;
+                                                if ((e.target as HTMLElement).closest('[class*="sheet-activity"]')) return;
                                                 setAddingCell({ date: dateStr, slot: slot.key });
                                             }}
                                         >
                                             {cellActivities.map(act => (
                                                 <div
                                                     key={act.id}
-                                                    className="sheet-activity"
+                                                    className={styles['sheet-activity']}
                                                     draggable
                                                     onDragStart={e => handleDragStart(e, act)}
                                                     onClick={(e) => { e.stopPropagation(); setEditingActivity(act); }}
                                                     style={{ borderLeftColor: act.color ?? CATEGORY_COLORS[act.category || 'other'] }}
                                                 >
-                                                    <span className="sheet-act-emoji">{CATEGORY_EMOJIS[act.category || 'other']}</span>
-                                                    <div className="sheet-act-info">
-                                                        <span className="sheet-act-title">{act.title}</span>
-                                                        {act.time && <span className="sheet-act-time">{act.time}</span>}
+                                                    <span className={styles['sheet-act-emoji']}>{CATEGORY_EMOJIS[act.category || 'other']}</span>
+                                                    <div className={styles['sheet-act-info']}>
+                                                        <span className={styles['sheet-act-title']}>{act.title}</span>
+                                                        {act.time && <span className={styles['sheet-act-time']}>{act.time}</span>}
                                                     </div>
                                                 </div>
                                             ))}
@@ -445,8 +445,8 @@ const SpreadsheetView: React.FC = () => {
             )}
 
             {!selectedTrip && (
-                <div className="empty-state">
-                    <div className="empty-icon">📊</div>
+                <div className={styles['empty-state']}>
+                    <div className={styles['empty-icon']}>📊</div>
                     <h2>Select a trip</h2>
                     <p>Click a trip card above to view its schedule.</p>
                 </div>
@@ -454,8 +454,8 @@ const SpreadsheetView: React.FC = () => {
 
             {/* Modal for editing an existing activity */}
             {editingActivity && selectedTripId && createPortal(
-                <div className="sheet-modal-overlay" onClick={() => setEditingActivity(null)}>
-                    <div className="sheet-modal" onClick={e => e.stopPropagation()}>
+                <div className={styles['sheet-modal-overlay']} onClick={() => setEditingActivity(null)}>
+                    <div className={styles['sheet-modal']} onClick={e => e.stopPropagation()}>
                         <ActivityForm
                             tripId={selectedTripId}
                             date={editingActivity.date}
@@ -473,8 +473,8 @@ const SpreadsheetView: React.FC = () => {
 
             {/* Modal for adding a new activity from a cell */}
             {addingCell && selectedTripId && createPortal(
-                <div className="sheet-modal-overlay" onClick={() => setAddingCell(null)}>
-                    <div className="sheet-modal" onClick={e => e.stopPropagation()}>
+                <div className={styles['sheet-modal-overlay']} onClick={() => setAddingCell(null)}>
+                    <div className={styles['sheet-modal']} onClick={e => e.stopPropagation()}>
                         <ActivityForm
                             tripId={selectedTripId}
                             date={addingCell.date}

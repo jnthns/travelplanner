@@ -434,3 +434,149 @@ body.dark-mode img {
     padding: 1rem;
   }
 }
+
+/* Utility Classes (Tailwind-style) */
+/* Layout & Flex */
+.flex { display: flex; }
+.flex-col { display: flex; flex-direction: column; }
+.flex-row { display: flex; flex-direction: row; }
+.flex-1 { flex: 1; }
+.flex-wrap { flex-wrap: wrap; }
+.items-center { align-items: center; }
+.items-start { align-items: flex-start; }
+.justify-between { justify-content: space-between; }
+.justify-center { justify-content: center; }
+.justify-end { justify-content: flex-end; }
+
+/* Spacing (Gaps) */
+.gap-xs { gap: 0.25rem; }
+.gap-sm { gap: 0.5rem; }
+.gap-md { gap: 1rem; }
+.gap-lg { gap: 1.5rem; }
+.gap-xl { gap: 2rem; }
+
+/* Margin */
+.m-0 { margin: 0; }
+.mt-sm { margin-top: 0.5rem; }
+.mt-md { margin-top: 1rem; }
+.mt-lg { margin-top: 1.5rem; }
+.mb-xs { margin-bottom: 0.25rem; }
+.mb-sm { margin-bottom: 0.5rem; }
+.mb-md { margin-bottom: 1rem; }
+.mb-lg { margin-bottom: 1.5rem; }
+.mb-0 { margin-bottom: 0; }
+.ml-auto { margin-left: auto; }
+
+/* Padding */
+.p-0 { padding: 0; }
+.p-sm { padding: 0.5rem; }
+.p-md { padding: 1rem; }
+.p-lg { padding: 1.5rem; }
+.p-xl { padding: 2rem; }
+
+/* Typography */
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+
+.text-xs { font-size: 0.75rem; }
+.text-sm { font-size: 0.875rem; }
+.text-base { font-size: 1rem; }
+.text-lg { font-size: 1.125rem; }
+.text-xl { font-size: 1.25rem; }
+
+/* Text Colors */
+.text-subtle { color: var(--text-tertiary); }
+.text-secondary { color: var(--text-secondary); }
+.text-primary { color: var(--text-primary); }
+.text-danger { color: var(--error-color); }
+.text-success { color: var(--secondary-color); }
+
+/* Borders & Backgrounds */
+.border-b { border-bottom: 1px solid var(--border-color); }
+.border-t { border-top: 1px solid var(--border-color); }
+.rounded-md { border-radius: var(--radius-md); }
+.rounded-lg { border-radius: var(--radius-lg); }
+.rounded-full { border-radius: var(--radius-full); }
+.bg-surface-1 { background-color: var(--surface-color); }
+.bg-surface-2 { background-color: var(--bg-color); }
+
+/* Utilities */
+.w-full { width: 100%; }
+.h-full { height: 100%; }
+.overflow-hidden { overflow: hidden; }
+.overflow-y-auto { overflow-y: auto; }
+.shrink-0 { flex-shrink: 0; }
+
+
+/* Grids */
+.grid { display: grid; }
+.grid-cols-auto-140 { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+.grid-cols-auto-160 { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+
+
+.grid-cols-auto-300 { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+
+
+.grid-cols-auto-280 { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+
+
+
+/* Animation utilities */
+@keyframes plane-bob {
+    0%, 100% { transform: translateY(0) rotate(-5deg); }
+    50% { transform: translateY(-12px) rotate(5deg); }
+}
+.animate-plane-bob {
+    animation: plane-bob 2s0ease-in-out infinite;
+}
+
+.loading-spinner-before::before {
+    content: '';
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border-color);
+    border-top-color: var(--primary-color);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: inline-block;
+}
+
+/* Ghost Input */
+.input-ghost {
+    border: 1px solid transparent;
+    background: transparent;
+    border-radius: var(--radius-sm);
+    padding: 0.2rem 0.35rem;
+    font-family: inherit;
+    color: var(--text-primary);
+    transition: border-color 0.15s, background-color 0.15s;
+    outline: none;
+}
+.input-ghost:hover {
+    border-color: var(--border-light);
+    background-color: color-mix(in srgb, var(--surface-color) 60%, transparent);
+}
+.input-ghost:focus {
+    border-color: var(--primary-color);
+    background-color: var(--surface-color);
+}
+
+/* Sticky Action Bar */
+.sticky-actions {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 1rem;
+    background: color-mix(in srgb, var(--bg-primary) 92%, transparent);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    margin-bottom: 0.5rem;
+}

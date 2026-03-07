@@ -9,7 +9,6 @@ import { useLocalStorageState } from '../lib/persist';
 import Markdown from '../components/Markdown';
 import { useToast } from '../components/Toast';
 import { logEvent } from '../lib/amplitude';
-import './Transportation.css';
 
 const transportTypes = ['flight', 'train', 'bus', 'car', 'ferry', 'taxi', 'walk', 'other'] as const;
 
@@ -172,9 +171,10 @@ Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid 
             </header>
 
             {/* Trip Filter + Add */}
-            <div className="transport-filter">
+            <div className="flex flex-wrap items-center gap-md mb-lg">
                 <select
                     className="input-field"
+                    style={{ flex: '1 1 120px', maxWidth: '250px' }}
                     value={selectedTripId || ''}
                     onChange={e => setSelectedTripId(e.target.value || null)}
                 >
@@ -190,11 +190,11 @@ Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid 
 
             {/* Cost Summary */}
             {Object.keys(totalCost).length > 0 && (
-                <div className="cost-summary card">
-                    <h3>Total Transport Costs</h3>
-                    <div className="cost-badges">
+                <div className="card p-lg mb-lg" style={{ background: 'linear-gradient(135deg, color-mix(in srgb, var(--secondary-color) 5%, transparent), color-mix(in srgb, var(--primary-color) 5%, transparent))' }}>
+                    <h3 className="text-sm text-secondary mb-sm">Total Transport Costs</h3>
+                    <div className="flex flex-wrap gap-md">
                         {Object.entries(totalCost).map(([currency, amount]) => (
-                            <span key={currency} className="cost-badge">
+                            <span key={currency} className="text-xl font-bold text-success">
                                 {currency} {amount.toFixed(2)}
                             </span>
                         ))}
@@ -204,15 +204,19 @@ Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid 
 
             {/* Add/Edit Form */}
             {showForm && (
-                <form className="transport-form card animate-fade-in" onSubmit={handleSubmit}>
-                    <h3>{editingRoute ? 'Edit Route' : 'New Route'}</h3>
+                <form className="card p-md mb-md animate-fade-in" onSubmit={handleSubmit}>
+                    <h3 className="text-base mb-sm">{editingRoute ? 'Edit Route' : 'New Route'}</h3>
 
-                    <div className="type-picker">
+                    <div className="flex flex-wrap gap-xs mb-md">
                         {transportTypes.map(type => (
                             <button
                                 type="button"
                                 key={type}
-                                className={`type-chip ${formData.type === type ? 'active' : ''}`}
+                                className={`px-3 py-1 rounded-full border text-xs capitalize transition-colors ${formData.type === type ? 'bg-primary text-white border-primary' : 'bg-surface border-light hover:border-primary'}`}
+                                style={{
+                                    padding: '0.35rem 0.75rem', borderRadius: 'var(--radius-full)', border: '1px solid',
+                                    ...(formData.type === type ? { backgroundColor: 'var(--primary-color)', color: 'white', borderColor: 'var(--primary-color)' } : { backgroundColor: 'var(--surface-color)', borderColor: 'var(--border-color)', color: 'inherit' })
+                                }}
                                 onClick={() => setFormData(p => ({ ...p, type }))}
                             >
                                 {TRANSPORT_EMOJIS[type]} {type}
@@ -220,9 +224,9 @@ Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid 
                         ))}
                     </div>
 
-                    <div className="form-row">
-                        <div className="input-group" style={{ flex: 1 }}>
-                            <label className="input-label">From *</label>
+                    <div className="flex flex-wrap gap-sm mb-xs">
+                        <div className="flex flex-col gap-xs" style={{ flex: '1 1 200px' }}>
+                            <label className="text-sm font-medium">From *</label>
                             <input
                                 className="input-field"
                                 type="text"
@@ -232,9 +236,9 @@ Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid 
                                 required
                             />
                         </div>
-                        <div className="route-arrow">→</div>
-                        <div className="input-group" style={{ flex: 1 }}>
-                            <label className="input-label">To *</label>
+                        <div className="flex items-center text-xl font-bold text-primary" style={{ paddingTop: '1.2rem' }}>→</div>
+                        <div className="flex flex-col gap-xs" style={{ flex: '1 1 200px' }}>
+                            <label className="text-sm font-medium">To *</label>
                             <input
                                 className="input-field"
                                 type="text"
@@ -247,20 +251,22 @@ Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid 
                     </div>
 
                     {(formData.from.trim() && formData.to.trim()) && (
-                        <div className="transport-ai-block">
+                        <div className="mb-md">
                             <button
                                 type="button"
-                                className="btn btn-outline btn-sm"
+                                className="btn btn-outline btn-sm mb-sm"
                                 onClick={handleSuggestRoutes}
                                 disabled={aiRoutesLoading}
                             >
                                 {aiRoutesLoading ? <><Loader2 size={14} className="spin" /> Finding options…</> : 'Suggest optimal routes'}
                             </button>
-                            {aiRoutesError && <p className="ai-error">{aiRoutesError}</p>}
+                            {aiRoutesError && <p className="text-xs text-danger mt-xs">{aiRoutesError}</p>}
                             {aiRoutesSuggestion && (
-                                <div className="transport-ai-card card">
-                                    <Markdown className="transport-ai-text">{aiRoutesSuggestion}</Markdown>
-                                    <div className="ai-suggestion-actions">
+                                <div className="card p-md mt-sm">
+                                    <div className="text-sm text-secondary mb-md" style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>
+                                        <Markdown>{aiRoutesSuggestion}</Markdown>
+                                    </div>
+                                    <div className="flex gap-sm">
                                         <button type="button" className="btn btn-primary btn-sm" onClick={() => { setFormData(p => ({ ...p, notes: (p.notes ? p.notes + '\n\n' : '') + aiRoutesSuggestion })); setAiRoutesSuggestion(null); logEvent('AI Route Suggestion Accepted', { from: formData.from.trim(), to: formData.to.trim() }); }}>Accept</button>
                                         <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setAiRoutesSuggestion(null); logEvent('AI Route Suggestion Declined', { from: formData.from.trim(), to: formData.to.trim() }); }}>Decline</button>
                                     </div>
@@ -269,9 +275,9 @@ Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid 
                         </div>
                     )}
 
-                    <div className="form-row">
-                        <div className="input-group" style={{ flex: 1 }}>
-                            <label className="input-label">Date *</label>
+                    <div className="flex flex-wrap gap-sm mb-xs">
+                        <div className="flex flex-col gap-xs" style={{ flex: '1 1 200px' }}>
+                            <label className="text-sm font-medium">Date *</label>
                             <input
                                 className="input-field"
                                 type="date"
@@ -280,11 +286,11 @@ Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid 
                                 required
                             />
                             {selectedTrip?.dayLocations?.[formData.date] && (
-                                <span className="day-location-hint">📍 {selectedTrip.dayLocations[formData.date]}</span>
+                                <span className="block text-xs text-subtle mt-xs">📍 {selectedTrip.dayLocations[formData.date]}</span>
                             )}
                         </div>
-                        <div className="input-group" style={{ flex: 0, minWidth: '120px' }}>
-                            <label className="input-label">Departure</label>
+                        <div className="flex flex-col gap-xs" style={{ flex: '0 0 auto', minWidth: '120px' }}>
+                            <label className="text-sm font-medium">Departure</label>
                             <input
                                 className="input-field"
                                 type="time"
@@ -292,8 +298,8 @@ Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid 
                                 onChange={e => setFormData(p => ({ ...p, departureTime: e.target.value }))}
                             />
                         </div>
-                        <div className="input-group" style={{ flex: 0, minWidth: '120px' }}>
-                            <label className="input-label">Arrival</label>
+                        <div className="flex flex-col gap-xs" style={{ flex: '0 0 auto', minWidth: '120px' }}>
+                            <label className="text-sm font-medium">Arrival</label>
                             <input
                                 className="input-field"
                                 type="time"
@@ -303,9 +309,9 @@ Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid 
                         </div>
                     </div>
 
-                    <div className="form-row">
-                        <div className="input-group" style={{ flex: 1 }}>
-                            <label className="input-label">Cost</label>
+                    <div className="flex flex-wrap gap-sm mb-xs">
+                        <div className="flex flex-col gap-xs" style={{ flex: '1 1 120px' }}>
+                            <label className="text-sm font-medium">Cost</label>
                             <input
                                 className="input-field"
                                 type="number"
@@ -316,8 +322,8 @@ Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid 
                                 min="0"
                             />
                         </div>
-                        <div className="input-group" style={{ flex: 0, minWidth: '100px' }}>
-                            <label className="input-label">Currency</label>
+                        <div className="flex flex-col gap-xs" style={{ flex: '0 0 auto', minWidth: '100px' }}>
+                            <label className="text-sm font-medium">Currency</label>
                             <select
                                 className="input-field"
                                 value={formData.currency}
@@ -331,8 +337,8 @@ Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid 
                                 <option value="AUD">AUD</option>
                             </select>
                         </div>
-                        <div className="input-group" style={{ flex: 1 }}>
-                            <label className="input-label">Booking Ref</label>
+                        <div className="flex flex-col gap-xs" style={{ flex: '1 1 200px' }}>
+                            <label className="text-sm font-medium">Booking Ref</label>
                             <input
                                 className="input-field"
                                 type="text"
@@ -343,8 +349,8 @@ Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid 
                         </div>
                     </div>
 
-                    <div className="input-group">
-                        <label className="input-label">Notes</label>
+                    <div className="flex flex-col gap-xs mb-sm">
+                        <label className="text-sm font-medium">Notes</label>
                         <textarea
                             className="input-field textarea"
                             value={formData.notes}
@@ -354,7 +360,7 @@ Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid 
                         />
                     </div>
 
-                    <div className="form-actions">
+                    <div className="flex gap-xs mt-sm">
                         <button type="button" className="btn btn-ghost" onClick={() => resetForm()}>Cancel</button>
                         <button type="submit" className="btn btn-primary" disabled={!formData.from.trim() || !formData.to.trim() || !formData.date}>
                             {editingRoute ? 'Save Changes' : 'Add Route'}
@@ -365,20 +371,20 @@ Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid 
 
             {/* Routes Grid */}
             {tripRoutes.length === 0 && !showForm ? (
-                <div className="empty-state">
-                    <div className="empty-icon">🚀</div>
-                    <h2>No routes yet</h2>
-                    <p>Add your first transport route to start tracking.</p>
+                <div className="text-center p-xl mx-auto" style={{ maxWidth: '400px' }}>
+                    <div className="text-xl mb-md" style={{ fontSize: '4rem' }}>🚀</div>
+                    <h2 className="mb-sm">No routes yet</h2>
+                    <p className="mb-lg">Add your first transport route to start tracking.</p>
                 </div>
             ) : (
-                <div className="routes-grid">
+                <div className="grid grid-cols-auto-300 gap-md">
                     {tripRoutes.map(route => (
-                        <div key={route.id} className="route-tile card">
-                            <div className="tile-top">
-                                <span className="route-type-badge">
+                        <div key={route.id} className="card p-md">
+                            <div className="flex justify-between items-center mb-sm">
+                                <span className="bg-border-light px-sm py-xs rounded-full text-xs font-medium capitalize" style={{ backgroundColor: 'var(--border-light)' }}>
                                     {TRANSPORT_EMOJIS[route.type]} {route.type}
                                 </span>
-                                <div className="route-actions">
+                                <div className="flex gap-xs">
                                     <button className="btn btn-ghost btn-sm" onClick={() => openEditForm(route)}>
                                         <Pencil size={14} />
                                     </button>
@@ -387,23 +393,27 @@ Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid 
                                     </button>
                                 </div>
                             </div>
-                            <div className="tile-route">
+                            <div className="flex items-baseline gap-sm flex-wrap text-sm" style={{ lineHeight: 1.4 }}>
                                 <strong>{route.from}</strong>
-                                {route.departureTime && <span className="route-time">{route.departureTime}</span>}
-                                <span className="tile-arrow">→</span>
+                                {route.departureTime && <span className="text-xs text-subtle">{route.departureTime}</span>}
+                                <span className="text-subtle font-semibold">→</span>
                                 <strong>{route.to}</strong>
-                                {route.arrivalTime && <span className="route-time">{route.arrivalTime}</span>}
+                                {route.arrivalTime && <span className="text-xs text-subtle">{route.arrivalTime}</span>}
                             </div>
-                            <div className="tile-meta">
-                                <span className="route-date">{format(parseISO(route.date), 'MMM d, yyyy')}</span>
+                            <div className="flex items-center gap-md mt-sm flex-wrap">
+                                <span className="text-sm text-secondary">{format(parseISO(route.date), 'MMM d, yyyy')}</span>
                                 {route.cost != null && (
-                                    <span className="route-cost">{route.currency || 'USD'} {route.cost.toFixed(2)}</span>
+                                    <span className="text-sm font-bold text-success">{route.currency || 'USD'} {route.cost.toFixed(2)}</span>
                                 )}
                                 {route.bookingRef && (
-                                    <span className="route-ref">Ref: {route.bookingRef}</span>
+                                    <span className="text-xs text-subtle bg-border-light rounded-sm px-xs py-1" style={{ backgroundColor: 'var(--border-light)' }}>Ref: {route.bookingRef}</span>
                                 )}
                             </div>
-                            {route.notes && <Markdown className="route-notes tile-notes">{route.notes}</Markdown>}
+                            {route.notes && (
+                                <div className="text-xs text-secondary mt-sm pt-sm border-t italic" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                    <Markdown>{route.notes}</Markdown>
+                                </div>
+                            )}
                         </div>
                     ))}
                 </div>

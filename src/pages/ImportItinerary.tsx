@@ -6,7 +6,7 @@ import { CATEGORY_EMOJIS } from '../lib/types';
 import type { Activity } from '../lib/types';
 import { generateWithGemini } from '../lib/gemini';
 import { logEvent } from '../lib/amplitude';
-import './ImportItinerary.css';
+
 
 const TRAVEL_JOKES = [
     "My travel budget is like my liver — absolutely destroyed by the end of every trip.",
@@ -172,12 +172,12 @@ const LoadingJokes: React.FC<{ progress: string }> = ({ progress }) => {
     }, []);
 
     return (
-        <div className="import-loading-jokes">
-            <div className="import-loading-plane">
+        <div className="flex flex-col items-center text-center gap-xl" style={{ padding: '4rem 2rem' }}>
+            <div className="text-primary animate-plane-bob">
                 <Plane size={48} />
             </div>
-            <p className="import-loading-progress">{progress || 'Parsing itinerary...'}</p>
-            <div className={`import-loading-joke ${fade ? 'visible' : ''}`}>
+            <p className="flex items-center gap-sm text-sm text-tertiary loading-spinner-before">{progress || 'Parsing itinerary...'}</p>
+            <div className={`text-sm italic text-secondary transition-opacity duration-300 ${fade ? 'opacity-100' : 'opacity-0'}`} style={{ maxWidth: '480px', lineHeight: 1.5, minHeight: '3em', display: 'flex', alignItems: 'center' }}>
                 "{TRAVEL_JOKES[jokeIdx]}"
             </div>
         </div>
@@ -419,10 +419,10 @@ const ImportItinerary: React.FC = () => {
 
             {/* Input Stage */}
             {stage === 'input' && !loading && (
-                <div className="import-input-section">
+                <div className="flex flex-col gap-sm">
                     {isAppending && (
-                        <div className="import-append-banner">
-                            <Plus size={16} />
+                        <div className="flex items-center gap-sm p-sm rounded-md text-sm text-secondary" style={{ backgroundColor: 'color-mix(in srgb, var(--primary-color) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--primary-color) 20%, transparent)' }}>
+                            <Plus size={16} className="text-primary shrink-0" />
                             <span>Adding more days to <strong>{activeTripName}</strong> ({totalImported} activities imported so far)</span>
                         </div>
                     )}
@@ -431,7 +431,8 @@ const ImportItinerary: React.FC = () => {
                     </label>
                     <textarea
                         id="import-textarea"
-                        className="input-field import-textarea"
+                        className="input-field"
+                        style={{ minHeight: '200px', resize: 'vertical', fontFamily: 'inherit', fontSize: '0.9rem', lineHeight: 1.5 }}
                         value={rawText}
                         onChange={e => setRawText(e.target.value)}
                         placeholder={isAppending
@@ -440,19 +441,26 @@ const ImportItinerary: React.FC = () => {
                         rows={12}
                     />
                     {error && (
-                        <div className="import-error">
-                            <AlertCircle size={16} />
+                        <div className="flex items-start gap-sm p-sm rounded-md text-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--error-color) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--error-color) 25%, transparent)', color: 'var(--error-color)', lineHeight: 1.4 }}>
+                            <AlertCircle size={16} className="shrink-0 mt-0.5" />
                             <span>{error}</span>
                         </div>
                     )}
-                    <div className="import-input-actions">
+                    <style>{`
+                        @media (max-width: 768px) {
+                            .mobile-column-reverse { flex-direction: column-reverse !important; align-items: stretch !important; }
+                            .mobile-column-reverse .btn { width: 100% !important; margin-left: 0 !important; }
+                        }
+                    `}</style>
+                    <div className="flex items-center gap-sm mobile-column-reverse">
                         {isAppending && (
                             <button className="btn btn-ghost" onClick={handleStartFresh}>
                                 Start New Trip
                             </button>
                         )}
                         <button
-                            className="btn btn-primary import-parse-btn"
+                            className="btn btn-primary"
+                            style={{ marginLeft: 'auto' }}
                             onClick={handleParse}
                             disabled={!rawText.trim()}
                         >
@@ -469,12 +477,21 @@ const ImportItinerary: React.FC = () => {
 
             {/* Preview Stage */}
             {stage === 'preview' && parsed && grouped && (() => { globalIdx = 0; return true; })() && (
-                <div className="import-preview">
-                    <div className="import-sticky-actions">
-                        <button className="btn btn-ghost import-discard-btn" onClick={handleDiscard}>
+                <div className="flex flex-col gap-xl">
+                    <style>{`
+                        @media (max-width: 768px) {
+                            .mobile-actions { flex-wrap: wrap !important; padding: 0.5rem 0.75rem !important; }
+                            .mobile-actions-right { width: 100% !important; display: flex; gap: 0.75rem; }
+                            .mobile-actions-right .btn { flex: 1; }
+                            .mobile-discard { width: 100% !important; margin-bottom: 0.5rem; }
+                            .mobile-edit-row { flex-direction: column !important; align-items: stretch !important; gap: 0.5rem !important; }
+                        }
+                    `}</style>
+                    <div className="sticky-actions mobile-actions">
+                        <button className="btn btn-ghost mobile-discard" style={{ color: 'var(--error-color)' }} onClick={handleDiscard}>
                             Discard
                         </button>
-                        <div className="import-actions-right">
+                        <div className="flex items-center gap-sm mobile-actions-right">
                             <button className="btn btn-ghost" onClick={() => { setStage('input'); setError(null); }}>
                                 Re-paste
                             </button>
@@ -488,33 +505,33 @@ const ImportItinerary: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="import-preview-header card">
+                    <div className="card p-xl flex flex-col gap-sm" style={{ background: 'linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 6%, transparent), color-mix(in srgb, var(--secondary-color) 6%, transparent))' }}>
                         {isAppending ? (
                             <>
-                                <p className="import-preview-append-label">Adding to</p>
-                                <h2>{activeTripName}</h2>
+                                <p className="text-xs text-tertiary uppercase font-semibold mb-0" style={{ letterSpacing: '0.05em' }}>Adding to</p>
+                                <h2 className="text-xl mb-xs">{activeTripName}</h2>
                             </>
                         ) : (
-                            <div className="import-edit-row">
-                                <div className="import-edit-group import-edit-name">
-                                    <label className="input-label">Trip name</label>
+                            <div className="flex items-end gap-sm mobile-edit-row">
+                                <div className="flex flex-col gap-xs flex-1" style={{ minWidth: 0 }}>
+                                    <label className="text-xs text-tertiary uppercase font-semibold" style={{ letterSpacing: '0.04em' }}>Trip name</label>
                                     <input
                                         className="input-field"
                                         value={parsed.tripName}
                                         onChange={e => updateParsedField('tripName', e.target.value)}
                                     />
                                 </div>
-                                <div className="import-edit-group">
-                                    <label className="input-label">Currency</label>
+                                <div className="flex flex-col gap-xs">
+                                    <label className="text-xs text-tertiary uppercase font-semibold" style={{ letterSpacing: '0.04em' }}>Currency</label>
                                     <select className="input-field" value={currency} onChange={e => setCurrency(e.target.value)}>
                                         {CURRENCY_LIST.map(c => <option key={c} value={c}>{c}</option>)}
                                     </select>
                                 </div>
                             </div>
                         )}
-                        <div className="import-edit-row import-edit-dates">
-                            <div className="import-edit-group">
-                                <label className="input-label">Start</label>
+                        <div className="flex items-end gap-sm mobile-edit-row" style={{ flexDirection: 'row' }}>
+                            <div className="flex flex-col gap-xs flex-1" style={{ minWidth: 0 }}>
+                                <label className="text-xs text-tertiary uppercase font-semibold" style={{ letterSpacing: '0.04em' }}>Start</label>
                                 <input
                                     type="date"
                                     className="input-field"
@@ -522,8 +539,8 @@ const ImportItinerary: React.FC = () => {
                                     onChange={e => updateParsedField('startDate', e.target.value)}
                                 />
                             </div>
-                            <div className="import-edit-group">
-                                <label className="input-label">End</label>
+                            <div className="flex flex-col gap-xs flex-1" style={{ minWidth: 0 }}>
+                                <label className="text-xs text-tertiary uppercase font-semibold" style={{ letterSpacing: '0.04em' }}>End</label>
                                 <input
                                     type="date"
                                     className="input-field"
@@ -532,39 +549,41 @@ const ImportItinerary: React.FC = () => {
                                 />
                             </div>
                         </div>
-                        <p className="import-preview-count">
+                        <p className="text-sm text-tertiary mt-xs">
                             {parsed.activities.length} activit{parsed.activities.length === 1 ? 'y' : 'ies'} across {grouped.size} day{grouped.size === 1 ? '' : 's'}
                             {isAppending && <> &middot; {totalImported} already imported</>}
                         </p>
                     </div>
 
-                    <div className="import-day-list">
+                    <div className="flex flex-col gap-xl">
                         {[...grouped.entries()].map(([date, acts]) => (
-                            <div key={date} className="import-day-group">
-                                <h3 className="import-day-heading">{formatDate(date)}</h3>
-                                <div className="import-activity-list">
+                            <div key={date}>
+                                <h3 className="font-bold text-primary pb-xs mb-sm" style={{ fontSize: '0.95rem', borderBottom: '2px solid color-mix(in srgb, var(--primary-color) 15%, transparent)' }}>{formatDate(date)}</h3>
+                                <div className="flex flex-col gap-sm">
                                     {acts.map((act) => {
                                         const idx = globalIdx++;
                                         return (
-                                            <div key={idx} className="import-activity-card">
-                                                <span className="import-activity-emoji">
+                                            <div key={idx} className="flex items-start gap-sm p-sm bg-surface rounded-md border relative" style={{ padding: '0.65rem 0.85rem' }}>
+                                                <span className="shrink-0" style={{ fontSize: '1.1rem', marginTop: '0.35rem' }}>
                                                     {CATEGORY_EMOJIS[act.category || 'other']}
                                                 </span>
-                                                <div className="import-activity-body">
+                                                <div className="flex flex-col flex-1" style={{ minWidth: 0, gap: '0.25rem' }}>
                                                     <input
-                                                        className="import-inline-input import-inline-title"
+                                                        className="input-ghost font-semibold w-full text-base"
                                                         value={act.title}
                                                         onChange={e => updateActivity(idx, 'title', e.target.value)}
                                                     />
-                                                    <div className="import-inline-row">
+                                                    <div className="flex items-center gap-sm flex-wrap">
                                                         <input
                                                             type="time"
-                                                            className="import-inline-input import-inline-time"
+                                                            className="input-ghost text-xs text-tertiary"
+                                                            style={{ width: 'auto', maxWidth: '110px' }}
                                                             value={act.time || ''}
                                                             onChange={e => updateActivity(idx, 'time', e.target.value)}
                                                         />
                                                         <select
-                                                            className="import-inline-input import-inline-category"
+                                                            className="input-ghost text-xs text-secondary cursor-pointer"
+                                                            style={{ padding: '0.15rem 0.3rem' }}
                                                             value={act.category || 'other'}
                                                             onChange={e => updateActivity(idx, 'category', e.target.value)}
                                                         >
@@ -573,12 +592,13 @@ const ImportItinerary: React.FC = () => {
                                                             ))}
                                                         </select>
                                                     </div>
-                                                    {act.location && <span className="import-activity-location">{act.location}</span>}
-                                                    {act.details && <p className="import-activity-details">{act.details}</p>}
+                                                    {act.location && <span className="text-xs text-secondary px-1">{act.location}</span>}
+                                                    {act.details && <p className="text-sm text-secondary mt-xs px-1" style={{ lineHeight: 1.4 }}>{act.details}</p>}
                                                 </div>
                                                 <button
                                                     type="button"
-                                                    className="import-remove-btn"
+                                                    className="btn btn-ghost btn-icon shrink-0 mt-xs opacity-50 hover:opacity-100 hover:text-danger hover:bg-danger/10"
+                                                    style={{ padding: '0.25rem' }}
                                                     onClick={() => removeActivity(idx)}
                                                     aria-label="Remove activity"
                                                 >
@@ -593,15 +613,15 @@ const ImportItinerary: React.FC = () => {
                     </div>
 
                     {parsed.activities.length === 0 && (
-                        <div className="import-error">
-                            <AlertCircle size={16} />
+                        <div className="flex items-start gap-sm p-sm rounded-md text-sm mt-md" style={{ backgroundColor: 'color-mix(in srgb, var(--error-color) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--error-color) 25%, transparent)', color: 'var(--error-color)', lineHeight: 1.4 }}>
+                            <AlertCircle size={16} className="shrink-0 mt-0.5" />
                             <span>All activities have been removed. Add some back or discard this import.</span>
                         </div>
                     )}
 
                     {error && (
-                        <div className="import-error">
-                            <AlertCircle size={16} />
+                        <div className="flex items-start gap-sm p-sm rounded-md text-sm mt-md" style={{ backgroundColor: 'color-mix(in srgb, var(--error-color) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--error-color) 25%, transparent)', color: 'var(--error-color)', lineHeight: 1.4 }}>
+                            <AlertCircle size={16} className="shrink-0 mt-0.5" />
                             <span>{error}</span>
                         </div>
                     )}
@@ -610,7 +630,7 @@ const ImportItinerary: React.FC = () => {
 
             {/* Saving Stage */}
             {stage === 'saving' && (
-                <div className="import-saving">
+                <div className="flex flex-col items-center gap-sm text-tertiary" style={{ padding: '3rem 0' }}>
                     <Loader2 size={32} className="spin" />
                     <p>{isAppending ? 'Adding activities...' : 'Creating trip and activities...'}</p>
                 </div>
@@ -618,12 +638,12 @@ const ImportItinerary: React.FC = () => {
 
             {/* Done Stage */}
             {stage === 'done' && parsed && (
-                <div className="import-done">
-                    <div className="import-sticky-actions import-done-actions">
-                        <button className="btn btn-ghost" onClick={handleAddMore}>
+                <div className="flex flex-col items-center text-center gap-sm" style={{ padding: '3rem 1rem' }}>
+                    <div className="sticky-actions mobile-actions w-full" style={{ position: 'relative', top: 'unset', marginBottom: '1.5rem' }}>
+                        <button className="btn btn-ghost mobile-discard" onClick={handleAddMore}>
                             Add More Days
                         </button>
-                        <div className="import-actions-right">
+                        <div className="flex gap-sm items-center mobile-actions-right">
                             <button className="btn btn-ghost" onClick={handleStartFresh}>
                                 New Trip
                             </button>
@@ -632,9 +652,11 @@ const ImportItinerary: React.FC = () => {
                             </button>
                         </div>
                     </div>
-                    <div className="import-done-icon"><Check size={40} /></div>
-                    <h2>{isAppending ? 'Activities Added' : 'Trip Created'}</h2>
-                    <p>
+                    <div className="flex items-center justify-center text-secondary mb-sm" style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'color-mix(in srgb, var(--secondary-color) 12%, transparent)' }}>
+                        <Check size={40} />
+                    </div>
+                    <h2 className="text-xl">{isAppending ? 'Activities Added' : 'Trip Created'}</h2>
+                    <p className="text-secondary text-sm mb-sm">
                         "{activeTripName ?? parsed.tripName}" now has {totalImported} activit{totalImported === 1 ? 'y' : 'ies'}.
                     </p>
                 </div>

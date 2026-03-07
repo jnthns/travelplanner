@@ -4,7 +4,6 @@ import { useTrips, useActivities, useTransportRoutes } from '../lib/store';
 import { CATEGORY_EMOJIS, CATEGORY_COLORS } from '../lib/types';
 import { useLocalStorageState } from '../lib/persist';
 import { logEvent } from '../lib/amplitude';
-import './Budget.css';
 
 const CATEGORIES = ['sightseeing', 'food', 'accommodation', 'transport', 'shopping', 'other'] as const;
 const COMMON_CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY', 'KRW', 'SGD', 'THB', 'MXN'] as const;
@@ -34,7 +33,7 @@ const DonutChart: React.FC<{ segments: { label: string; value: number; color: st
     let offset = 0;
 
     return (
-        <div className="donut-wrapper">
+        <div className="flex flex-col items-center gap-sm shrink-0">
             <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
                 {segments.map((seg, i) => {
                     const pct = seg.value / total;
@@ -55,12 +54,12 @@ const DonutChart: React.FC<{ segments: { label: string; value: number; color: st
                     );
                 })}
             </svg>
-            <div className="donut-legend">
+            <div className="flex flex-col" style={{ gap: '0.2rem' }}>
                 {segments.map((seg, i) => (
-                    <div key={i} className="donut-legend-item">
-                        <span className="donut-swatch" style={{ backgroundColor: seg.color }} />
-                        <span className="donut-legend-label">{seg.label}</span>
-                        <span className="donut-legend-pct">{Math.round((seg.value / total) * 100)}%</span>
+                    <div key={i} className="flex items-center gap-xs" style={{ fontSize: '0.7rem' }}>
+                        <span className="shrink-0" style={{ width: '10px', height: '10px', borderRadius: '2px', backgroundColor: seg.color }} />
+                        <span className="capitalize text-secondary">{seg.label}</span>
+                        <span className="font-bold text-primary ml-auto text-right" style={{ minWidth: '30px' }}>{Math.round((seg.value / total) * 100)}%</span>
                     </div>
                 ))}
             </div>
@@ -210,7 +209,7 @@ const Budget: React.FC = () => {
 
     const tripRates = useMemo(() =>
         (selectedTripId && exchangeRates[selectedTripId]) || {},
-    [selectedTripId, exchangeRates]);
+        [selectedTripId, exchangeRates]);
 
     const convertedTotal = useMemo(() => {
         if (!displayCurrency) return null;
@@ -444,7 +443,7 @@ const Budget: React.FC = () => {
             days_with_any_activity: tripDays.filter(d => daysWithActivity.has(d)).length,
             days_with_any_cost: tripDays.filter(d => daysWithCost.has(d)).length,
         });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedTripId]);
 
     useEffect(() => { setLocationFilter(''); setTagFilter(''); }, [selectedTripId]);
@@ -459,9 +458,9 @@ const Budget: React.FC = () => {
     if (trips.length === 0) {
         return (
             <div className="page-container animate-fade-in">
-                <div className="empty-state">
-                    <div className="empty-icon">💰</div>
-                    <h2>No trips yet</h2>
+                <div className="text-center p-xl mx-auto" style={{ maxWidth: '400px' }}>
+                    <div className="mb-md" style={{ fontSize: '3rem', lineHeight: 1 }}>💰</div>
+                    <h2 className="mb-sm">No trips yet</h2>
                     <p>Create a trip from the Trips page to start tracking your budget.</p>
                 </div>
             </div>
@@ -478,25 +477,25 @@ const Budget: React.FC = () => {
             </header>
 
             {/* Controls */}
-            <div className="budget-controls">
-                <select className="input-field" value={selectedTripId || ''} onChange={e => setSelectedTripId(e.target.value || null)}>
+            <div className="flex items-center gap-md mb-xl flex-wrap">
+                <select className="input-field" style={{ maxWidth: '200px' }} value={selectedTripId || ''} onChange={e => setSelectedTripId(e.target.value || null)}>
                     <option value="">Select a trip...</option>
                     {trips.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
                 {uniqueLocations.length > 0 && selectedTrip && (
-                    <select className="input-field" value={locationFilter} onChange={e => setLocationFilter(e.target.value)}>
+                    <select className="input-field" style={{ maxWidth: '200px' }} value={locationFilter} onChange={e => setLocationFilter(e.target.value)}>
                         <option value="">All locations</option>
                         {uniqueLocations.map(loc => <option key={loc} value={loc}>📍 {loc}</option>)}
                     </select>
                 )}
                 {allTags.length > 0 && selectedTrip && (
-                    <select className="input-field" value={tagFilter} onChange={e => setTagFilter(e.target.value)}>
+                    <select className="input-field" style={{ maxWidth: '200px' }} value={tagFilter} onChange={e => setTagFilter(e.target.value)}>
                         <option value="">All tags</option>
                         {allTags.map(tag => <option key={tag} value={tag}>🏷️ {tag}</option>)}
                     </select>
                 )}
                 {usedCurrencies.length > 1 && selectedTrip && (
-                    <div className="budget-currency-toggle">
+                    <div className="flex items-center gap-sm">
                         <select className="input-field" value={displayCurrency} onChange={e => setDisplayCurrency(e.target.value)}>
                             <option value="">Multi-currency</option>
                             {COMMON_CURRENCIES.filter(c => usedCurrencies.includes(c) || c === (selectedTrip?.defaultCurrency || 'USD')).map(c =>
@@ -514,16 +513,17 @@ const Budget: React.FC = () => {
 
             {/* Exchange rate editor */}
             {showRateEditor && displayCurrency && selectedTripId && (
-                <div className="rate-editor card">
-                    <h4>Exchange Rates → {displayCurrency}</h4>
-                    <p className="rate-hint">Enter how much 1 unit of each currency is worth in {displayCurrency}.</p>
-                    <div className="rate-grid">
+                <div className="card p-md mb-xl">
+                    <h4 className="font-semibold text-sm mb-xs">Exchange Rates → {displayCurrency}</h4>
+                    <p className="text-xs text-tertiary mb-sm">Enter how much 1 unit of each currency is worth in {displayCurrency}.</p>
+                    <div className="flex flex-wrap gap-sm">
                         {usedCurrencies.filter(c => c !== displayCurrency).map(cur => (
-                            <div key={cur} className="rate-row">
-                                <label>1 {cur} =</label>
+                            <div key={cur} className="flex items-center gap-xs text-sm">
+                                <label style={{ fontWeight: 600, minWidth: '60px' }}>1 {cur} =</label>
                                 <input
                                     type="number"
                                     className="input-field"
+                                    style={{ width: '90px', maxWidth: '90px' }}
                                     step="0.0001"
                                     min="0"
                                     placeholder="1.0"
@@ -538,9 +538,9 @@ const Budget: React.FC = () => {
             )}
 
             {!selectedTrip && (
-                <div className="empty-state">
-                    <div className="empty-icon">💰</div>
-                    <h2>Select a trip</h2>
+                <div className="text-center p-xl mx-auto" style={{ maxWidth: '400px' }}>
+                    <div className="mb-md" style={{ fontSize: '3rem', lineHeight: 1 }}>💰</div>
+                    <h2 className="mb-sm">Select a trip</h2>
                     <p>Choose a trip above to see your budget breakdown.</p>
                 </div>
             )}
@@ -548,12 +548,12 @@ const Budget: React.FC = () => {
             {selectedTrip && (
                 <>
                     {/* Stats row */}
-                    <div className="budget-stats-row">
+                    <div className="grid gap-md mb-xl" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
                         {/* Grand total */}
-                        <div className="budget-stat-card card">
-                            <h3>Total Spending{locationFilter && ` — ${locationFilter}`}</h3>
+                        <div className="card p-md text-center">
+                            <h3 className="text-xs text-secondary uppercase mb-xs" style={{ letterSpacing: '0.05em' }}>Total Spending{locationFilter && ` — ${locationFilter}`}</h3>
                             {Object.keys(grandTotal).length > 0 ? (
-                                <div className="budget-stat-value">
+                                <div className="text-primary font-bold flex justify-center flex-wrap gap-sm mb-xs" style={{ fontSize: '1.6rem' }}>
                                     {displayCurrency && convertedTotal != null
                                         ? formatCurrency(convertedTotal, displayCurrency)
                                         : Object.entries(grandTotal).sort(([, a], [, b]) => b - a).map(([cur, amt]) => (
@@ -562,31 +562,31 @@ const Budget: React.FC = () => {
                                     }
                                 </div>
                             ) : (
-                                <p className="budget-no-data">No costs recorded yet.</p>
+                                <p className="text-sm text-tertiary italic mb-xs">No costs recorded yet.</p>
                             )}
-                            <span className="budget-stat-sub">{totalExpenses} expense{totalExpenses !== 1 ? 's' : ''} across {dailyBreakdown.length} day{dailyBreakdown.length !== 1 ? 's' : ''}</span>
+                            <span className="text-xs text-tertiary block">{totalExpenses} expense{totalExpenses !== 1 ? 's' : ''} across {dailyBreakdown.length} day{dailyBreakdown.length !== 1 ? 's' : ''}</span>
                         </div>
 
                         {/* Average daily */}
                         {avgDailySpend != null && avgDailySpend > 0 && (
-                            <div className="budget-stat-card card">
-                                <h3>Avg / Day</h3>
-                                <div className="budget-stat-value">
+                            <div className="card p-md text-center">
+                                <h3 className="text-xs text-secondary uppercase mb-xs" style={{ letterSpacing: '0.05em' }}>Avg / Day</h3>
+                                <div className="text-primary font-bold flex justify-center flex-wrap gap-sm mb-xs" style={{ fontSize: '1.6rem' }}>
                                     {displayCurrency
                                         ? formatCurrency(avgDailySpend, displayCurrency)
                                         : formatCurrency(avgDailySpend, usedCurrencies[0] || 'USD')
                                     }
                                 </div>
-                                <span className="budget-stat-sub">{allTripDays.length} day trip</span>
+                                <span className="text-xs text-tertiary block">{allTripDays.length} day trip</span>
                             </div>
                         )}
 
                         {/* Budget target */}
-                        <div className="budget-stat-card card budget-target-card">
-                            <h3>Budget Target</h3>
+                        <div className="card p-md text-center relative">
+                            <h3 className="text-xs text-secondary uppercase mb-xs" style={{ letterSpacing: '0.05em' }}>Budget Target</h3>
                             {showBudgetEditor ? (
-                                <div className="budget-target-editor">
-                                    <input type="number" className="input-field" placeholder="e.g. 2000" value={budgetInput} onChange={e => setBudgetInput(e.target.value)} min="0" step="1" />
+                                <div className="flex items-center gap-xs flex-wrap justify-center">
+                                    <input type="number" className="input-field" style={{ maxWidth: '100px' }} placeholder="e.g. 2000" value={budgetInput} onChange={e => setBudgetInput(e.target.value)} min="0" step="1" />
                                     <select className="input-field" value={budgetCurrInput} onChange={e => setBudgetCurrInput(e.target.value)}>
                                         {COMMON_CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
                                     </select>
@@ -595,21 +595,21 @@ const Budget: React.FC = () => {
                                 </div>
                             ) : budgetProgress ? (
                                 <>
-                                    <div className="budget-stat-value">{formatCurrency(budgetProgress.target, budgetCurrency)}</div>
-                                    <div className="budget-progress-track">
+                                    <div className="text-primary font-bold flex justify-center flex-wrap gap-sm mb-xs" style={{ fontSize: '1.6rem' }}>{formatCurrency(budgetProgress.target, budgetCurrency)}</div>
+                                    <div className="bg-border-light rounded-full overflow-hidden my-xs" style={{ height: '8px' }}>
                                         <div
-                                            className={`budget-progress-fill ${budgetProgress.pct >= 90 ? 'over' : ''}`}
-                                            style={{ width: `${budgetProgress.pct}%` }}
+                                            className={`rounded-full h-full transition-shadow ${budgetProgress.pct >= 90 ? 'bg-danger' : 'bg-primary'}`}
+                                            style={{ width: `${budgetProgress.pct}%`, transition: 'width 0.4s ease' }}
                                         />
                                     </div>
-                                    <span className="budget-stat-sub">
+                                    <span className="text-xs text-tertiary block mb-sm">
                                         {Math.round(budgetProgress.pct)}% used — {formatCurrency(budgetProgress.target - budgetProgress.spent, budgetCurrency)} remaining
                                     </span>
                                     <button className="btn btn-ghost btn-sm" onClick={() => setShowBudgetEditor(true)}>Edit</button>
                                 </>
                             ) : (
                                 <>
-                                    <p className="budget-no-data">No target set</p>
+                                    <p className="text-sm text-tertiary italic mb-xs">No target set</p>
                                     <button className="btn btn-outline btn-sm" onClick={() => setShowBudgetEditor(true)}>Set budget</button>
                                 </>
                             )}
@@ -618,11 +618,11 @@ const Budget: React.FC = () => {
 
                     {/* Donut + Category bars */}
                     {totalExpenses > 0 && (
-                        <div className="budget-section budget-category-section">
-                            <h2 className="budget-section-title">By Category</h2>
-                            <div className="budget-category-layout">
+                        <div className="mb-xl">
+                            <h2 className="text-lg font-primary mb-md">By Category</h2>
+                            <div className="flex gap-xl items-start" style={{ flexWrap: 'wrap' }}>
                                 {donutSegments.length > 1 && <DonutChart segments={donutSegments} />}
-                                <div className="budget-category-grid">
+                                <div className="flex flex-col gap-sm flex-1 min-w-0">
                                     {CATEGORIES.map(cat => {
                                         const totals = categoryBreakdown[cat];
                                         const sum = displayCurrency
@@ -631,15 +631,15 @@ const Budget: React.FC = () => {
                                         if (sum === 0) return null;
                                         const barWidth = categoryBarMax > 0 ? (sum / categoryBarMax) * 100 : 0;
                                         return (
-                                            <div key={cat} className="budget-category-row">
-                                                <div className="budget-cat-label">
-                                                    <span className="budget-cat-emoji">{CATEGORY_EMOJIS[cat]}</span>
-                                                    <span className="budget-cat-name">{cat}</span>
+                                            <div key={cat} className="grid items-center gap-md py-1 border-b" style={{ gridTemplateColumns: '140px 1fr auto' }}>
+                                                <div className="flex items-center gap-sm">
+                                                    <span className="text-base">{CATEGORY_EMOJIS[cat]}</span>
+                                                    <span className="text-sm font-semibold capitalize text-primary">{cat}</span>
                                                 </div>
-                                                <div className="budget-cat-bar-track">
-                                                    <div className="budget-cat-bar-fill" style={{ width: `${barWidth}%`, backgroundColor: CATEGORY_COLORS[cat] }} />
+                                                <div className="h-2 rounded-full bg-border-light overflow-hidden">
+                                                    <div className="h-full rounded-full transition-all duration-300 min-w-1" style={{ width: `${barWidth}%`, backgroundColor: CATEGORY_COLORS[cat] }} />
                                                 </div>
-                                                <div className="budget-cat-amounts">{renderAmount(totals)}</div>
+                                                <div className="flex flex-col items-end gap-0.5 text-sm font-bold text-primary min-w-[80px] text-right">{renderAmount(totals)}</div>
                                             </div>
                                         );
                                     })}
@@ -651,15 +651,15 @@ const Budget: React.FC = () => {
                                         if (trSum === 0) return null;
                                         const barW = categoryBarMax > 0 ? (trSum / categoryBarMax) * 100 : 0;
                                         return (
-                                            <div className="budget-category-row">
-                                                <div className="budget-cat-label">
-                                                    <span className="budget-cat-emoji">🚆</span>
-                                                    <span className="budget-cat-name">transport routes</span>
+                                            <div className="grid items-center gap-md py-1 border-b" style={{ gridTemplateColumns: '140px 1fr auto' }}>
+                                                <div className="flex items-center gap-sm">
+                                                    <span className="text-base">🚆</span>
+                                                    <span className="text-sm font-semibold capitalize text-primary">transport routes</span>
                                                 </div>
-                                                <div className="budget-cat-bar-track">
-                                                    <div className="budget-cat-bar-fill" style={{ width: `${barW}%`, backgroundColor: CATEGORY_COLORS['transport'] }} />
+                                                <div className="h-2 rounded-full bg-border-light overflow-hidden">
+                                                    <div className="h-full rounded-full transition-all duration-300 min-w-1" style={{ width: `${barW}%`, backgroundColor: CATEGORY_COLORS['transport'] }} />
                                                 </div>
-                                                <div className="budget-cat-amounts">{renderAmount(trTotals)}</div>
+                                                <div className="flex flex-col items-end gap-0.5 text-sm font-bold text-primary min-w-[80px] text-right">{renderAmount(trTotals)}</div>
                                             </div>
                                         );
                                     })()}
@@ -685,15 +685,15 @@ const Budget: React.FC = () => {
                                             : sumCurrency(totals);
                                         const barWidth = locationBarMax > 0 ? (sum / locationBarMax) * 100 : 0;
                                         return (
-                                            <div key={loc} className="budget-category-row">
-                                                <div className="budget-cat-label">
-                                                    <span className="budget-cat-emoji">{loc === 'Unassigned' ? '📌' : '📍'}</span>
-                                                    <span className="budget-cat-name">{loc}</span>
+                                            <div key={loc} className="grid items-center gap-md py-1 border-b" style={{ gridTemplateColumns: '140px 1fr auto' }}>
+                                                <div className="flex items-center gap-sm">
+                                                    <span className="text-base">{loc === 'Unassigned' ? '📌' : '📍'}</span>
+                                                    <span className="text-sm font-semibold capitalize text-primary">{loc}</span>
                                                 </div>
-                                                <div className="budget-cat-bar-track">
-                                                    <div className="budget-cat-bar-fill" style={{ width: `${barWidth}%`, backgroundColor: 'var(--primary-color)' }} />
+                                                <div className="h-2 rounded-full bg-border-light overflow-hidden">
+                                                    <div className="h-full rounded-full transition-all duration-300 min-w-1" style={{ width: `${barWidth}%`, backgroundColor: 'var(--primary-color)' }} />
                                                 </div>
-                                                <div className="budget-cat-amounts">{renderAmount(totals)}</div>
+                                                <div className="flex flex-col items-end gap-0.5 text-sm font-bold text-primary min-w-[80px] text-right">{renderAmount(totals)}</div>
                                             </div>
                                         );
                                     })}
@@ -703,29 +703,31 @@ const Budget: React.FC = () => {
 
                     {/* Cumulative spend chart */}
                     {cumulativeData.length > 1 && cumulativeData[cumulativeData.length - 1].cumulative > 0 && (
-                        <div className="budget-section">
-                            <h2 className="budget-section-title">Cumulative Spending</h2>
-                            <div className="chart-container card">
-                                <CumulativeChart
-                                    days={cumulativeData}
-                                    budgetTarget={budgetTarget && displayCurrency === budgetCurrency ? budgetTarget : undefined}
-                                />
+                        <div className="mb-xl">
+                            <h2 className="text-lg font-primary mb-md">Cumulative Spending</h2>
+                            <div className="card p-md overflow-hidden">
+                                <div style={{ width: '100%', height: 'auto', display: 'block' }}>
+                                    <CumulativeChart
+                                        days={cumulativeData}
+                                        budgetTarget={budgetTarget && displayCurrency === budgetCurrency ? budgetTarget : undefined}
+                                    />
+                                </div>
                             </div>
                         </div>
                     )}
 
                     {/* Top expenses */}
                     {topExpenses.length > 0 && (
-                        <div className="budget-section">
-                            <h2 className="budget-section-title">Top Expenses</h2>
-                            <div className="top-expenses-list">
+                        <div className="mb-xl">
+                            <h2 className="text-lg font-primary mb-md">Top Expenses</h2>
+                            <div className="flex flex-col gap-sm">
                                 {topExpenses.map((item, i) => (
-                                    <div key={i} className="top-expense-row">
-                                        <span className="top-expense-rank">#{i + 1}</span>
-                                        <span className="top-expense-emoji">{item.emoji}</span>
-                                        <span className="top-expense-title">{item.title}</span>
-                                        <span className="top-expense-date">{(() => { try { return format(parseISO(item.date), 'MMM d'); } catch { return item.date; } })()}</span>
-                                        <span className="top-expense-cost">
+                                    <div key={i} className="flex items-center gap-sm px-3 py-1 rounded-sm bg-border-light text-sm">
+                                        <span className="font-bold text-primary text-xs" style={{ minWidth: '24px' }}>#{i + 1}</span>
+                                        <span className="shrink-0">{item.emoji}</span>
+                                        <span className="flex-1 font-medium truncate">{item.title}</span>
+                                        <span className="text-xs text-tertiary shrink-0">{(() => { try { return format(parseISO(item.date), 'MMM d'); } catch { return item.date; } })()}</span>
+                                        <span className="font-bold text-secondary shrink-0">
                                             {displayCurrency && item.converted != null
                                                 ? formatCurrency(item.converted, displayCurrency)
                                                 : formatCurrency(item.cost, item.currency)
@@ -739,9 +741,9 @@ const Budget: React.FC = () => {
 
                     {/* Daily breakdown */}
                     {dailyBreakdown.length > 0 && (
-                        <div className="budget-section">
-                            <h2 className="budget-section-title">By Day</h2>
-                            <div className="budget-daily-grid">
+                        <div className="mb-xl">
+                            <h2 className="text-lg font-primary mb-md">By Day</h2>
+                            <div className="grid grid-cols-auto-300 gap-md">
                                 {dailyBreakdown.map(day => {
                                     const daySum = displayCurrency
                                         ? Object.entries(day.totals).reduce((s, [cur, amt]) => s + convertAmount(amt, cur, displayCurrency, tripRates), 0)
@@ -749,40 +751,40 @@ const Budget: React.FC = () => {
                                     const barWidth = maxDayTotal > 0 ? (daySum / maxDayTotal) * 100 : 0;
                                     const overAvg = avgDailySpend != null && daySum > avgDailySpend * 1.5;
                                     return (
-                                        <div key={day.dateStr} className={`budget-day-tile card ${overAvg ? 'over-budget' : ''}`}>
-                                            <div className="budget-day-header">
-                                                <div className="budget-day-date">
-                                                    <span className="budget-day-name">{format(day.date, 'EEE')}</span>
-                                                    <span className="budget-day-full">{format(day.date, 'MMM d')}</span>
+                                        <div key={day.dateStr} className={`card p-md ${overAvg ? 'border-l-[3px] border-l-danger' : ''}`}>
+                                            <div className="flex justify-between items-center mb-xs">
+                                                <div className="flex items-baseline gap-xs">
+                                                    <span className="font-bold text-sm text-primary">{format(day.date, 'EEE')}</span>
+                                                    <span className="text-xs text-secondary">{format(day.date, 'MMM d')}</span>
                                                 </div>
-                                                <div className="budget-day-total">
-                                                    <span className="budget-day-amount">
+                                                <div className="flex gap-sm">
+                                                    <span className="text-base font-bold text-secondary">
                                                         {displayCurrency ? formatCurrency(daySum, displayCurrency) : Object.entries(day.totals).map(([cur, amt]) => formatCurrency(amt, cur)).join(' / ')}
                                                     </span>
                                                 </div>
                                             </div>
-                                            {day.location && <span className="budget-day-location">📍 {day.location}</span>}
-                                            <div className="budget-day-bar-track">
-                                                <div className="budget-day-bar-fill" style={{ width: `${barWidth}%` }} />
+                                            {day.location && <span className="block text-xs text-tertiary mb-xs">📍 {day.location}</span>}
+                                            <div className="h-1 rounded-full bg-border-light overflow-hidden mb-sm">
+                                                <div className="h-full rounded-full transition-all duration-300 min-w-1" style={{ width: `${barWidth}%`, background: 'linear-gradient(90deg, var(--primary-color), var(--secondary-color))' }} />
                                             </div>
-                                            <div className="budget-day-items">
+                                            <div className="flex flex-col gap-1">
                                                 {day.activities.map(a => (
-                                                    <div key={a.id} className="budget-item">
-                                                        <span className="budget-item-emoji">{CATEGORY_EMOJIS[a.category || 'other']}</span>
-                                                        <span className="budget-item-title">
+                                                    <div key={a.id} className="flex items-center gap-xs py-1 px-2 rounded-sm bg-border-light text-xs">
+                                                        <span className="shrink-0">{CATEGORY_EMOJIS[a.category || 'other']}</span>
+                                                        <span className="flex-1 font-medium text-primary truncate">
                                                             {a.title}
-                                                            {a.tags && a.tags.length > 0 && <span className="budget-item-tags">{a.tags.map(t => `#${t}`).join(' ')}</span>}
+                                                            {a.tags && a.tags.length > 0 && <span className="ml-1 text-[10px] text-tertiary font-normal">{a.tags.map(t => `#${t}`).join(' ')}</span>}
                                                         </span>
-                                                        <span className="budget-item-cost">
+                                                        <span className="font-bold text-secondary shrink-0">
                                                             {displayCurrency ? formatCurrency(convertAmount(a.cost!, a.currency || 'USD', displayCurrency, tripRates), displayCurrency) : formatCurrency(a.cost!, a.currency || 'USD')}
                                                         </span>
                                                     </div>
                                                 ))}
                                                 {day.routes.map(r => (
-                                                    <div key={r.id} className="budget-item">
-                                                        <span className="budget-item-emoji">🚆</span>
-                                                        <span className="budget-item-title">{r.from} → {r.to}</span>
-                                                        <span className="budget-item-cost">
+                                                    <div key={r.id} className="flex items-center gap-xs py-1 px-2 rounded-sm bg-border-light text-xs">
+                                                        <span className="shrink-0">🚆</span>
+                                                        <span className="flex-1 font-medium text-primary truncate">{r.from} → {r.to}</span>
+                                                        <span className="font-bold text-secondary shrink-0">
                                                             {displayCurrency ? formatCurrency(convertAmount(r.cost!, r.currency || 'USD', displayCurrency, tripRates), displayCurrency) : formatCurrency(r.cost!, r.currency || 'USD')}
                                                         </span>
                                                     </div>
