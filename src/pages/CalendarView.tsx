@@ -12,6 +12,7 @@ import { CATEGORY_EMOJIS, CATEGORY_COLORS } from '../lib/types';
 import ActivityForm from '../components/ActivityForm';
 import DraggableList from '../components/DraggableList';
 import Markdown from '../components/Markdown';
+import SwipeableItem from '../components/SwipeableItem';
 import { useToast } from '../components/Toast';
 import { logEvent } from '../lib/amplitude';
 import './CalendarView.css';
@@ -63,6 +64,9 @@ const CalendarView: React.FC = () => {
     const [tripSummary, setTripSummary] = useState<{ summary: string; highlights: string[] } | null>(null);
     const [summaryLoading, setSummaryLoading] = useState(false);
     const [summaryError, setSummaryError] = useState<string | null>(null);
+    const [optimizationLoading, setOptimizationLoading] = useState(false);
+    const [optimizationError, setOptimizationError] = useState<string | null>(null);
+    const [optimizedRoute, setOptimizedRoute] = useState<{ recommendation: string; optimizedOrder: string[] } | null>(null);
 
     const selectedTrip = trips.find(t => t.id === selectedTripId);
 
@@ -225,6 +229,47 @@ Be specific to the actual destinations and activities. Each highlight should be 
         }
     };
 
+    const handleOptimizeRoute = async () => {
+        if (!selectedTrip || dayViewActivities.length < 2) return;
+        setOptimizationLoading(true);
+        setOptimizationError(null);
+        setOptimizedRoute(null);
+
+        const currentDayActs = dayViewActivities
+            .map(a => `ID: ${a.id} | Title: ${a.title} | Time: ${a.time || 'flexible'} | Location: ${a.location || 'none'} | Details: ${a.details || 'none'}`)
+            .join('\n');
+
+        const prompt = `Here are the activities planned for ${format(currentDate, 'yyyy-MM-dd')} on a trip to "${selectedTrip.name}":
+
+${currentDayActs}
+
+Respond with a JSON object matching this exact schema:
+{
+  "recommendation": "A 2-3 sentence explanation of why this new order is better (e.g. groups nearby locations, fixes awkward timing).",
+  "optimizedOrder": ["ID_1", "ID_2", "..."] // An array containing the exact IDs of all provided activities, but reordered for the most optimal route.
+}
+
+Ensure all provided activity IDs are included in the optimizedOrder array.`;
+
+        logEvent('Route Optimization Requested', { date: currentDateStr, activity_count: dayViewActivities.length });
+        try {
+            const raw = await generateWithGemini(prompt, {
+                maxTokens: 1024,
+                responseMimeType: 'application/json',
+                systemInstruction: "You are an expert travel logistician. Your goal is to minimize transit time and provide smooth chronological schedules."
+            });
+            const parsed = JSON.parse(raw) as { recommendation: string; optimizedOrder: string[] };
+            if (!parsed.recommendation || !Array.isArray(parsed.optimizedOrder) || parsed.optimizedOrder.length !== dayViewActivities.length) {
+                throw new Error('Invalid response format');
+            }
+            setOptimizedRoute(parsed);
+        } catch (e) {
+            setOptimizationError(e instanceof Error ? e.message : 'Optimization failed');
+        } finally {
+            setOptimizationLoading(false);
+        }
+    };
+
     return (
         <div className="page-container animate-fade-in">
             <header className="page-header">
@@ -340,15 +385,29 @@ Be specific to the actual destinations and activities. Each highlight should be 
                 <div className="day-detail-view">
                     {selectedTripId && tripActivitiesForSummary.length > 0 && (
                         <div className="day-summary-section">
-                            <button
-                                type="button"
-                                className="btn btn-sm ai-suggest-btn"
-                                onClick={handleGenerateSummary}
-                                disabled={summaryLoading}
-                            >
-                                {summaryLoading ? <><Loader2 size={14} className="spin" /> Generating…</> : 'AI Trip Summary'}
-                            </button>
+                            <div className="ai-buttons-row" style={{ display: 'flex', gap: '0.5rem' }}>
+                                <button
+                                    type="button"
+                                    className="btn btn-sm ai-suggest-btn"
+                                    onClick={handleGenerateSummary}
+                                    disabled={summaryLoading}
+                                >
+                                    {summaryLoading ? <><Loader2 size={14} className="spin" /> Generating…</> : 'AI Trip Summary'}
+                                </button>
+                                {dayViewActivities.length > 1 && (
+                                    <button
+                                        type="button"
+                                        className="btn btn-sm ai-suggest-btn"
+                                        onClick={handleOptimizeRoute}
+                                        disabled={optimizationLoading}
+                                    >
+                                        {optimizationLoading ? <><Loader2 size={14} className="spin" /> Optimizing…</> : 'Optimize Route'}
+                                    </button>
+                                )}
+                            </div>
                             {summaryError && <p className="ai-error">{summaryError}</p>}
+                            {optimizationError && <p className="ai-error">{optimizationError}</p>}
+
                             {tripSummary && (
                                 <div className="trip-summary-card card" style={{ padding: '1rem', marginTop: '0.75rem' }}>
                                     <h4 className="trip-summary-header">AI Trip Summary</h4>
@@ -359,6 +418,34 @@ Be specific to the actual destinations and activities. Each highlight should be 
                                         </ul>
                                     )}
                                     <button type="button" className="btn btn-ghost btn-sm" style={{ marginTop: '0.5rem' }} onClick={() => setTripSummary(null)}>Dismiss</button>
+                                </div>
+                            )}
+
+                            {optimizedRoute && (
+                                <div className="trip-summary-card card" style={{ padding: '1rem', marginTop: '0.75rem', borderLeft: '3px solid var(--primary-color)' }}>
+                                    <h4 className="trip-summary-header">AI Route Suggestion</h4>
+                                    <p className="trip-summary-text">{optimizedRoute.recommendation}</p>
+                                    <ul className="trip-summary-highlights" style={{ marginTop: '0.5rem' }}>
+                                        {optimizedRoute.optimizedOrder.map(id => {
+                                            const act = activities.find(a => a.id === id);
+                                            return act ? <li key={id}>{act.title} {act.time ? `(${act.time})` : ''}</li> : null;
+                                        })}
+                                    </ul>
+                                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                                        <button
+                                            type="button"
+                                            className="btn btn-primary btn-sm"
+                                            onClick={() => {
+                                                const updates = optimizedRoute.optimizedOrder.map((id, idx) => ({ id, order: idx }));
+                                                reorderActivities(updates);
+                                                setOptimizedRoute(null);
+                                                logEvent('Route Optimized List Applied');
+                                            }}
+                                        >
+                                            Apply Order
+                                        </button>
+                                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setOptimizedRoute(null)}>Dismiss</button>
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -412,25 +499,37 @@ Be specific to the actual destinations and activities. Each highlight should be 
                                     }}
                                 />
                             ) : (
-                                <div className="day-detail-activity card" style={{ borderLeftColor: getActivityColor(act) }}>
-                                    <div className="detail-header">
-                                        <span className="drag-handle" {...dragHandleProps}>
-                                            <GripVertical size={16} />
-                                        </span>
-                                        <span className="detail-emoji">{CATEGORY_EMOJIS[act.category || 'other']}</span>
-                                        <div>
-                                            <h4>{act.title}</h4>
-                                            {act.time && <span className="detail-time">{act.time}</span>}
+                                <SwipeableItem
+                                    onSwipeRight={() => setEditingActivityId(act.id)}
+                                    onSwipeLeft={() => {
+                                        deleteActivity(act.id);
+                                        logEvent('Activity Deleted', { activity_title: act.title, category: act.category, source: 'calendar_swipe' });
+                                        showToast(`"${act.title}" deleted`, () => {
+                                            restoreActivity(act);
+                                            logEvent('Activity Delete Undone', { activity_title: act.title });
+                                        });
+                                    }}
+                                >
+                                    <div className="day-detail-activity card" style={{ borderLeftColor: getActivityColor(act) }}>
+                                        <div className="detail-header">
+                                            <span className="drag-handle" {...dragHandleProps}>
+                                                <GripVertical size={16} />
+                                            </span>
+                                            <span className="detail-emoji">{CATEGORY_EMOJIS[act.category || 'other']}</span>
+                                            <div>
+                                                <h4>{act.title}</h4>
+                                                {act.time && <span className="detail-time">{act.time}</span>}
+                                            </div>
+                                            <div className="detail-actions">
+                                                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingActivityId(act.id)} aria-label="Edit"><Pencil size={16} /></button>
+                                            </div>
                                         </div>
-                                        <div className="detail-actions">
-                                            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingActivityId(act.id)} aria-label="Edit"><Pencil size={16} /></button>
-                                        </div>
+                                        {act.details && <Markdown className="detail-desc">{act.details}</Markdown>}
+                                        {act.location && <p className="detail-location">📍 {act.location}</p>}
+                                        {act.cost != null && <p className="detail-cost">💰 {act.currency || '$'}{act.cost.toFixed(2)}</p>}
+                                        {act.notes && <Markdown className="detail-notes">{act.notes}</Markdown>}
                                     </div>
-                                    {act.details && <Markdown className="detail-desc">{act.details}</Markdown>}
-                                    {act.location && <p className="detail-location">📍 {act.location}</p>}
-                                    {act.cost != null && <p className="detail-cost">💰 {act.currency || '$'}{act.cost.toFixed(2)}</p>}
-                                    {act.notes && <Markdown className="detail-notes">{act.notes}</Markdown>}
-                                </div>
+                                </SwipeableItem>
                             )
                         }
                     />

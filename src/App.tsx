@@ -17,6 +17,7 @@ const Budget = lazy(() => import('./pages/Budget'));
 const Notes = lazy(() => import('./pages/Notes'));
 const Settings = lazy(() => import('./pages/Settings'));
 const ImportItinerary = lazy(() => import('./pages/ImportItinerary'));
+const Assistant = lazy(() => import('./pages/Assistant'));
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -81,6 +82,7 @@ const App: React.FC = () => {
                     <Route path="/budget" element={<Budget />} />
                     <Route path="/notes" element={<Notes />} />
                     <Route path="/import" element={<ImportItinerary />} />
+                    <Route path="/assistant" element={<Assistant />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="*" element={<Navigate to="/spreadsheet" replace />} />
                   </Routes>
