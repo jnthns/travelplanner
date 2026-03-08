@@ -1,12 +1,11 @@
 import { GoogleGenAI } from '@google/genai';
 
 interface Env {
-    GEMINI_API_KEY: string;
+    GEMINI_API_KEYS: string; // Comma-separated list of keys
 }
 
 interface RequestBody {
     prompt: string;
-    maxTokens?: number;
     systemInstruction?: string;
     responseMimeType?: string;
     responseSchema?: Record<string, unknown>;
@@ -27,7 +26,6 @@ function json(data: unknown, status = 200): Response {
 
 export default {
     async fetch(request: Request, env: Env): Promise<Response> {
-        // Handle CORS preflight
         if (request.method === 'OPTIONS') {
             return new Response(null, { status: 204, headers: CORS_HEADERS });
         }
@@ -48,52 +46,71 @@ export default {
             return json({ error: 'Invalid JSON body' }, 400);
         }
 
-        const { prompt, maxTokens = 500, systemInstruction, responseMimeType, responseSchema } = body;
+        const { prompt, systemInstruction, responseMimeType, responseSchema } = body;
 
         if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
             return json({ error: 'prompt is required' }, 400);
         }
 
-        const clampedTokens = Math.min(Math.max(1, maxTokens), 65536);
+        const keys = (env.GEMINI_API_KEYS || '').split(',').map(k => k.trim()).filter(Boolean);
 
-        try {
-            const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
-
-            // Use models.generateContent — supports structured output config
-            // (interactions.create does NOT support generationConfig / responseMimeType)
-            const config: Record<string, unknown> = {
-                maxOutputTokens: clampedTokens,
-            };
-
-            if (responseMimeType) {
-                config.responseMimeType = responseMimeType;
-            }
-
-            if (responseSchema) {
-                config.responseJsonSchema = responseSchema;
-            }
-
-            if (systemInstruction) {
-                config.systemInstruction = systemInstruction;
-            }
-
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
-                contents: prompt,
-                config,
-            });
-
-            const text = response.text?.trim() ?? '';
-
-            if (!text) {
-                return json({ error: 'Empty response from model' }, 502);
-            }
-
-            return json({ text });
-        } catch (err) {
-            const message = err instanceof Error ? err.message : String(err);
-            const status = /429|rate/i.test(message) ? 429 : 500;
-            return json({ error: message }, status);
+        if (keys.length === 0) {
+            // Fallback for transition period if the user still only has the old GEMINI_API_KEY bound
+            const legacyKey = (env as any).GEMINI_API_KEY;
+            if (legacyKey) keys.push(legacyKey.trim());
+            else return json({ error: 'No API keys configured. Set GEMINI_API_KEYS secret.' }, 500);
         }
+
+        const config: Record<string, unknown> = {};
+        if (responseMimeType) config.responseMimeType = responseMimeType;
+        if (responseSchema) config.responseJsonSchema = responseSchema;
+        if (systemInstruction) config.systemInstruction = systemInstruction;
+
+        // Start at a random index to softly balance load across keys
+        const startIndex = Math.floor(Math.random() * keys.length);
+        let lastError: any = null;
+
+        for (let i = 0; i < keys.length; i++) {
+            const keyIndex = (startIndex + i) % keys.length;
+            const currentKey = keys[keyIndex];
+
+            try {
+                const ai = new GoogleGenAI({ apiKey: currentKey });
+
+                const response = await ai.models.generateContent({
+                    model: 'gemini-2.5-flash',
+                    contents: prompt,
+                    config,
+                });
+
+                const text = response.text?.trim() ?? '';
+
+                if (!text) {
+                    throw new Error('Empty response from model');
+                }
+
+                return json({ text });
+            } catch (err) {
+                lastError = err;
+                const message = err instanceof Error ? err.message : String(err);
+
+                // If rate limited or quota exceeded, loop to the next key.
+                if (/429|quota|rate|exhausted/i.test(message)) {
+                    console.log(`Key at index ${keyIndex} rate limited. Attempting next key...`);
+                    continue;
+                }
+
+                // If it's a 400 bad request (like malformed JSON schema), fail immediately. 
+                // There's no point wasting other keys on a bad request.
+                if (/400|invalid|bad/i.test(message)) {
+                    return json({ error: message }, 400);
+                }
+            }
+        }
+
+        // If we exhaust all keys and break out of the loop
+        const finalMessage = lastError instanceof Error ? lastError.message : String(lastError);
+        const status = /429|quota|rate/i.test(finalMessage) ? 429 : 500;
+        return json({ error: `All keys failed. Last error: ${finalMessage}` }, status);
     },
 };

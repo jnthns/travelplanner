@@ -1,13 +1,15 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { format, eachDayOfInterval, isSameDay, parseISO } from 'date-fns';
-import { Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Sunrise, Sun, Sunset, Clock, MapPin } from 'lucide-react';
+import { Plus, Users, Pencil, Trash2, ChevronLeft, ChevronRight, Sunrise, Sun, Sunset, Clock, MapPin } from 'lucide-react';
 import { useTrips, useActivities } from '../lib/store';
+import { useAuth } from '../lib/AuthContext';
 import type { Activity, Trip } from '../lib/types';
 import { CATEGORY_EMOJIS, CATEGORY_COLORS, TRIP_COLORS } from '../lib/types';
 import { useLocalStorageState } from '../lib/persist';
 import ActivityForm from '../components/ActivityForm';
 import TripForm from '../components/TripForm';
+import ShareModal from '../components/ShareModal';
 import Markdown from '../components/Markdown';
 import { useToast } from '../components/Toast';
 import { logEvent } from '../lib/amplitude';
@@ -45,6 +47,7 @@ const SpreadsheetView: React.FC = () => {
     const { trips, loading: tripsLoading, addTrip, updateTrip, deleteTrip, restoreTrip } = useTrips();
     const { activities, addActivity, updateActivity, deleteActivity, restoreActivity, getActivitiesByTrip } = useActivities();
     const { showToast } = useToast();
+    const { user } = useAuth();
 
     const [selectedTripId, setSelectedTripId] = useLocalStorageState<string | null>(
         'travelplanner_spreadsheet_selectedTripId',
@@ -53,6 +56,7 @@ const SpreadsheetView: React.FC = () => {
 
     const [showTripForm, setShowTripForm] = useState(false);
     const [editingTrip, setEditingTrip] = useState<string | null>(null);
+    const [sharingTrip, setSharingTrip] = useState<import('../lib/types').Trip | null>(null);
     const [tripFormError, setTripFormError] = useState<string | null>(null);
     const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
     const [addingCell, setAddingCell] = useState<{ date: string; slot: TimeSlot } | null>(null);
@@ -156,12 +160,13 @@ const SpreadsheetView: React.FC = () => {
         });
     };
 
-    const handleSaveActivity = (data: Omit<Activity, 'id' | 'userId'> | ({ id: string } & Partial<Omit<Activity, 'userId'>>)) => {
+    const handleSaveActivity = (data: Omit<Activity, 'id' | 'userId' | 'tripMembers'> | ({ id: string } & Partial<Omit<Activity, 'userId'>>)) => {
         if ('id' in data) {
             updateActivity(data.id, data);
             logEvent('Activity Updated', { activity_title: data.title, source: 'spreadsheet' });
         } else {
-            addActivity(data);
+            const trip = trips.find(t => t.id === selectedTripId);
+            addActivity(data as Omit<import('../lib/types').Activity, 'id' | 'userId' | 'tripMembers'>, trip?.members || []);
             logEvent('Activity Created', { activity_title: data.title, date: data.date, source: 'spreadsheet' });
         }
         setEditingActivity(null);
@@ -182,7 +187,7 @@ const SpreadsheetView: React.FC = () => {
 
     const cellKey = (dateStr: string, slot: TimeSlot) => `${dateStr}__${slot}`;
 
-    const handleSaveTrip = async (tripData: Omit<Trip, 'id' | 'userId'> | (Pick<Trip, 'id'> & Partial<Omit<Trip, 'id' | 'userId'>>)) => {
+    const handleSaveTrip = async (tripData: Omit<Trip, 'id' | 'userId' | 'members' | 'sharedWithEmails'> | (Pick<Trip, 'id'> & Partial<Omit<Trip, 'id' | 'userId'>>)) => {
         setTripFormError(null);
         try {
             if ('id' in tripData) {
@@ -286,6 +291,11 @@ const SpreadsheetView: React.FC = () => {
                         <div className={styles['trip-card-header']}>
                             <h3>{trip.name}</h3>
                             <div className={styles['trip-card-actions']} onClick={e => e.stopPropagation()}>
+                                {!user?.isAnonymous && trip.userId === user?.uid && (
+                                    <button className="btn btn-ghost btn-sm" onClick={() => setSharingTrip(trip)} title="Share Trip">
+                                        <Users size={14} />
+                                    </button>
+                                )}
                                 <button className="btn btn-ghost btn-sm" onClick={() => { setEditingTrip(trip.id); setShowTripForm(true); }}>
                                     <Pencil size={14} />
                                 </button>
@@ -486,6 +496,13 @@ const SpreadsheetView: React.FC = () => {
                     </div>
                 </div>,
                 document.body,
+            )}
+
+            {sharingTrip && (
+                <ShareModal
+                    trip={sharingTrip}
+                    onClose={() => setSharingTrip(null)}
+                />
             )}
         </div>
     );

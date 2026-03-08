@@ -5,7 +5,7 @@ export const TRIP_COLORS = [
 
 export interface Trip {
     id: string;
-    userId: string;
+    userId: string; // owner UID
     name: string;
     startDate: string; // ISO date
     endDate: string;   // ISO date
@@ -15,13 +15,22 @@ export interface Trip {
     dayLocations?: Record<string, string>; // "YYYY-MM-DD" -> location name
     budgetTarget?: number;
     budgetCurrency?: string;
+    members: string[];          // [ownerUid, ...collaboratorUids]
+    sharedWithEmails: string[]; // display-only mirror of members
     _pendingWrite?: boolean;
+}
+
+export interface UserProfile {
+    uid: string;
+    email: string;
+    displayName?: string | null;
 }
 
 export interface ChatMessage {
     id: string; // usually same as createdAt timestamp for ease
     userId: string;
     tripId: string; // The trip context this chat was attached to
+    tripMembers: string[]; // denormalized from trip.members for security rules
     role: 'user' | 'model';
     content: string;
     createdAt: string; // ISO datetime. We will use this to age out older than 7 days.
@@ -37,6 +46,7 @@ export interface Activity {
     id: string;
     userId: string;
     tripId: string;
+    tripMembers: string[]; // denormalized from trip.members for security rules
     date: string; // ISO date YYYY-MM-DD
     title: string;
     details?: string;
@@ -56,6 +66,7 @@ export interface TransportRoute {
     id: string;
     userId: string;
     tripId: string;
+    tripMembers: string[]; // denormalized from trip.members for security rules
     date: string;
     type: 'flight' | 'train' | 'bus' | 'car' | 'ferry' | 'taxi' | 'walk' | 'other';
     from: string;
@@ -73,6 +84,7 @@ export interface Note {
     id: string;
     userId: string;
     tripId: string;
+    tripMembers: string[]; // denormalized from trip.members for security rules
     title: string;
     content: string;
     format: 'freeform' | 'bullet' | 'numbered';

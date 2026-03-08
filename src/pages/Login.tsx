@@ -57,7 +57,7 @@ const Login: React.FC = () => {
                 </div>
 
                 <p className="text-tertiary leading-relaxed" style={{ marginTop: '1.25rem', fontSize: '0.72rem' }}>
-                    Guest accounts are temporary. Sign in with Google to save your data long-term.
+                    Guest accounts are temporary and cannot share trips. Sign in with Google to save your data and collaborate with friends.
                 </p>
             </div>
         </div>

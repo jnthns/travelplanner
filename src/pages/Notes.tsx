@@ -70,14 +70,14 @@ const Notes: React.FC = () => {
                 images: data.images && data.images.length > 0 ? data.images : undefined,
                 createdAt: now,
                 updatedAt: now,
-            });
+            } as Omit<import('../lib/types').Note, 'id' | 'userId' | 'tripMembers'>, selectedTrip?.members || []);
             setShowNewForm(false);
             logEvent('Note Created', { trip_id: selectedTripId, format: data.format, image_count: data.images?.length ?? 0 });
         } catch (err) {
             console.error('Failed to add note:', err);
             setError(err instanceof Error ? err.message : 'Failed to save note. Check your connection and try again.');
         }
-    }, [selectedTripId, tripNotes.length, addNote]);
+    }, [selectedTripId, tripNotes.length, addNote, selectedTrip]);
 
     const handleUpdateNote = useCallback(async (id: string, data: Partial<Note>) => {
         setError(null);

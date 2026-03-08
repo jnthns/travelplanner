@@ -113,7 +113,7 @@ For each option use a bullet with:
 
 Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid superlatives.`;
         try {
-            const text = await generateWithGemini(prompt, 1000);
+            const text = await generateWithGemini(prompt);
             setAiRoutesSuggestion(text);
         } catch (e) {
             setAiRoutesError(e instanceof Error ? e.message : 'AI suggestion failed');
@@ -144,7 +144,7 @@ Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid 
             await updateRoute(editingRoute.id, routeData);
             logEvent('Route Updated', { transport_type: routeData.type, from: routeData.from, to: routeData.to, date: routeData.date });
         } else {
-            await addRoute(routeData);
+            await addRoute(routeData as Omit<TransportRoute, 'id' | 'userId' | 'tripMembers'>, selectedTrip?.members || []);
             logEvent('Route Created', { transport_type: routeData.type, from: routeData.from, to: routeData.to, date: routeData.date, cost: routeData.cost, currency: routeData.currency });
         }
         resetForm();

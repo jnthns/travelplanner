@@ -14,7 +14,7 @@ interface ActivityFormProps {
     existingActivity?: Activity;
     nextOrder: number;
     defaultCurrency?: string;
-    onSave: (activity: Omit<Activity, 'id' | 'userId'> | ({ id: string } & Partial<Omit<Activity, 'userId'>>)) => void;
+    onSave: (activity: Omit<Activity, 'id' | 'userId' | 'tripMembers'> | ({ id: string } & Partial<Omit<Activity, 'userId'>>)) => void;
     onCancel: () => void;
     onDelete?: () => void;
 }
@@ -79,7 +79,6 @@ Prioritize actionable advice over general description. Use engaging but factual 
         logEvent('AI Suggestion Requested', { activity_title: title.trim() });
         try {
             const text = await generateWithGemini(prompt, {
-                maxTokens: 1500,
                 systemInstruction: "You are an expert travel assistant."
             });
             setAiSuggestion(text);

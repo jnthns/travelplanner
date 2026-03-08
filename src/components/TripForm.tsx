@@ -10,7 +10,7 @@ const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD'] as const;
 
 interface TripFormProps {
     existing?: Trip;
-    onSave: (trip: Omit<Trip, 'id' | 'userId'> | (Pick<Trip, 'id'> & Partial<Omit<Trip, 'id' | 'userId'>>)) => void;
+    onSave: (trip: Omit<Trip, 'id' | 'userId' | 'members' | 'sharedWithEmails'> | (Pick<Trip, 'id'> & Partial<Omit<Trip, 'id' | 'userId'>>)) => void;
     onCancel: () => void;
 }
 
@@ -44,7 +44,6 @@ Format as a concise bullet list. Maximum 200 words. Be specific and practical.`;
         logEvent('AI Trip Autofill Requested', { trip_name: name.trim() });
         try {
             const text = await generateWithGemini(prompt, {
-                maxTokens: 600,
                 systemInstruction: "You are an expert travel planner."
             });
             setAiSuggestion(text);

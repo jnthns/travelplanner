@@ -29,19 +29,35 @@ type Stage = 'input' | 'preview' | 'saving' | 'done';
 const CATEGORY_LIST = ['sightseeing', 'food', 'accommodation', 'transport', 'shopping', 'other'] as const;
 const CURRENCY_LIST = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'KRW', 'TWD', 'THB', 'SGD'];
 
+// JSON Schema for Gemini structured output — guarantees valid JSON
+const ITINERARY_SCHEMA = {
+    type: 'object',
+    properties: {
+        tripName: { type: 'string' },
+        startDate: { type: 'string', description: 'YYYY-MM-DD' },
+        endDate: { type: 'string', description: 'YYYY-MM-DD' },
+        activities: {
+            type: 'array',
+            items: {
+                type: 'object',
+                properties: {
+                    date: { type: 'string', description: 'YYYY-MM-DD' },
+                    title: { type: 'string' },
+                    details: { type: 'string' },
+                    time: { type: 'string', description: 'HH:mm or null' },
+                    location: { type: 'string' },
+                    category: { type: 'string', enum: ['sightseeing', 'food', 'accommodation', 'transport', 'shopping', 'other'] },
+                },
+                required: ['date', 'title', 'category'],
+            },
+        },
+    },
+    required: ['tripName', 'startDate', 'endDate', 'activities'],
+};
+
 function buildPrompt(raw: string): string {
     const year = new Date().getFullYear();
-    return `Parse this travel itinerary into structured JSON.
-Be concise: omit fields that are null/empty, keep details under 80 chars.
-
-{
-  "tripName": "string",
-  "startDate": "YYYY-MM-DD",
-  "endDate": "YYYY-MM-DD",
-  "activities": [
-    { "date": "YYYY-MM-DD", "title": "string", "details": "string?", "time": "HH:mm?", "location": "string?", "category": "sightseeing|food|accommodation|transport|shopping|other" }
-  ]
-}
+    return `Parse this travel itinerary. Be concise: keep details under 80 chars.
 
 Rules:
 - Split each distinct activity/place into its own entry.
@@ -54,14 +70,28 @@ Itinerary:
 ${raw}`;
 }
 
-function tryParseJSON(text: string): ParsedItinerary | null {
+function tryParseJSON(text: string): { data: ParsedItinerary | null, cleanText: string } {
+    let cleanText = text.trim();
+    // Strip opening markdown codeblock if present
+    cleanText = cleanText.replace(/^```(?:json)?\s*/i, '');
+    // Strip closing markdown codeblock if present
+    cleanText = cleanText.replace(/\s*```$/, '');
+
     try {
-        const data = JSON.parse(text) as ParsedItinerary;
-        if (data.tripName && data.startDate && data.endDate && Array.isArray(data.activities) && data.activities.length > 0) {
-            return data;
+        const parsed = JSON.parse(cleanText) as Partial<ParsedItinerary>;
+        if (Array.isArray(parsed.activities) && parsed.activities.length > 0) {
+            const data: ParsedItinerary = {
+                tripName: parsed.tripName || "Imported Trip",
+                startDate: parsed.startDate || parsed.activities[0]?.date || new Date().toISOString().split('T')[0],
+                endDate: parsed.endDate || parsed.activities[parsed.activities.length - 1]?.date || new Date().toISOString().split('T')[0],
+                activities: parsed.activities,
+            };
+            return { data, cleanText };
         }
-    } catch { /* truncated or invalid */ }
-    return null;
+    } catch (e) {
+        console.error("JSON parse failure:", e, "\\nRaw text:", cleanText);
+    }
+    return { data: null, cleanText };
 }
 
 function splitIntoChunks(text: string, maxChunks: number): string[] {
@@ -167,7 +197,7 @@ const LoadingJokes: React.FC<{ progress: string }> = ({ progress }) => {
 
 const ImportItinerary: React.FC = () => {
     const navigate = useNavigate();
-    const { addTrip, updateTrip } = useTrips();
+    const { trips, addTrip, updateTrip } = useTrips();
     const { addActivity, getActivitiesByTrip } = useActivities();
 
     const [rawText, setRawText] = useLocalStorageState('travelplanner_import_raw', '');
@@ -215,12 +245,12 @@ const ImportItinerary: React.FC = () => {
 
     async function parseChunk(text: string): Promise<ParsedItinerary> {
         const response = await generateWithGemini(buildPrompt(text), {
-            maxTokens: 8000,
-            responseMimeType: 'application/json'
+            responseMimeType: 'application/json',
+            responseSchema: ITINERARY_SCHEMA,
         });
-        const result = tryParseJSON(response);
+        const { data: result, cleanText } = tryParseJSON(response);
         if (!result) {
-            const isTruncated = !/}\s*$/.test(response);
+            const isTruncated = !/}\s*$/.test(cleanText);
             throw new Error(
                 isTruncated
                     ? 'TRUNCATED'
@@ -302,9 +332,12 @@ const ImportItinerary: React.FC = () => {
 
         try {
             let tripId: string;
+            let tripMembers: string[] = [];
 
             if (isAppending && activeTripId) {
                 tripId = activeTripId;
+                const activeTrip = trips.find(t => t.id === tripId);
+                tripMembers = activeTrip?.members || (activeTrip ? [activeTrip.userId] : []);
                 await updateTrip(tripId, expandDateRange(tripId, parsed.startDate, parsed.endDate));
             } else {
                 const trip = await addTrip({
@@ -314,6 +347,7 @@ const ImportItinerary: React.FC = () => {
                     defaultCurrency: currency,
                 });
                 tripId = trip.id;
+                tripMembers = trip.members || [];
                 setActiveTripId(tripId);
                 setActiveTripName(parsed.tripName);
             }
@@ -340,7 +374,7 @@ const ImportItinerary: React.FC = () => {
                         location: act.location || undefined,
                         category: act.category || 'other',
                         order: startOrder + i,
-                    } as Omit<Activity, 'id' | 'userId'>);
+                    } as Omit<Activity, 'id' | 'userId' | 'tripMembers'>, tripMembers);
                     addedCount++;
                 }
             }

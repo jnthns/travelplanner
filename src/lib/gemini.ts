@@ -32,12 +32,12 @@ async function sleep(ms: number) {
  */
 export async function generateWithGemini(
   prompt: string,
-  options?: { maxTokens?: number; systemInstruction?: string; responseMimeType?: 'text/plain' | 'application/json', responseSchema?: Record<string, any> } | number
+  options?: { systemInstruction?: string; responseMimeType?: 'text/plain' | 'application/json', responseSchema?: Record<string, any> }
 ): Promise<string> {
-  const opts = typeof options === 'number' ? { maxTokens: options } : (options || {});
-  const { maxTokens = 500, systemInstruction, responseMimeType, responseSchema } = opts;
+  const opts = options || {};
+  const { systemInstruction, responseMimeType, responseSchema } = opts;
 
-  const key = `${maxTokens}:${responseMimeType || 'text/plain'}:${systemInstruction || ''}:${prompt}`;
+  const key = `${responseMimeType || 'text/plain'}:${systemInstruction || ''}:${prompt}`;
   const existing = inflight.get(key);
   if (existing) return existing;
 
@@ -55,7 +55,7 @@ export async function generateWithGemini(
         const response = await fetch(`${proxyUrl}/generate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt, maxTokens, systemInstruction, responseMimeType, responseSchema }),
+          body: JSON.stringify({ prompt, systemInstruction, responseMimeType, responseSchema }),
         });
 
         const data = await response.json() as { text?: string; error?: string };

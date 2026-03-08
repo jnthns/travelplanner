@@ -156,7 +156,7 @@ const CalendarView: React.FC = () => {
         .sort((a, b) => a.order - b.order);
 
     const handleSaveActivity = (
-        activityData: Omit<import('../lib/types').Activity, 'id' | 'userId'> | ({ id: string } & Partial<Omit<import('../lib/types').Activity, 'userId'>>),
+        activityData: Omit<import('../lib/types').Activity, 'id' | 'userId' | 'tripMembers'> | ({ id: string } & Partial<Omit<import('../lib/types').Activity, 'userId'>>),
         forDate?: string,
     ) => {
         const targetDate = forDate ?? currentDateStr;
@@ -170,7 +170,7 @@ const CalendarView: React.FC = () => {
                 date: targetDate,
                 order: ('order' in activityData ? activityData.order : orderFallback) ?? orderFallback,
                 title: ('title' in activityData ? activityData.title : '') || 'Activity',
-            } as Omit<import('../lib/types').Activity, 'id'>);
+            } as Omit<import('../lib/types').Activity, 'id' | 'userId' | 'tripMembers'>, selectedTrip?.members || []);
         }
         setAddingActivityForDate(null);
         setEditingActivityId(null);
@@ -216,7 +216,6 @@ Be specific to the actual destinations and activities. Each highlight should be 
         logEvent('Trip Summary Requested', { trip_name: selectedTrip.name, activity_count: tripActivitiesForSummary.length });
         try {
             const raw = await generateWithGemini(prompt, {
-                maxTokens: 20000,
                 responseMimeType: 'application/json'
             });
             const parsed = JSON.parse(raw) as { summary: string; highlights: string[] };
@@ -255,7 +254,6 @@ Ensure all provided activity IDs are included in the optimizedOrder array.`;
         logEvent('Route Optimization Requested', { date: currentDateStr, activity_count: dayViewActivities.length });
         try {
             const raw = await generateWithGemini(prompt, {
-                maxTokens: 4096,
                 responseMimeType: 'application/json',
                 systemInstruction: "You are an expert travel logistician. Your goal is to minimize transit time and provide smooth chronological schedules."
             });

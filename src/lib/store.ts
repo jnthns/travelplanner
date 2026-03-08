@@ -10,6 +10,8 @@ import {
     doc,
     onSnapshot,
     writeBatch,
+    and,
+    or,
     type Unsubscribe,
 } from 'firebase/firestore';
 import { db } from './firebase';
@@ -36,7 +38,13 @@ export function useTrips() {
         }
         let unsub: Unsubscribe;
         try {
-            const q = query(collection(db, 'trips'), where('userId', '==', user.uid));
+            const q = query(
+                collection(db, 'trips'),
+                or(
+                    where('members', 'array-contains', user.uid),
+                    where('userId', '==', user.uid)
+                )
+            );
             unsub = onSnapshot(
                 q,
                 (snapshot) => {
@@ -56,10 +64,16 @@ export function useTrips() {
         return () => unsub?.();
     }, [user?.uid]);
 
-    const addTrip = useCallback(async (trip: Omit<Trip, 'id' | 'userId'>) => {
+    const addTrip = useCallback(async (trip: Omit<Trip, 'id' | 'userId' | 'members' | 'sharedWithEmails'>) => {
         if (!user) throw new Error('Not authenticated');
-        const docRef = await addDoc(collection(db, 'trips'), stripUndefined({ ...trip, userId: user.uid }));
-        return { ...trip, id: docRef.id, userId: user.uid } as Trip;
+        const newTrip = {
+            ...trip,
+            userId: user.uid,
+            members: [user.uid],
+            sharedWithEmails: [],
+        };
+        const docRef = await addDoc(collection(db, 'trips'), stripUndefined(newTrip));
+        return { ...newTrip, id: docRef.id } as Trip;
     }, [user]);
 
     const updateTrip = useCallback(async (id: string, updates: Partial<Trip>) => {
@@ -92,7 +106,13 @@ export function useActivities() {
         }
         let unsub: Unsubscribe;
         try {
-            const q = query(collection(db, 'activities'), where('userId', '==', user.uid));
+            const q = query(
+                collection(db, 'activities'),
+                or(
+                    where('tripMembers', 'array-contains', user.uid),
+                    where('userId', '==', user.uid)
+                )
+            );
             unsub = onSnapshot(
                 q,
                 (snapshot) => {
@@ -112,10 +132,10 @@ export function useActivities() {
         return () => unsub?.();
     }, [user?.uid]);
 
-    const addActivity = useCallback(async (activity: Omit<Activity, 'id' | 'userId'>) => {
+    const addActivity = useCallback(async (activity: Omit<Activity, 'id' | 'userId' | 'tripMembers'>, tripMembers: string[]) => {
         if (!user) throw new Error('Not authenticated');
-        const docRef = await addDoc(collection(db, 'activities'), stripUndefined({ ...activity, userId: user.uid }));
-        return { ...activity, id: docRef.id, userId: user.uid } as Activity;
+        const docRef = await addDoc(collection(db, 'activities'), stripUndefined({ ...activity, userId: user.uid, tripMembers }));
+        return { ...activity, id: docRef.id, userId: user.uid, tripMembers } as Activity;
     }, [user]);
 
     const updateActivity = useCallback(async (id: string, updates: Partial<Activity>) => {
@@ -172,7 +192,13 @@ export function useTransportRoutes() {
         }
         let unsub: Unsubscribe;
         try {
-            const q = query(collection(db, 'transportRoutes'), where('userId', '==', user.uid));
+            const q = query(
+                collection(db, 'transportRoutes'),
+                or(
+                    where('tripMembers', 'array-contains', user.uid),
+                    where('userId', '==', user.uid)
+                )
+            );
             unsub = onSnapshot(
                 q,
                 (snapshot) => {
@@ -192,10 +218,10 @@ export function useTransportRoutes() {
         return () => unsub?.();
     }, [user?.uid]);
 
-    const addRoute = useCallback(async (route: Omit<TransportRoute, 'id' | 'userId'>) => {
+    const addRoute = useCallback(async (route: Omit<TransportRoute, 'id' | 'userId' | 'tripMembers'>, tripMembers: string[]) => {
         if (!user) throw new Error('Not authenticated');
-        const docRef = await addDoc(collection(db, 'transportRoutes'), stripUndefined({ ...route, userId: user.uid }));
-        return { ...route, id: docRef.id, userId: user.uid } as TransportRoute;
+        const docRef = await addDoc(collection(db, 'transportRoutes'), stripUndefined({ ...route, userId: user.uid, tripMembers }));
+        return { ...route, id: docRef.id, userId: user.uid, tripMembers } as TransportRoute;
     }, [user]);
 
     const updateRoute = useCallback(async (id: string, updates: Partial<TransportRoute>) => {
@@ -233,7 +259,13 @@ export function useNotes() {
         }
         let unsub: Unsubscribe;
         try {
-            const q = query(collection(db, 'notes'), where('userId', '==', user.uid));
+            const q = query(
+                collection(db, 'notes'),
+                or(
+                    where('tripMembers', 'array-contains', user.uid),
+                    where('userId', '==', user.uid)
+                )
+            );
             unsub = onSnapshot(
                 q,
                 (snapshot) => {
@@ -253,10 +285,10 @@ export function useNotes() {
         return () => unsub?.();
     }, [user?.uid]);
 
-    const addNote = useCallback(async (note: Omit<Note, 'id' | 'userId'>) => {
+    const addNote = useCallback(async (note: Omit<Note, 'id' | 'userId' | 'tripMembers'>, tripMembers: string[]) => {
         if (!user) throw new Error('Not authenticated');
-        const docRef = await addDoc(collection(db, 'notes'), stripUndefined({ ...note, userId: user.uid }));
-        return { ...note, id: docRef.id, userId: user.uid } as Note;
+        const docRef = await addDoc(collection(db, 'notes'), stripUndefined({ ...note, userId: user.uid, tripMembers }));
+        return { ...note, id: docRef.id, userId: user.uid, tripMembers } as Note;
     }, [user]);
 
     const updateNote = useCallback(async (id: string, updates: Partial<Note>) => {
@@ -310,9 +342,14 @@ export function useChatHistory(tripId: string | null) {
         try {
             const q = query(
                 collection(db, 'chat_history'),
-                where('userId', '==', user.uid),
-                where('tripId', '==', tripId),
-                where('createdAt', '>=', cutoffISO)
+                and(
+                    or(
+                        where('tripMembers', 'array-contains', user.uid),
+                        where('userId', '==', user.uid)
+                    ),
+                    where('tripId', '==', tripId),
+                    where('createdAt', '>=', cutoffISO)
+                )
             );
 
             unsub = onSnapshot(

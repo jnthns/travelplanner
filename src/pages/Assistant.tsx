@@ -75,7 +75,7 @@ ${tripActs || "None planned yet."}`;
                 order: Date.now(),
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
-            });
+            } as Omit<import('../lib/types').Note, 'id' | 'userId' | 'tripMembers'>, selectedTrip?.members || []);
             setSavedNotes(prev => ({ ...prev, [msgId]: true }));
         } catch (e) {
             console.error('Failed to save note', e);
@@ -96,7 +96,7 @@ ${tripActs || "None planned yet."}`;
                     location: act.location || '',
                     category: act.category || 'other',
                     order: i * 10
-                });
+                } as Omit<import('../lib/types').Activity, 'id' | 'userId' | 'tripMembers'>, selectedTrip?.members || []);
             }
             setImportedPayloads(prev => ({ ...prev, [msgId]: true }));
         } catch (e) {
@@ -121,6 +121,7 @@ ${tripActs || "None planned yet."}`;
             // Immediately sync to Firebase
             await addMessage({
                 tripId: selectedTripId,
+                tripMembers: selectedTrip?.members || [],
                 role: 'user',
                 content: userMsg,
                 createdAt: new Date().toISOString()
@@ -153,12 +154,12 @@ ${tripActs || "None planned yet."}`;
             ${tripContext}`;
 
             const responseText = await generateWithGemini(prompt, {
-                maxTokens: 8192,
                 systemInstruction
             });
 
             await addMessage({
                 tripId: selectedTripId,
+                tripMembers: selectedTrip?.members || [],
                 role: 'model',
                 content: responseText,
                 createdAt: new Date().toISOString()
@@ -169,6 +170,7 @@ ${tripActs || "None planned yet."}`;
             try {
                 await addMessage({
                     tripId: selectedTripId,
+                    tripMembers: selectedTrip?.members || [],
                     role: 'model',
                     content: '⚠️ Sorry, I encountered an error answering your question. Please try again.',
                     createdAt: new Date().toISOString()

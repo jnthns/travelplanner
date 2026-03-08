@@ -6,7 +6,8 @@ import {
     signOut as firebaseSignOut,
     type User,
 } from 'firebase/auth';
-import { auth, googleProvider } from './firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { auth, googleProvider, db } from './firebase';
 
 interface AuthContextType {
     user: User | null;
@@ -23,9 +24,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const unsub = onAuthStateChanged(auth, (u) => {
+        const unsub = onAuthStateChanged(auth, async (u) => {
             setUser(u);
             setLoading(false);
+
+            // Upsert public user profile for sharing/lookup (skip anonymous users)
+            if (u && !u.isAnonymous && u.email) {
+                try {
+                    await setDoc(doc(db, 'users', u.uid), {
+                        uid: u.uid,
+                        email: u.email,
+                        displayName: u.displayName ?? null,
+                    }, { merge: true });
+                } catch (e) {
+                    // Non-critical — don't block app startup
+                    console.warn('Failed to upsert user profile:', e);
+                }
+            }
         });
         return unsub;
     }, []);
