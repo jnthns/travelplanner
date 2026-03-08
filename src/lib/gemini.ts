@@ -1,5 +1,5 @@
+
 const MIN_CALL_SPACING_MS = 1200;
-const MAX_RETRIES = 2;
 
 let lastCallAt = 0;
 const inflight = new Map<string, Promise<string>>();
@@ -32,10 +32,10 @@ async function sleep(ms: number) {
  */
 export async function generateWithGemini(
   prompt: string,
-  options?: { maxTokens?: number; systemInstruction?: string; responseMimeType?: 'text/plain' | 'application/json' } | number
+  options?: { maxTokens?: number; systemInstruction?: string; responseMimeType?: 'text/plain' | 'application/json', responseSchema?: Record<string, any> } | number
 ): Promise<string> {
   const opts = typeof options === 'number' ? { maxTokens: options } : (options || {});
-  const { maxTokens = 500, systemInstruction, responseMimeType } = opts;
+  const { maxTokens = 500, systemInstruction, responseMimeType, responseSchema } = opts;
 
   const key = `${maxTokens}:${responseMimeType || 'text/plain'}:${systemInstruction || ''}:${prompt}`;
   const existing = inflight.get(key);
@@ -55,7 +55,7 @@ export async function generateWithGemini(
         const response = await fetch(`${proxyUrl}/generate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt, maxTokens, systemInstruction, responseMimeType }),
+          body: JSON.stringify({ prompt, maxTokens, systemInstruction, responseMimeType, responseSchema }),
         });
 
         const data = await response.json() as { text?: string; error?: string };
@@ -69,8 +69,8 @@ export async function generateWithGemini(
         if (!text) throw new Error('Empty response from AI proxy');
         return text;
       } catch (err) {
-        if (attempt < MAX_RETRIES && isRateLimitError(err)) {
-          const backoff = 1000 * Math.pow(2, attempt);
+        if (attempt < 3 && isRateLimitError(err)) {
+          const backoff = 1000 * Math.pow(2, attempt) + Math.random() * 500;
           attempt += 1;
           await sleep(backoff);
           continue;

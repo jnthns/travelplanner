@@ -1,35 +1,12 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, Check, AlertCircle, Plus, X, Plane } from 'lucide-react';
 import { useTrips, useActivities } from '../lib/store';
+import { useLocalStorageState } from '../hooks/useLocalStorageState';
 import { CATEGORY_EMOJIS } from '../lib/types';
 import type { Activity } from '../lib/types';
 import { generateWithGemini } from '../lib/gemini';
 import { logEvent } from '../lib/amplitude';
-
-
-const TRAVEL_JOKES = [
-    "My travel budget is like my liver — absolutely destroyed by the end of every trip.",
-    "TSA took my dignity, my water bottle, and somehow still missed the emotional baggage.",
-    "I told my boss I needed a trip to find myself. Turns out I was at the hotel bar the whole time.",
-    "The only thing getting laid on this vacation is my suitcase — flat on the airport floor.",
-    "Jet lag is just your body saying 'what the hell did you do to me' in every time zone.",
-    "My travel philosophy: if you haven't ugly-cried in a foreign airport, you haven't truly lived.",
-    "The hostel said 'shared bathroom.' They didn't mention I'd be sharing it with the devil himself.",
-    "Nothing says 'vacation' like diarrhea in a country where you can't read the pharmacy signs.",
-    "I spent $200 on a 'scenic tour' that was basically a drunk guy with a van and strong opinions.",
-    "My packing list: clothes, passport, poor decisions, and an unreasonable amount of Imodium.",
-    "Airplane wine is just grape-flavored regret served at 35,000 feet.",
-    "I don't always get upgraded, but when I do, it's because someone threw up in first class.",
-    "Hotel 'continental breakfast' is just sad croissants and the crushing weight of expectations.",
-    "I came for the culture. I stayed because I couldn't figure out the damn bus schedule.",
-    "The resort called it an 'infinity pool.' Infinite was also how long I waited for a damn towel.",
-    "My Uber driver in Bali had no GPS, no AC, and absolutely no f***s to give.",
-    "Customs asked if I had anything to declare. I said 'just my crippling fear of commitment.'",
-    "Middle seat, crying baby, broken AC — the holy trinity of air travel suffering.",
-    "I booked a 'beachfront' hotel. The beach was a lie. The front was a parking lot.",
-    "They say travel broadens the mind. Mine just broadened my credit card statement.",
-];
 
 interface ParsedActivity {
     date: string;
@@ -156,30 +133,34 @@ function formatDate(dateStr: string): string {
     }
 }
 
-const LoadingJokes: React.FC<{ progress: string }> = ({ progress }) => {
-    const [jokeIdx, setJokeIdx] = useState(() => Math.floor(Math.random() * TRAVEL_JOKES.length));
-    const [fade, setFade] = useState(true);
+const LOADING_MESSAGES = [
+    "Analyzing your itinerary...",
+    "Extracting dates and times...",
+    "Categorizing activities...",
+    "Structuring the schedule...",
+    "Almost done...",
+    "Just a little more..."
+];
 
-    useEffect(() => {
+const LoadingJokes: React.FC<{ progress: string }> = ({ progress }) => {
+    const [msgIdx, setMsgIdx] = React.useState(0);
+
+    React.useEffect(() => {
         const interval = setInterval(() => {
-            setFade(false);
-            setTimeout(() => {
-                setJokeIdx(prev => (prev + 1) % TRAVEL_JOKES.length);
-                setFade(true);
-            }, 300);
-        }, 4000);
+            setMsgIdx(prev => (prev + 1) % LOADING_MESSAGES.length);
+        }, 10000);
         return () => clearInterval(interval);
     }, []);
+
+    // Explicit progress overrides rotating messages (e.g. chunking progress)
+    const displayMessage = progress || LOADING_MESSAGES[msgIdx];
 
     return (
         <div className="flex flex-col items-center text-center gap-xl" style={{ padding: '4rem 2rem' }}>
             <div className="text-primary animate-plane-bob">
                 <Plane size={48} />
             </div>
-            <p className="flex items-center gap-sm text-sm text-tertiary loading-spinner-before">{progress || 'Parsing itinerary...'}</p>
-            <div className={`text-sm italic text-secondary transition-opacity duration-300 ${fade ? 'opacity-100' : 'opacity-0'}`} style={{ maxWidth: '480px', lineHeight: 1.5, minHeight: '3em', display: 'flex', alignItems: 'center' }}>
-                "{TRAVEL_JOKES[jokeIdx]}"
-            </div>
+            <p className="flex items-center gap-sm text-sm text-tertiary loading-spinner-before">{displayMessage}</p>
         </div>
     );
 };
@@ -189,9 +170,9 @@ const ImportItinerary: React.FC = () => {
     const { addTrip, updateTrip } = useTrips();
     const { addActivity, getActivitiesByTrip } = useActivities();
 
-    const [rawText, setRawText] = useState('');
-    const [stage, setStage] = useState<Stage>('input');
-    const [parsed, setParsed] = useState<ParsedItinerary | null>(null);
+    const [rawText, setRawText] = useLocalStorageState('travelplanner_import_raw', '');
+    const [stage, setStage] = useLocalStorageState<Stage>('travelplanner_import_stage', 'input');
+    const [parsed, setParsed] = useLocalStorageState<ParsedItinerary | null>('travelplanner_import_parsed', null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [parseProgress, setParseProgress] = useState('');
@@ -204,25 +185,25 @@ const ImportItinerary: React.FC = () => {
     const isAppending = activeTripId !== null;
 
     const updateParsedField = useCallback((field: keyof ParsedItinerary, value: string) => {
-        setParsed(prev => prev ? { ...prev, [field]: value } : prev);
-    }, []);
+        setParsed((prev: ParsedItinerary | null) => prev ? { ...prev, [field]: value } : prev);
+    }, [setParsed]);
 
     const updateActivity = useCallback((index: number, field: keyof ParsedActivity, value: string) => {
-        setParsed(prev => {
+        setParsed((prev: ParsedItinerary | null) => {
             if (!prev) return prev;
             const activities = [...prev.activities];
             activities[index] = { ...activities[index], [field]: value || undefined };
             return { ...prev, activities };
         });
-    }, []);
+    }, [setParsed]);
 
     const removeActivity = useCallback((index: number) => {
-        setParsed(prev => {
+        setParsed((prev: ParsedItinerary | null) => {
             if (!prev) return prev;
-            const activities = prev.activities.filter((_, i) => i !== index);
+            const activities = prev.activities.filter((_: any, i: number) => i !== index);
             return { ...prev, activities };
         });
-    }, []);
+    }, [setParsed]);
 
     const handleDiscard = useCallback(() => {
         setParsed(null);
@@ -230,7 +211,7 @@ const ImportItinerary: React.FC = () => {
         setRawText('');
         setStage('input');
         logEvent('Import Discarded');
-    }, []);
+    }, [setParsed, setRawText, setStage]);
 
     async function parseChunk(text: string): Promise<ParsedItinerary> {
         const response = await generateWithGemini(buildPrompt(text), {
@@ -644,10 +625,19 @@ const ImportItinerary: React.FC = () => {
                             Add More Days
                         </button>
                         <div className="flex gap-sm items-center mobile-actions-right">
-                            <button className="btn btn-ghost" onClick={handleStartFresh}>
+                            <button className="btn btn-ghost" onClick={() => {
+                                setRawText('');
+                                setParsed(null);
+                                setStage('input');
+                            }}>
                                 New Trip
                             </button>
-                            <button className="btn btn-primary" onClick={() => navigate('/spreadsheet')}>
+                            <button className="btn btn-primary" onClick={() => {
+                                setRawText('');
+                                setParsed(null);
+                                setStage('input');
+                                navigate('/spreadsheet');
+                            }}>
                                 View Trips
                             </button>
                         </div>

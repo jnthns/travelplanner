@@ -6,9 +6,7 @@ import './Sidebar.css';
 
 const Sidebar: React.FC = () => {
   const { user, signOut } = useAuth();
-  const [isCollapsed, setIsCollapsed] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches
-  );
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   const toggleCollapse = () => setIsCollapsed((prev) => !prev);
 

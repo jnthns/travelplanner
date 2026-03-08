@@ -260,7 +260,43 @@ const ocean: ThemePreset = {
   },
 };
 
-export const THEME_PRESETS: ThemePreset[] = [modern, y2kRetro, dark, sunset, ocean];
+const pastelGlow: ThemePreset = {
+  id: 'pastel-glow',
+  name: 'Pastel Glow',
+  description: 'Gentle, modern, and uplifting',
+  preview: { primary: '#8b5cf6', secondary: '#f43f5e', accent: '#10b981', bg: '#faf5ff' },
+  tokens: {
+    bgColor: '#faf5ff',
+    surfaceColor: '#ffffff',
+    textPrimary: '#2e1065',
+    textSecondary: '#6b21a8',
+    textTertiary: '#a855f7',
+    primaryColor: '#8b5cf6',
+    primaryHover: '#7c3aed',
+    secondaryColor: '#f43f5e',
+    secondaryHover: '#e11d48',
+    accentColor: '#10b981',
+    accentHover: '#059669',
+    errorColor: '#f43f5e',
+    errorBg: '#ffe4e6',
+    borderColor: '#ede9fe',
+    borderLight: '#f5f3ff',
+    glassBg: 'rgba(255, 255, 255, 0.8)',
+    glassBorder: 'rgba(255, 255, 255, 0.4)',
+    shadowSm: '0 2px 4px 0 rgba(139, 92, 246, 0.05)',
+    shadowMd: '0 4px 8px -1px rgba(139, 92, 246, 0.08)',
+    shadowLg: '0 12px 24px -3px rgba(139, 92, 246, 0.1)',
+    radiusSm: '0.75rem',
+    radiusMd: '1rem',
+    radiusLg: '1.5rem',
+    radiusXl: '2rem',
+    radiusFull: '9999px',
+    fontFamily: "'Nunito', sans-serif",
+    fontUrl: 'https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap',
+  },
+};
+
+export const THEME_PRESETS: ThemePreset[] = [modern, pastelGlow, y2kRetro, dark, sunset, ocean];
 
 const THEME_CONFIG_KEY = 'travelplanner_theme_config';
 const LEGACY_THEME_KEY = 'travelplanner_theme';
@@ -274,7 +310,7 @@ export function loadThemeConfig(): ThemeConfig {
     if (legacy) {
       const p = JSON.parse(legacy) as Record<string, string>;
       return {
-        presetId: 'modern',
+        presetId: 'y2k-retro',
         colorOverrides: {
           primaryColor: p.primary,
           secondaryColor: p.secondary,
@@ -283,7 +319,7 @@ export function loadThemeConfig(): ThemeConfig {
       };
     }
   } catch { /* ignore corrupt storage */ }
-  return { presetId: 'modern', colorOverrides: {} };
+  return { presetId: 'y2k-retro', colorOverrides: {} };
 }
 
 export function saveThemeConfig(config: ThemeConfig): void {

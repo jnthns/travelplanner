@@ -247,10 +247,10 @@ const SpreadsheetView: React.FC = () => {
 
     return (
         <div className={`page-container animate-fade-in ${styles['spreadsheet-page']}`}>
-            <header className="page-header">
-                <div>
-                    <h1>Your Trips</h1>
-                    <p>{trips.length} trip{trips.length !== 1 ? 's' : ''} planned</p>
+            <header className="page-header" style={{ alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <h1 style={{ lineHeight: 1, margin: 0 }}>Your Trips</h1>
+                    <p style={{ margin: 0 }}>{trips.length} trip{trips.length !== 1 ? 's' : ''} planned</p>
                 </div>
                 <button className="btn btn-primary" onClick={() => { setShowTripForm(true); setEditingTrip(null); }}>
                     <Plus size={18} /> New Trip
@@ -275,7 +275,7 @@ const SpreadsheetView: React.FC = () => {
                         key={trip.id}
                         role="button"
                         tabIndex={0}
-                        className={`trip-card ${selectedTripId === trip.id ? 'selected' : ''}`}
+                        className={`${styles['trip-card']} ${selectedTripId === trip.id ? styles['selected'] : ''}`}
                         style={{
                             backgroundColor: `color-mix(in srgb, ${trip.color ?? TRIP_COLORS[idx % TRIP_COLORS.length]} 12%, var(--surface-color))`,
                             borderColor: trip.color ?? TRIP_COLORS[idx % TRIP_COLORS.length],
@@ -331,15 +331,15 @@ const SpreadsheetView: React.FC = () => {
             {selectedTrip && tripDays.length > 0 && (
                 <>
                     <div className={styles['day-nav-wrapper']}>
-                        <div className={styles['nav-controls']}>
-                            <button type="button" className="btn btn-ghost" onClick={() => navigateDay(-1)} aria-label="Previous day">
-                                <ChevronLeft size={20} />
+                        <div className={styles['nav-controls-modern']}>
+                            <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigateDay(-1)} aria-label="Previous day">
+                                <ChevronLeft size={18} />
                             </button>
                             <span className={styles['current-label']}>
                                 {format(focusedDate, 'EEEE, MMM d, yyyy')}
                             </span>
-                            <button type="button" className="btn btn-ghost" onClick={() => navigateDay(1)} aria-label="Next day">
-                                <ChevronRight size={20} />
+                            <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigateDay(1)} aria-label="Next day">
+                                <ChevronRight size={18} />
                             </button>
                         </div>
                         <div className={styles['day-pills']}>
@@ -347,7 +347,7 @@ const SpreadsheetView: React.FC = () => {
                                 <button
                                     key={idx}
                                     type="button"
-                                    className={`day-pill ${isSameDay(day, focusedDate) ? 'active' : ''} ${isSameDay(day, new Date()) ? 'today' : ''}`}
+                                    className={`${styles['day-pill']} ${isSameDay(day, focusedDate) ? styles['active'] : ''} ${isSameDay(day, new Date()) ? styles['today'] : ''}`}
                                     onClick={() => setFocusedDate(day)}
                                     title={format(day, 'EEEE, MMM d')}
                                 >
@@ -358,89 +358,89 @@ const SpreadsheetView: React.FC = () => {
                         </div>
                     </div>
                     <div className={styles['spreadsheet-wrapper']} ref={spreadsheetWrapperRef}>
-                    <div
-                        className={styles['spreadsheet-grid']}
-                        style={{ gridTemplateColumns: `var(--sheet-label-width) repeat(${tripDays.length}, minmax(140px, 1fr))` }}
-                    >
-                        {/* Header row */}
-                        <div className={`${styles['sheet-header-cell']} ${styles['sheet-corner']}`} />
-                        {tripDays.map((day, idx) => {
-                            const isFocused = isSameDay(day, focusedDate);
-                            const dateStr = format(day, 'yyyy-MM-dd');
-                            const dayLocation = selectedTrip?.dayLocations?.[dateStr] ?? '';
-                            return (
-                                <div key={idx} className={`sheet-header-cell${isFocused ? ' focused' : ''}`}>
-                                    <span className={styles['sheet-day-label']}>Day {idx + 1}</span>
-                                    <span className={styles['sheet-day-date']}>{format(day, 'EEE, MMM d')}</span>
-                                    <div className={styles['sheet-day-location']}>
-                                        <MapPin size={10} />
-                                        <input
-                                            type="text"
-                                            className={styles['day-location-input']}
-                                            placeholder="Location..."
-                                            defaultValue={dayLocation}
-                                            key={`${selectedTripId}-${dateStr}`}
-                                            onBlur={e => {
-                                                const val = e.target.value.trim();
-                                                if (val !== dayLocation) handleUpdateDayLocation(dateStr, val);
-                                            }}
-                                            onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                                        />
-                                    </div>
-                                </div>
-                            );
-                        })}
-
-                        {/* Time slot rows */}
-                        {TIME_SLOTS.map(slot => (
-                            <React.Fragment key={slot.key}>
-                                <div className={`sheet-row-label slot-${slot.key}`} title={slot.label}>
-                                    <span className={styles['slot-icon']}>{slot.icon}</span>
-                                    <span className={styles['slot-text']}>{slot.label}</span>
-                                </div>
-                                {tripDays.map((day) => {
-                                    const dateStr = format(day, 'yyyy-MM-dd');
-                                    const ck = cellKey(dateStr, slot.key);
-                                    const cellActivities = getCell(dateStr, slot.key);
-                                    const isDragOver = dragOverCell === ck;
-                                    const isFocused = isSameDay(day, focusedDate);
-
-                                    return (
-                                        <div
-                                            key={ck}
-                                            className={`sheet-cell ${isDragOver ? 'drag-over' : ''} ${isFocused ? 'focused' : ''}`}
-                                            onDragOver={e => handleDragOver(e, ck)}
-                                            onDragLeave={handleDragLeave}
-                                            onDrop={e => handleDrop(e, dateStr, slot.key)}
-                                            onClick={(e) => {
-                                                if ((e.target as HTMLElement).closest('[class*="sheet-activity"]')) return;
-                                                setAddingCell({ date: dateStr, slot: slot.key });
-                                            }}
-                                        >
-                                            {cellActivities.map(act => (
-                                                <div
-                                                    key={act.id}
-                                                    className={styles['sheet-activity']}
-                                                    draggable
-                                                    onDragStart={e => handleDragStart(e, act)}
-                                                    onClick={(e) => { e.stopPropagation(); setEditingActivity(act); }}
-                                                    style={{ borderLeftColor: act.color ?? CATEGORY_COLORS[act.category || 'other'] }}
-                                                >
-                                                    <span className={styles['sheet-act-emoji']}>{CATEGORY_EMOJIS[act.category || 'other']}</span>
-                                                    <div className={styles['sheet-act-info']}>
-                                                        <span className={styles['sheet-act-title']}>{act.title}</span>
-                                                        {act.time && <span className={styles['sheet-act-time']}>{act.time}</span>}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                            <span className={`sheet-cell-placeholder ${cellActivities.length > 0 ? 'has-items' : ''}`}>+</span>
+                        <div
+                            className={styles['spreadsheet-grid']}
+                            style={{ gridTemplateColumns: `var(--sheet-label-width) repeat(${tripDays.length}, minmax(140px, 1fr))` }}
+                        >
+                            {/* Header row */}
+                            <div className={`${styles['sheet-header-cell']} ${styles['sheet-corner']}`} />
+                            {tripDays.map((day, idx) => {
+                                const isFocused = isSameDay(day, focusedDate);
+                                const dateStr = format(day, 'yyyy-MM-dd');
+                                const dayLocation = selectedTrip?.dayLocations?.[dateStr] ?? '';
+                                return (
+                                    <div key={idx} className={`${styles['sheet-header-cell']} ${isFocused ? styles['focused'] : ''}`}>
+                                        <span className={styles['sheet-day-label']}>Day {idx + 1}</span>
+                                        <span className={styles['sheet-day-date']}>{format(day, 'EEE, MMM d')}</span>
+                                        <div className={styles['sheet-day-location']}>
+                                            <MapPin size={10} />
+                                            <input
+                                                type="text"
+                                                className={styles['day-location-input']}
+                                                placeholder="Location..."
+                                                defaultValue={dayLocation}
+                                                key={`${selectedTripId}-${dateStr}`}
+                                                onBlur={e => {
+                                                    const val = e.target.value.trim();
+                                                    if (val !== dayLocation) handleUpdateDayLocation(dateStr, val);
+                                                }}
+                                                onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                                            />
                                         </div>
-                                    );
-                                })}
-                            </React.Fragment>
-                        ))}
+                                    </div>
+                                );
+                            })}
+
+                            {/* Time slot rows */}
+                            {TIME_SLOTS.map(slot => (
+                                <React.Fragment key={slot.key}>
+                                    <div className={`${styles['sheet-row-label']} ${styles[`slot-${slot.key}`]}`} title={slot.label}>
+                                        <span className={styles['slot-icon']}>{slot.icon}</span>
+                                        <span className={styles['slot-text']}>{slot.label}</span>
+                                    </div>
+                                    {tripDays.map((day) => {
+                                        const dateStr = format(day, 'yyyy-MM-dd');
+                                        const ck = cellKey(dateStr, slot.key);
+                                        const cellActivities = getCell(dateStr, slot.key);
+                                        const isDragOver = dragOverCell === ck;
+                                        const isFocused = isSameDay(day, focusedDate);
+
+                                        return (
+                                            <div
+                                                key={ck}
+                                                className={`${styles['sheet-cell']} ${isDragOver ? styles['drag-over'] : ''} ${isFocused ? styles['focused'] : ''}`}
+                                                onDragOver={e => handleDragOver(e, ck)}
+                                                onDragLeave={handleDragLeave}
+                                                onDrop={e => handleDrop(e, dateStr, slot.key)}
+                                                onClick={(e) => {
+                                                    if ((e.target as HTMLElement).closest('[class*="sheet-activity"]')) return;
+                                                    setAddingCell({ date: dateStr, slot: slot.key });
+                                                }}
+                                            >
+                                                {cellActivities.map(act => (
+                                                    <div
+                                                        key={act.id}
+                                                        className={styles['sheet-activity']}
+                                                        draggable
+                                                        onDragStart={e => handleDragStart(e, act)}
+                                                        onClick={(e) => { e.stopPropagation(); setEditingActivity(act); }}
+                                                        style={{ borderLeftColor: act.color ?? CATEGORY_COLORS[act.category || 'other'] }}
+                                                    >
+                                                        <span className={styles['sheet-act-emoji']}>{CATEGORY_EMOJIS[act.category || 'other']}</span>
+                                                        <div className={styles['sheet-act-info']}>
+                                                            <span className={styles['sheet-act-title']}>{act.title}</span>
+                                                            {act.time && <span className={styles['sheet-act-time']}>{act.time}</span>}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                <span className={`${styles['sheet-cell-placeholder']} ${cellActivities.length > 0 ? styles['has-items'] : ''}`}>+</span>
+                                            </div>
+                                        );
+                                    })}
+                                </React.Fragment>
+                            ))}
+                        </div>
                     </div>
-                </div>
                 </>
             )}
 

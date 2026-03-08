@@ -18,6 +18,16 @@ export interface Trip {
     _pendingWrite?: boolean;
 }
 
+export interface ChatMessage {
+    id: string; // usually same as createdAt timestamp for ease
+    userId: string;
+    tripId: string; // The trip context this chat was attached to
+    role: 'user' | 'model';
+    content: string;
+    createdAt: string; // ISO datetime. We will use this to age out older than 7 days.
+    _pendingWrite?: boolean;
+}
+
 export const ACTIVITY_COLORS = [
     '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
     '#ec4899', '#06b6d4', '#84cc16', '#64748b',

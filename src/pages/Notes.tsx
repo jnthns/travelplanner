@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useCallback, useRef } from 'react';
-import { Plus, Pencil, Trash2, GripVertical, List, ListOrdered, AlignLeft, ImagePlus, X, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, GripVertical, List, ListOrdered, AlignLeft, ImagePlus, X, Loader2, Copy, Check } from 'lucide-react';
 import { useTrips, useNotes } from '../lib/store';
 import type { Note } from '../lib/types';
 import { NOTE_COLORS } from '../lib/types';
 import { uploadNoteImage } from '../lib/upload';
 import { useLocalStorageState } from '../lib/persist';
 import DraggableList from '../components/DraggableList';
+import Markdown from '../components/Markdown';
 import { useToast } from '../components/Toast';
 import { logEvent } from '../lib/amplitude';
 
@@ -32,7 +33,7 @@ function renderContent(content: string, fmt: Note['format']): React.ReactNode {
             </ol>
         );
     }
-    return <div style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>{content}</div>;
+    return <Markdown>{content}</Markdown>;
 }
 
 const Notes: React.FC = () => {
@@ -46,6 +47,7 @@ const Notes: React.FC = () => {
     const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
     const [showNewForm, setShowNewForm] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [copiedId, setCopiedId] = useState<string | null>(null);
 
     const selectedTrip = trips.find(t => t.id === selectedTripId);
     const tripNotes = useMemo(() => {
@@ -115,6 +117,15 @@ const Notes: React.FC = () => {
         }
     }, [reorderNotes]);
 
+    const handleCopyNote = useCallback((content: string, id: string) => {
+        navigator.clipboard.writeText(content).then(() => {
+            setCopiedId(id);
+            showToast('Note copied to clipboard');
+            logEvent('Note Copied');
+            setTimeout(() => setCopiedId(null), 2000);
+        });
+    }, [showToast]);
+
     return (
         <div className="page-container animate-fade-in">
             <header className="page-header">
@@ -181,12 +192,14 @@ const Notes: React.FC = () => {
                     className="grid grid-cols-auto-280 gap-md"
                     renderItem={(note, _idx, dragHandleProps) => (
                         editingNoteId === note.id ? (
-                            <NoteEditor
-                                existingNote={note}
-                                onSave={(data) => handleUpdateNote(note.id, data)}
-                                onCancel={() => setEditingNoteId(null)}
-                                onDelete={() => handleDeleteNote(note)}
-                            />
+                            <div className="note-editor-wrap">
+                                <NoteEditor
+                                    existingNote={note}
+                                    onSave={(data) => handleUpdateNote(note.id, data)}
+                                    onCancel={() => setEditingNoteId(null)}
+                                    onDelete={() => handleDeleteNote(note)}
+                                />
+                            </div>
                         ) : (
                             <div className="card p-md flex flex-col h-full hover:shadow-md transition-shadow" style={{ borderTop: note.color ? `3px solid ${note.color}` : '3px solid var(--border-light)' }}>
                                 <div className="flex items-center gap-xs mb-sm">
@@ -195,6 +208,9 @@ const Notes: React.FC = () => {
                                     </span>
                                     <h3 className="flex-1 text-base font-bold text-primary truncate">{note.title || 'Untitled'}</h3>
                                     <div className="flex gap-xs shrink-0">
+                                        <button className="btn btn-ghost btn-sm" onClick={() => handleCopyNote(note.content, note.id)} title="Copy content">
+                                            {copiedId === note.id ? <Check size={14} className="text-secondary" /> : <Copy size={14} />}
+                                        </button>
                                         <button className="btn btn-ghost btn-sm" onClick={() => setEditingNoteId(note.id)}>
                                             <Pencil size={14} />
                                         </button>

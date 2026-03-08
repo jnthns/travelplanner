@@ -7,6 +7,9 @@ interface Env {
 interface RequestBody {
     prompt: string;
     maxTokens?: number;
+    systemInstruction?: string;
+    responseMimeType?: string;
+    responseSchema?: Record<string, unknown>;
 }
 
 const CORS_HEADERS: Record<string, string> = {
@@ -45,7 +48,7 @@ export default {
             return json({ error: 'Invalid JSON body' }, 400);
         }
 
-        const { prompt, maxTokens = 500, systemInstruction, responseMimeType } = body as RequestBody & { systemInstruction?: string, responseMimeType?: string };
+        const { prompt, maxTokens = 500, systemInstruction, responseMimeType, responseSchema } = body;
 
         if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
             return json({ error: 'prompt is required' }, 400);
@@ -55,18 +58,33 @@ export default {
 
         try {
             const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
+
+            // Use models.generateContent — supports structured output config
+            // (interactions.create does NOT support generationConfig / responseMimeType)
+            const config: Record<string, unknown> = {
+                maxOutputTokens: clampedTokens,
+            };
+
+            if (responseMimeType) {
+                config.responseMimeType = responseMimeType;
+            }
+
+            if (responseSchema) {
+                config.responseJsonSchema = responseSchema;
+            }
+
+            if (systemInstruction) {
+                config.systemInstruction = systemInstruction;
+            }
+
             const response = await ai.models.generateContent({
                 model: 'gemini-2.5-flash',
                 contents: prompt,
-                config: {
-                    maxOutputTokens: clampedTokens,
-                    temperature: 0.4,
-                    ...(systemInstruction ? { systemInstruction } : {}),
-                    ...(responseMimeType ? { responseMimeType } : {}),
-                },
+                config,
             });
 
             const text = response.text?.trim() ?? '';
+
             if (!text) {
                 return json({ error: 'Empty response from model' }, 502);
             }
@@ -78,4 +96,4 @@ export default {
             return json({ error: message }, status);
         }
     },
-} satisfies ExportedHandler<Env>;
+};

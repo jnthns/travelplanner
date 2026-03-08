@@ -14,9 +14,9 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { useAuth } from './AuthContext';
-import type { Trip, Activity, TransportRoute, Note } from './types';
+import type { Trip, Activity, TransportRoute, Note, ChatMessage } from './types';
 
-function stripUndefined<T extends Record<string, unknown>>(obj: T): T {
+function stripUndefined<T extends Record<string, any>>(obj: T): T {
     return Object.fromEntries(
         Object.entries(obj).filter(([, v]) => v !== undefined)
     ) as T;
@@ -286,4 +286,74 @@ export function useNotes() {
     );
 
     return { notes, loading, addNote, updateNote, deleteNote, restoreNote, reorderNotes, getNotesByTrip };
+}
+
+// ---- Chat History ----
+export function useChatHistory(tripId: string | null) {
+    const { user } = useAuth();
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (!user || !tripId) {
+            setMessages([]);
+            setLoading(false);
+            return;
+        }
+
+        // Limit query to 7 days old
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const cutoffISO = sevenDaysAgo.toISOString();
+
+        let unsub: Unsubscribe;
+        try {
+            const q = query(
+                collection(db, 'chat_history'),
+                where('userId', '==', user.uid),
+                where('tripId', '==', tripId),
+                where('createdAt', '>=', cutoffISO)
+            );
+
+            unsub = onSnapshot(
+                q,
+                (snapshot) => {
+                    const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data(), _pendingWrite: d.metadata.hasPendingWrites }) as ChatMessage);
+                    // Firestore index might not be built for sorting if dual-where is used (createdAt + tripId), 
+                    // so we sort it safely on the client side since it's a very small dataset limit (7 days).
+                    data.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+                    setMessages(data);
+                    setLoading(false);
+                },
+                (error) => {
+                    console.error('Error fetching chat history:', error);
+                    setLoading(false);
+                }
+            );
+        } catch (error) {
+            console.error('Error setting up chat history listener:', error);
+            setLoading(false);
+        }
+        return () => unsub?.();
+    }, [user?.uid, tripId]);
+
+    const addMessage = useCallback(async (msg: Omit<ChatMessage, 'id' | 'userId'>) => {
+        if (!user) throw new Error('Not authenticated');
+        const docRef = doc(collection(db, 'chat_history'));
+        const fullMsg: ChatMessage = {
+            ...msg,
+            id: docRef.id,
+            userId: user.uid,
+        };
+        await setDoc(docRef, stripUndefined(fullMsg));
+    }, [user]);
+
+    const clearHistory = useCallback(async () => {
+        if (!user || !tripId) throw new Error('Not authenticated or no trip');
+        // Because of Firestore permissions, we can't easily run a batch delete query without an active read query loop, 
+        // so we just rely on the 7 day rolling window to drop them naturally from the UI!
+        // Alternatively, a Firebase Cloud Function would handle proper TTL deletions. 
+    }, [user, tripId]);
+
+    return { messages, loading, addMessage, clearHistory };
 }

@@ -216,14 +216,15 @@ Be specific to the actual destinations and activities. Each highlight should be 
         logEvent('Trip Summary Requested', { trip_name: selectedTrip.name, activity_count: tripActivitiesForSummary.length });
         try {
             const raw = await generateWithGemini(prompt, {
-                maxTokens: 2048,
+                maxTokens: 20000,
                 responseMimeType: 'application/json'
             });
             const parsed = JSON.parse(raw) as { summary: string; highlights: string[] };
             if (!parsed.summary || !Array.isArray(parsed.highlights)) throw new Error('Invalid response format');
             setTripSummary(parsed);
         } catch (e) {
-            setSummaryError(e instanceof Error ? e.message : 'Summary generation failed');
+            const msg = e instanceof Error ? e.message : 'Summary generation failed';
+            setSummaryError(/429|quota|rate/i.test(msg) ? 'API rate limit reached — please wait a minute and try again.' : msg);
         } finally {
             setSummaryLoading(false);
         }
@@ -254,7 +255,7 @@ Ensure all provided activity IDs are included in the optimizedOrder array.`;
         logEvent('Route Optimization Requested', { date: currentDateStr, activity_count: dayViewActivities.length });
         try {
             const raw = await generateWithGemini(prompt, {
-                maxTokens: 1024,
+                maxTokens: 4096,
                 responseMimeType: 'application/json',
                 systemInstruction: "You are an expert travel logistician. Your goal is to minimize transit time and provide smooth chronological schedules."
             });
@@ -264,7 +265,8 @@ Ensure all provided activity IDs are included in the optimizedOrder array.`;
             }
             setOptimizedRoute(parsed);
         } catch (e) {
-            setOptimizationError(e instanceof Error ? e.message : 'Optimization failed');
+            const msg = e instanceof Error ? e.message : 'Optimization failed';
+            setOptimizationError(/429|quota|rate/i.test(msg) ? 'API rate limit reached — please wait a minute and try again.' : msg);
         } finally {
             setOptimizationLoading(false);
         }
@@ -285,7 +287,7 @@ Ensure all provided activity IDs are included in the optimizedOrder array.`;
                     {(['trip', 'day'] as ViewMode[]).map(mode => (
                         <button
                             key={mode}
-                            className={`view-tab ${viewMode === mode ? 'active' : ''}`}
+                            className={`${styles['view-tab']} ${viewMode === mode ? styles['active'] : ''}`}
                             onClick={() => { setViewMode(mode); logEvent('Calendar View Changed', { view_mode: mode }); }}
                         >
                             {mode.charAt(0).toUpperCase() + mode.slice(1)}
@@ -306,18 +308,18 @@ Ensure all provided activity IDs are included in the optimizedOrder array.`;
 
                 {selectedTrip && calendarDays.length > 0 && (
                     <div className={styles['day-nav-wrapper']}>
-                        <div className={styles['nav-controls']}>
-                            <button className="btn btn-ghost" onClick={() => navigate(-1)}>
-                                <ChevronLeft size={20} />
+                        <div className={styles['nav-controls-modern']}>
+                            <button className="btn btn-ghost btn-sm" onClick={() => navigate(-1)}>
+                                <ChevronLeft size={18} />
                             </button>
                             <span className={styles['current-label']}>
                                 {format(currentDate, 'EEEE, MMM d, yyyy')}
-                                {selectedTrip?.dayLocations?.[currentDateStr] && (
+                                {selectedTrip.dayLocations?.[currentDateStr] && (
                                     <span className={styles['current-label-location']}>📍 {selectedTrip.dayLocations[currentDateStr]}</span>
                                 )}
                             </span>
-                            <button className="btn btn-ghost" onClick={() => navigate(1)}>
-                                <ChevronRight size={20} />
+                            <button className="btn btn-ghost btn-sm" onClick={() => navigate(1)}>
+                                <ChevronRight size={18} />
                             </button>
                         </div>
                         {tripDays.length > 0 && (
@@ -325,7 +327,7 @@ Ensure all provided activity IDs are included in the optimizedOrder array.`;
                                 {tripDays.map((day, idx) => (
                                     <button
                                         key={idx}
-                                        className={`day-pill ${isSameDay(day, currentDate) ? 'active' : ''} ${isSameDay(day, new Date()) ? 'today' : ''}`}
+                                        className={`${styles['day-pill']} ${isSameDay(day, currentDate) ? styles['active'] : ''} ${isSameDay(day, new Date()) ? styles['today'] : ''}`}
                                         onClick={() => setCurrentDate(day)}
                                         title={format(day, 'EEEE, MMM d')}
                                     >
