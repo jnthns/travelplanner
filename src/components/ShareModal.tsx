@@ -3,7 +3,6 @@ import { X, UserPlus, Loader2, Trash2 } from 'lucide-react';
 import { collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useTrips } from '../lib/store';
-import { useAuth } from '../lib/AuthContext';
 import type { Trip } from '../lib/types';
 import { useToast } from './Toast';
 import { logEvent } from '../lib/amplitude';
@@ -14,7 +13,6 @@ interface ShareModalProps {
 }
 
 const ShareModal: React.FC<ShareModalProps> = ({ trip, onClose }) => {
-    const { user } = useAuth();
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -67,10 +65,10 @@ const ShareModal: React.FC<ShareModalProps> = ({ trip, onClose }) => {
             const collectionsToUpdate = ['activities', 'notes', 'transportRoutes', 'chat_history'];
 
             for (const collName of collectionsToUpdate) {
+                // Query by tripId only - isMember() in firestore.rules handles auth with isOwner() fallback
                 const subQ = query(
                     collection(db, collName),
-                    where('tripId', '==', trip.id),
-                    where('tripMembers', 'array-contains', user?.uid)
+                    where('tripId', '==', trip.id)
                 );
                 const subSnapshot = await getDocs(subQ);
                 subSnapshot.forEach((docSnap) => {
@@ -119,11 +117,10 @@ const ShareModal: React.FC<ShareModalProps> = ({ trip, onClose }) => {
             const batch = writeBatch(db);
             const collectionsToUpdate = ['activities', 'notes', 'transportRoutes', 'chat_history'];
             for (const collName of collectionsToUpdate) {
-                // Must include 'tripMembers' array-contains check to satisfy Firestore security rules
+                // Query by tripId only - isMember() in firestore.rules handles auth with isOwner() fallback
                 const subQ = query(
                     collection(db, collName),
-                    where('tripId', '==', trip.id),
-                    where('tripMembers', 'array-contains', user?.uid)
+                    where('tripId', '==', trip.id)
                 );
                 const subSnapshot = await getDocs(subQ);
                 subSnapshot.forEach((docSnap) => {
