@@ -54,7 +54,10 @@ service cloud.firestore {
 
     match /chat_history/{messageId} {
       allow read: if isMember();
-      allow create: if isAuthenticated() && request.auth.uid in request.resource.data.tripMembers;
+      allow create: if isAuthenticated() && (
+        request.auth.uid in request.resource.data.tripMembers ||
+        request.auth.uid == request.resource.data.userId
+      );
       allow update, delete: if isMember();
     }
 

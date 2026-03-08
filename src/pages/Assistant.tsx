@@ -75,7 +75,7 @@ ${tripActs || "None planned yet."}`;
                 order: Date.now(),
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
-            } as Omit<import('../lib/types').Note, 'id' | 'userId' | 'tripMembers'>, selectedTrip?.members || []);
+            } as Omit<import('../lib/types').Note, 'id' | 'userId' | 'tripMembers'>, selectedTrip?.members || [selectedTrip?.userId].filter(Boolean) as string[]);
             setSavedNotes(prev => ({ ...prev, [msgId]: true }));
         } catch (e) {
             console.error('Failed to save note', e);
@@ -96,7 +96,7 @@ ${tripActs || "None planned yet."}`;
                     location: act.location || '',
                     category: act.category || 'other',
                     order: i * 10
-                } as Omit<import('../lib/types').Activity, 'id' | 'userId' | 'tripMembers'>, selectedTrip?.members || []);
+                } as Omit<import('../lib/types').Activity, 'id' | 'userId' | 'tripMembers'>, selectedTrip?.members || [selectedTrip?.userId].filter(Boolean) as string[]);
             }
             setImportedPayloads(prev => ({ ...prev, [msgId]: true }));
         } catch (e) {
@@ -114,26 +114,27 @@ ${tripActs || "None planned yet."}`;
         }
 
         const userMsg = input.trim();
+        if (!userMsg) return;
+
+        // Ensure trip data is loaded before allowing chat (avoids empty tripMembers rejection)
+        if (!selectedTrip) {
+            alert('Loading trip details... please wait a moment.');
+            return;
+        }
+
         setInput('');
         setIsLoading(true);
 
-        // Compute tripMembers before the try block so it's accessible in the catch
-        // Fallback to userId to ensure the Firestore create rule's array-contains check passes for legacy trips
-        const tripMembers = selectedTrip?.members?.length
-            ? selectedTrip.members
-            : [selectedTrip?.userId].filter(Boolean) as string[];
+        const tripMembers = selectedTrip.members || [selectedTrip.userId];
 
         try {
             // Immediately sync to Firebase
-            // Ensure the current user's UID is always in tripMembers so the create rule passes
-
             await addMessage({
                 tripId: selectedTripId,
-                tripMembers,
                 role: 'user',
                 content: userMsg,
                 createdAt: new Date().toISOString()
-            });
+            }, tripMembers);
 
             const currentHistory = displayMessages.map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join('\n\n');
             const prompt = `Chat History:\n${currentHistory}\n\nUser: ${userMsg}\n\nAssistant:`;
@@ -167,22 +168,20 @@ ${tripActs || "None planned yet."}`;
 
             await addMessage({
                 tripId: selectedTripId,
-                tripMembers,
                 role: 'model',
                 content: responseText,
                 createdAt: new Date().toISOString()
-            });
+            }, tripMembers);
 
         } catch (error) {
             console.error('Chat error:', error);
             try {
                 await addMessage({
                     tripId: selectedTripId,
-                    tripMembers,
                     role: 'model',
                     content: '⚠️ Sorry, I encountered an error answering your question. Please try again.',
                     createdAt: new Date().toISOString()
-                });
+                }, tripMembers);
             } catch (e) {
                 // Ignore nested save errors, probably a permissions or network bug causing the main throw anyway
             }
@@ -204,17 +203,40 @@ ${tripActs || "None planned yet."}`;
                 <select
                     className="input-field w-full"
                     value={selectedTripId || ''}
-                    onChange={e => setSelectedTripId(e.target.value || null)}
+                    onChange={e => {
+                        const id = e.target.value || null;
+                        setSelectedTripId(id);
+                        if (id) {
+                            try {
+                                const raw = localStorage.getItem('travelplanner_calendar_view') || '{}';
+                                const parsed = JSON.parse(raw);
+                                localStorage.setItem('travelplanner_calendar_view', JSON.stringify({ ...parsed, selectedTripId: id }));
+                            } catch { /* ignore */ }
+                        }
+                    }}
                 >
                     <option value="">Select a trip for context...</option>
                     {trips.map(t => (
                         <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
                 </select>
+                {selectedTripId && (
+                    <div className="mt-2 text-xs opacity-50 flex justify-between">
+                        <span>Active Context Partition: {selectedTripId.slice(0, 8)}...</span>
+                        <span>{messages.length} messages loaded</span>
+                    </div>
+                )}
             </div>
 
             <div className="card flex flex-col flex-1 overflow-hidden p-0" style={{ marginBottom: '1rem' }}>
                 <div className="flex-1 overflow-y-auto p-lg flex flex-col gap-lg">
+                    {messages.length === 0 && !isLoading && selectedTripId && (
+                        <div className="text-center text-secondary py-lg opacity-60">
+                            <p>No messages in the last 7 days.</p>
+                            <p style={{ fontSize: '0.8rem' }}>Start typing below to chat!</p>
+                        </div>
+                    )}
+
                     {displayMessages.map((msg) => {
                         const isModel = msg.role === 'model';
                         let textContent = msg.content;

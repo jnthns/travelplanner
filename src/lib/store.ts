@@ -134,8 +134,9 @@ export function useActivities() {
 
     const addActivity = useCallback(async (activity: Omit<Activity, 'id' | 'userId' | 'tripMembers'>, tripMembers: string[]) => {
         if (!user) throw new Error('Not authenticated');
-        const docRef = await addDoc(collection(db, 'activities'), stripUndefined({ ...activity, userId: user.uid, tripMembers }));
-        return { ...activity, id: docRef.id, userId: user.uid, tripMembers } as Activity;
+        const finalMembers = Array.from(new Set([...tripMembers, user.uid])).filter(Boolean);
+        const docRef = await addDoc(collection(db, 'activities'), stripUndefined({ ...activity, userId: user.uid, tripMembers: finalMembers }));
+        return { ...activity, id: docRef.id, userId: user.uid, tripMembers: finalMembers } as Activity;
     }, [user]);
 
     const updateActivity = useCallback(async (id: string, updates: Partial<Activity>) => {
@@ -220,8 +221,9 @@ export function useTransportRoutes() {
 
     const addRoute = useCallback(async (route: Omit<TransportRoute, 'id' | 'userId' | 'tripMembers'>, tripMembers: string[]) => {
         if (!user) throw new Error('Not authenticated');
-        const docRef = await addDoc(collection(db, 'transportRoutes'), stripUndefined({ ...route, userId: user.uid, tripMembers }));
-        return { ...route, id: docRef.id, userId: user.uid, tripMembers } as TransportRoute;
+        const finalMembers = Array.from(new Set([...tripMembers, user.uid])).filter(Boolean);
+        const docRef = await addDoc(collection(db, 'transportRoutes'), stripUndefined({ ...route, userId: user.uid, tripMembers: finalMembers }));
+        return { ...route, id: docRef.id, userId: user.uid, tripMembers: finalMembers } as TransportRoute;
     }, [user]);
 
     const updateRoute = useCallback(async (id: string, updates: Partial<TransportRoute>) => {
@@ -287,8 +289,9 @@ export function useNotes() {
 
     const addNote = useCallback(async (note: Omit<Note, 'id' | 'userId' | 'tripMembers'>, tripMembers: string[]) => {
         if (!user) throw new Error('Not authenticated');
-        const docRef = await addDoc(collection(db, 'notes'), stripUndefined({ ...note, userId: user.uid, tripMembers }));
-        return { ...note, id: docRef.id, userId: user.uid, tripMembers } as Note;
+        const finalMembers = Array.from(new Set([...tripMembers, user.uid])).filter(Boolean);
+        const docRef = await addDoc(collection(db, 'notes'), stripUndefined({ ...note, userId: user.uid, tripMembers: finalMembers }));
+        return { ...note, id: docRef.id, userId: user.uid, tripMembers: finalMembers } as Note;
     }, [user]);
 
     const updateNote = useCallback(async (id: string, updates: Partial<Note>) => {
@@ -343,12 +346,12 @@ export function useChatHistory(tripId: string | null) {
             const q = query(
                 collection(db, 'chat_history'),
                 and(
+                    where('tripId', '==', tripId),
+                    where('createdAt', '>=', cutoffISO),
                     or(
                         where('tripMembers', 'array-contains', user.uid),
                         where('userId', '==', user.uid)
-                    ),
-                    where('tripId', '==', tripId),
-                    where('createdAt', '>=', cutoffISO)
+                    )
                 )
             );
 
@@ -356,10 +359,9 @@ export function useChatHistory(tripId: string | null) {
                 q,
                 (snapshot) => {
                     const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data(), _pendingWrite: d.metadata.hasPendingWrites }) as ChatMessage);
-                    // Firestore index might not be built for sorting if dual-where is used (createdAt + tripId), 
-                    // so we sort it safely on the client side since it's a very small dataset limit (7 days).
-                    data.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-                    setMessages(data);
+                    // Sort chronologically by createdAt timestamp
+                    const sorted = [...data].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+                    setMessages(sorted);
                     setLoading(false);
                 },
                 (error) => {
@@ -374,13 +376,18 @@ export function useChatHistory(tripId: string | null) {
         return () => unsub?.();
     }, [user?.uid, tripId]);
 
-    const addMessage = useCallback(async (msg: Omit<ChatMessage, 'id' | 'userId'>) => {
+    const addMessage = useCallback(async (msg: Omit<ChatMessage, 'id' | 'userId' | 'tripMembers'>, tripMembers: string[] = []) => {
         if (!user) throw new Error('Not authenticated');
         const docRef = doc(collection(db, 'chat_history'));
+
+        // Ensure the current user is ALWAYS in tripMembers regardless of what the UI sent
+        const finalMembers = Array.from(new Set([...tripMembers, user.uid])).filter(Boolean);
+
         const fullMsg: ChatMessage = {
             ...msg,
             id: docRef.id,
             userId: user.uid,
+            tripMembers: finalMembers
         };
         await setDoc(docRef, stripUndefined(fullMsg));
     }, [user]);
