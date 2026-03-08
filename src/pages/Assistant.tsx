@@ -117,11 +117,19 @@ ${tripActs || "None planned yet."}`;
         setInput('');
         setIsLoading(true);
 
+        // Compute tripMembers before the try block so it's accessible in the catch
+        // Fallback to userId to ensure the Firestore create rule's array-contains check passes for legacy trips
+        const tripMembers = selectedTrip?.members?.length
+            ? selectedTrip.members
+            : [selectedTrip?.userId].filter(Boolean) as string[];
+
         try {
             // Immediately sync to Firebase
+            // Ensure the current user's UID is always in tripMembers so the create rule passes
+
             await addMessage({
                 tripId: selectedTripId,
-                tripMembers: selectedTrip?.members || [],
+                tripMembers,
                 role: 'user',
                 content: userMsg,
                 createdAt: new Date().toISOString()
@@ -159,7 +167,7 @@ ${tripActs || "None planned yet."}`;
 
             await addMessage({
                 tripId: selectedTripId,
-                tripMembers: selectedTrip?.members || [],
+                tripMembers,
                 role: 'model',
                 content: responseText,
                 createdAt: new Date().toISOString()
@@ -170,7 +178,7 @@ ${tripActs || "None planned yet."}`;
             try {
                 await addMessage({
                     tripId: selectedTripId,
-                    tripMembers: selectedTrip?.members || [],
+                    tripMembers,
                     role: 'model',
                     content: '⚠️ Sorry, I encountered an error answering your question. Please try again.',
                     createdAt: new Date().toISOString()
@@ -297,6 +305,12 @@ ${tripActs || "None planned yet."}`;
                             setInput(e.target.value);
                             e.target.style.height = 'auto';
                             e.target.style.height = Math.min(e.target.scrollHeight, 150) + 'px';
+                        }}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleSubmit(e as unknown as React.FormEvent);
+                            }
                         }}
                         disabled={isLoading}
                         rows={1}
