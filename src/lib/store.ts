@@ -160,6 +160,33 @@ export function useActivities() {
         await batch.commit();
     }, []);
 
+    const replaceTripActivities = useCallback(async (tripId: string, newActivities: Omit<Activity, 'id' | 'userId' | 'tripMembers'>[], tripMembers: string[]) => {
+        if (!user) throw new Error('Not authenticated');
+        const batch = writeBatch(db);
+        const finalMembers = Array.from(new Set([...(tripMembers || []), user.uid])).filter(Boolean);
+
+        const currentTripActivities = activities.filter(a => a.tripId === tripId);
+
+        for (const a of currentTripActivities) {
+            batch.delete(doc(db, 'activities', a.id));
+        }
+
+        for (let i = 0; i < newActivities.length; i++) {
+            const na = newActivities[i];
+            const newRef = doc(collection(db, 'activities'));
+            batch.set(newRef, stripUndefined({
+                ...na,
+                tripId,           // CRITICAL: Ensure tripId is mapped
+                userId: user.uid,
+                tripMembers: finalMembers,
+                order: na.order !== undefined ? na.order : i * 10 // Provide fallback order
+            }));
+        }
+
+        await batch.commit();
+    }, [user, activities]);
+
+
     const getActivitiesByDate = useCallback(
         (date: string) => activities.filter((a) => a.date === date).sort((a, b) => a.order - b.order),
         [activities]
@@ -176,7 +203,7 @@ export function useActivities() {
         [activities]
     );
 
-    return { activities, loading, addActivity, updateActivity, deleteActivity, restoreActivity, reorderActivities, getActivitiesByDate, getActivitiesByTrip };
+    return { activities, loading, addActivity, updateActivity, deleteActivity, restoreActivity, reorderActivities, getActivitiesByDate, getActivitiesByTrip, replaceTripActivities };
 }
 
 // ---- Transport Routes ----

@@ -276,6 +276,11 @@
     min-height: 80px;
 }
 
+.lodging-row {
+    min-height: 40px !important;
+    padding: 0.25rem 0.5rem !important;
+}
+
 .slot-morning {
     background-color: color-mix(in srgb, var(--accent-color) 6%, var(--surface-color));
     border-right: 4px solid var(--accent-color);
@@ -428,7 +433,6 @@
     align-items: flex-start;
     justify-content: center;
     padding: 2rem 1rem;
-    overflow-y: auto;
     animation: fadeIn 0.2s ease-out;
 }
 

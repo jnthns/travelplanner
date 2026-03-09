@@ -1,7 +1,9 @@
 import React, { useState, useMemo, useCallback, useRef } from 'react';
-import { Plus, Pencil, Trash2, GripVertical, List, ListOrdered, AlignLeft, ImagePlus, X, Loader2, Copy, Check } from 'lucide-react';
-import { useTrips, useNotes } from '../lib/store';
-import type { Note } from '../lib/types';
+import { Plus, Pencil, Trash2, GripVertical, List, ListOrdered, AlignLeft, ImagePlus, X, Loader2, Copy, Check, Sparkles } from 'lucide-react';
+import { useTrips, useNotes, useActivities } from '../lib/store';
+import type { Note, Activity } from '../lib/types';
+import { DraftReviewModal } from '../components/DraftReviewModal';
+import { generateDraftTrip } from '../lib/ai-draft';
 import { NOTE_COLORS } from '../lib/types';
 import { uploadNoteImage } from '../lib/upload';
 import { useLocalStorageState } from '../lib/persist';
@@ -48,6 +50,51 @@ const Notes: React.FC = () => {
     const [showNewForm, setShowNewForm] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [copiedId, setCopiedId] = useState<string | null>(null);
+
+    // AI Draft State
+    const { getActivitiesByTrip, replaceTripActivities } = useActivities();
+    const [isDraftModalOpen, setIsDraftModalOpen] = useState(false);
+    const [draftLoading, setDraftLoading] = useState(false);
+    const [draftError, setDraftError] = useState<string | null>(null);
+    const [draftProposedActivities, setDraftProposedActivities] = useState<Partial<Activity>[]>([]);
+    const [draftOriginalActivities, setDraftOriginalActivities] = useState<Activity[]>([]);
+
+    const handleGenerateDraft = async (note: Note) => {
+        if (!selectedTripId) return;
+        const tripActivities = getActivitiesByTrip(selectedTripId);
+
+        setDraftOriginalActivities(tripActivities);
+        setDraftProposedActivities([]);
+        setDraftError(null);
+        setDraftLoading(true);
+        setIsDraftModalOpen(true);
+
+        try {
+            const proposed = await generateDraftTrip(tripActivities, note.content);
+            setDraftProposedActivities(proposed);
+            logEvent('AI Trip Draft Generated', { note_id: note.id, trip_id: selectedTripId });
+        } catch (err) {
+            setDraftError((err as Error).message || 'Failed to generate itinerary');
+            logEvent('AI Trip Draft Failed', { error: String(err) });
+        } finally {
+            setDraftLoading(false);
+        }
+    };
+
+    const handleAcceptDraft = async () => {
+        if (!selectedTripId || !selectedTrip) return;
+        try {
+            await replaceTripActivities(selectedTripId, draftProposedActivities as Omit<Activity, 'id' | 'userId' | 'tripMembers'>[], selectedTrip.members || []);
+            setIsDraftModalOpen(false);
+            showToast('Itinerary updated successfully!');
+            logEvent('AI Trip Draft Accepted', { trip_id: selectedTripId });
+        } catch (err) {
+            console.error('Failed to accept draft', err);
+            setDraftError((err as Error).message || 'Failed to save to database');
+        }
+    };
+
+    const hasConcurrencyConflict = false; // Disabled because Firebase snapshot polling creates a rapid race condition on save
 
     const selectedTrip = trips.find(t => t.id === selectedTripId);
     const tripNotes = useMemo(() => {
@@ -190,50 +237,67 @@ const Notes: React.FC = () => {
                     onReorder={handleReorder}
                     disabled={editingNoteId !== null}
                     className="grid grid-cols-auto-280 gap-md"
-                    renderItem={(note, _idx, dragHandleProps) => (
-                        editingNoteId === note.id ? (
-                            <div className="note-editor-wrap">
-                                <NoteEditor
-                                    existingNote={note}
-                                    onSave={(data) => handleUpdateNote(note.id, data)}
-                                    onCancel={() => setEditingNoteId(null)}
-                                    onDelete={() => handleDeleteNote(note)}
-                                />
-                            </div>
-                        ) : (
+                    renderItem={(note, _idx, dragHandleProps) => {
+                        return (
                             <div className="card p-md flex flex-col h-full hover:shadow-md transition-shadow" style={{ borderTop: note.color ? `3px solid ${note.color}` : '3px solid var(--border-light)' }}>
-                                <div className="flex items-center gap-xs mb-sm">
-                                    <span className="cursor-grab text-tertiary shrink-0 p-xs" {...dragHandleProps}>
-                                        <GripVertical size={16} />
-                                    </span>
-                                    <h3 className="flex-1 text-base font-bold text-primary truncate">{note.title || 'Untitled'}</h3>
-                                    <div className="flex gap-xs shrink-0">
-                                        <button className="btn btn-ghost btn-sm" onClick={() => handleCopyNote(note.content, note.id)} title="Copy content">
-                                            {copiedId === note.id ? <Check size={14} className="text-secondary" /> : <Copy size={14} />}
-                                        </button>
-                                        <button className="btn btn-ghost btn-sm" onClick={() => setEditingNoteId(note.id)}>
-                                            <Pencil size={14} />
-                                        </button>
-                                        <button className="btn btn-ghost btn-sm" onClick={() => handleDeleteNote(note)}>
-                                            <Trash2 size={14} />
-                                        </button>
-                                    </div>
-                                </div>
-                                <div className="text-sm text-secondary flex-1" style={{ lineHeight: 1.55, wordWrap: 'break-word', overflowWrap: 'break-word' }}>
-                                    {renderContent(note.content, note.format)}
-                                </div>
-                                {note.images && note.images.length > 0 && (
-                                    <div className="flex flex-wrap gap-xs mt-sm">
-                                        {note.images.map((url, i) => (
-                                            <img key={i} src={url} alt="" className="rounded-sm object-cover cursor-pointer transition-opacity hover:opacity-85" style={{ maxWidth: '100%', maxHeight: '200px' }} loading="lazy" />
-                                        ))}
-                                    </div>
+                                {editingNoteId === note.id ? (
+                                    <NoteEditor
+                                        existingNote={note}
+                                        onSave={(data) => handleUpdateNote(note.id, data)}
+                                        onCancel={() => setEditingNoteId(null)}
+                                        onDelete={() => handleDeleteNote(note)}
+                                        inline
+                                    />
+                                ) : (
+                                    <>
+                                        <div className="flex items-center gap-xs mb-sm">
+                                            <span className="cursor-grab text-tertiary shrink-0 p-xs" {...dragHandleProps}>
+                                                <GripVertical size={16} />
+                                            </span>
+                                            <h3 className="flex-1 text-base font-bold text-primary truncate">{note.title || 'Untitled'}</h3>
+                                            <div className="flex gap-xs shrink-0">
+                                                <button className="btn btn-ghost btn-sm text-primary" onClick={() => handleGenerateDraft(note)} title="AI Merge into Trip">
+                                                    <Sparkles size={14} />
+                                                </button>
+                                                <button className="btn btn-ghost btn-sm" onClick={() => handleCopyNote(note.content, note.id)} title="Copy content">
+                                                    {copiedId === note.id ? <Check size={14} className="text-secondary" /> : <Copy size={14} />}
+                                                </button>
+                                                <button className="btn btn-ghost btn-sm" onClick={() => setEditingNoteId(note.id)}>
+                                                    <Pencil size={14} />
+                                                </button>
+                                                <button className="btn btn-ghost btn-sm" onClick={() => handleDeleteNote(note)}>
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="text-sm text-secondary flex-1" style={{ lineHeight: 1.55, wordWrap: 'break-word', overflowWrap: 'break-word' }}>
+                                            {renderContent(note.content, note.format)}
+                                        </div>
+                                        {note.images && note.images.length > 0 && (
+                                            <div className="flex flex-wrap gap-xs mt-sm">
+                                                {note.images.map((url, i) => (
+                                                    <img key={i} src={url} alt="" className="rounded-sm object-cover cursor-pointer transition-opacity hover:opacity-85" style={{ maxWidth: '100%', maxHeight: '200px' }} loading="lazy" />
+                                                ))}
+                                            </div>
+                                        )}
+                                    </>
                                 )}
                             </div>
-                        )
-                    )}
+                        );
+                    }}
                 />
             )}
+
+            <DraftReviewModal
+                isOpen={isDraftModalOpen}
+                loading={draftLoading}
+                error={draftError}
+                originalActivities={draftOriginalActivities}
+                proposedActivities={draftProposedActivities}
+                onClose={() => setIsDraftModalOpen(false)}
+                onAccept={handleAcceptDraft}
+                hasConcurrencyConflict={hasConcurrencyConflict}
+            />
         </div>
     );
 };
@@ -245,9 +309,10 @@ interface NoteEditorProps {
     onSave: (data: { title: string; content: string; format: Note['format']; color?: string; images?: string[] }) => void;
     onCancel: () => void;
     onDelete?: () => void;
+    inline?: boolean;
 }
 
-const NoteEditor: React.FC<NoteEditorProps> = ({ existingNote, tripId, onSave, onCancel, onDelete }) => {
+const NoteEditor: React.FC<NoteEditorProps> = ({ existingNote, tripId, onSave, onCancel, onDelete, inline }) => {
     const [title, setTitle] = useState(existingNote?.title || '');
     const [content, setContent] = useState(existingNote?.content || '');
     const [fmt, setFmt] = useState<Note['format']>(existingNote?.format || 'freeform');
@@ -311,7 +376,10 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ existingNote, tripId, onSave, o
     };
 
     return (
-        <form className="note-editor card animate-fade-in" onSubmit={handleSubmit}>
+        <form
+            className={inline ? 'note-editor animate-fade-in flex flex-col flex-1 h-full w-full !p-0 !m-0' : 'note-editor card animate-fade-in'}
+            onSubmit={handleSubmit}
+        >
             <input
                 className="input-field note-title-input"
                 type="text"
@@ -337,6 +405,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ existingNote, tripId, onSave, o
             <textarea
                 ref={textareaRef}
                 className="input-field note-content-input"
+                style={inline ? { flexGrow: 1, minHeight: '150px', resize: 'none' } : {}}
                 value={content}
                 onChange={e => setContent(e.target.value)}
                 onKeyDown={handleKeyDown}

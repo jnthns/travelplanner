@@ -9,6 +9,7 @@
     display: flex;
     gap: 0.75rem;
     align-items: flex-start;
+    flex-wrap: wrap;
 }
 
 .textarea {
@@ -70,8 +71,15 @@
 }
 
 @keyframes subtlePulse {
-    0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent-color) 40%, transparent); }
-    50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent-color) 0%, transparent); }
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent-color) 40%, transparent);
+    }
+
+    50% {
+        box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent-color) 0%, transparent);
+    }
 }
 
 .ai-error {

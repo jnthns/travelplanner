@@ -9,6 +9,7 @@ import { ChevronLeft, ChevronRight, Plus, Pencil, GripVertical, Loader2 } from '
 import { generateWithGemini } from '../lib/gemini';
 import { useTrips, useActivities } from '../lib/store';
 import { CATEGORY_EMOJIS, CATEGORY_COLORS } from '../lib/types';
+import type { Activity } from '../lib/types';
 import ActivityForm from '../components/ActivityForm';
 import DraggableList from '../components/DraggableList';
 import Markdown from '../components/Markdown';
@@ -150,9 +151,27 @@ const CalendarView: React.FC = () => {
     const getActivityColor = (activity: { category?: string; color?: string }) =>
         activity.color ?? CATEGORY_COLORS[activity.category ?? 'other'];
 
+    const tripActivities = useMemo(() => {
+        if (!selectedTripId) return [];
+        return activities.filter(a => a.tripId === selectedTripId);
+    }, [selectedTripId, activities]);
+
+    const accommodationsByDate = useMemo(() => {
+        if (!selectedTrip || !tripActivities.length) return {};
+        const activeLodging: Record<string, Activity> = {};
+
+        tripActivities.forEach(a => {
+            if (a.category === 'lodging') {
+                activeLodging[a.date] = a;
+            }
+        });
+
+        return activeLodging;
+    }, [tripActivities, selectedTrip]);
+
     const currentDateStr = format(currentDate, 'yyyy-MM-dd');
     const dayViewActivities = activities
-        .filter(a => a.date === currentDateStr)
+        .filter(a => a.date === currentDateStr && a.category !== 'lodging' && a.tripId === selectedTripId)
         .sort((a, b) => a.order - b.order);
 
     const handleSaveActivity = (
@@ -356,8 +375,10 @@ Ensure all provided activity IDs are included in the optimizedOrder array.`;
                                     onClick={() => { setCurrentDate(day); setViewMode('day'); logEvent('Calendar View Changed', { view_mode: 'day', source: 'trip_card_click' }); }}
                                 >
                                     <div className={styles['trip-card-header']}>
-                                        <span className={styles['cal-day-number']}>{format(day, 'd')}</span>
-                                        <span className={styles['cal-day-label']}>{format(day, 'EEE')}</span>
+                                        <div className={styles['trip-card-header-date-row']}>
+                                            <span className={styles['cal-day-number']}>{format(day, 'd')}</span>
+                                            <span className={styles['cal-day-label']}>{format(day, 'EEE')}</span>
+                                        </div>
                                         {dayLocation && <span className={styles['cal-day-location']}>📍 {dayLocation}</span>}
                                     </div>
                                     {dayActs.length > 0 ? (
@@ -383,6 +404,37 @@ Ensure all provided activity IDs are included in the optimizedOrder array.`;
             {/* Day Detail View */}
             {viewMode === 'day' && (
                 <div className={styles['day-detail-view']}>
+                    {selectedTripId && (
+                        <div className={styles['pinned-accommodation']}>
+                            <h4 className={styles['pinned-accommodation-title']}>🏨 Lodging</h4>
+                            {accommodationsByDate[currentDateStr] ? (
+                                <div
+                                    className={`${styles['day-detail-activity']} card`}
+                                    style={{ borderLeftColor: accommodationsByDate[currentDateStr]?.color ?? CATEGORY_COLORS['lodging'] }}
+                                    onClick={() => setEditingActivityId(accommodationsByDate[currentDateStr]!.id)}
+                                >
+                                    <div className={styles['detail-header']}>
+                                        <span className={styles['detail-emoji']}>{CATEGORY_EMOJIS['lodging']}</span>
+                                        <div>
+                                            <h4>{accommodationsByDate[currentDateStr]?.title}</h4>
+                                        </div>
+                                        <div className={styles['detail-actions']}>
+                                            <button type="button" className="btn btn-ghost btn-sm" aria-label="Edit"><Pencil size={16} /></button>
+                                        </div>
+                                    </div>
+                                    {accommodationsByDate[currentDateStr]?.location && <p className={styles['detail-location']}>📍 {accommodationsByDate[currentDateStr]?.location}</p>}
+                                </div>
+                            ) : (
+                                <div
+                                    className={`${styles['day-detail-activity']} card ${styles['empty-placeholder']}`}
+                                    onClick={() => setAddingActivityForDate('lodging')}
+                                    style={{ cursor: 'pointer', borderLeftColor: 'var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+                                >
+                                    <span className="text-subtle italic">No lodging set for this date (tap to add)</span>
+                                </div>
+                            )}
+                        </div>
+                    )}
                     {selectedTripId && tripActivitiesForSummary.length > 0 && (
                         <div className={styles['day-summary-section']}>
                             <div className="ai-buttons-row" style={{ display: 'flex', gap: '0.5rem' }}>
@@ -451,10 +503,11 @@ Ensure all provided activity IDs are included in the optimizedOrder array.`;
                         </div>
                     )}
                     {selectedTripId && (
-                        addingActivityForDate === currentDateStr ? (
+                        addingActivityForDate ? (
                             <ActivityForm
                                 tripId={selectedTripId}
                                 date={currentDateStr}
+                                isLodging={addingActivityForDate === 'lodging'}
                                 nextOrder={dayViewActivities.length}
                                 defaultCurrency={selectedTrip?.defaultCurrency}
                                 onSave={(data) => handleSaveActivity(data, currentDateStr)}
@@ -484,6 +537,7 @@ Ensure all provided activity IDs are included in the optimizedOrder array.`;
                                     tripId={act.tripId}
                                     date={act.date}
                                     existingActivity={act}
+                                    isLodging={act.category === 'lodging'}
                                     nextOrder={act.order}
                                     defaultCurrency={selectedTrip?.defaultCurrency}
                                     onSave={handleSaveActivity}

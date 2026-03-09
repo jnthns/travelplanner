@@ -56,13 +56,17 @@
 }
 
 .cal-day-location {
-    font-size: 0.65rem;
-    color: var(--text-tertiary);
-    margin-left: auto;
+    font-size: 0.75rem;
+    color: var(--primary-color);
+    margin-top: 0.25rem;
+    font-weight: 500;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 90px;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    width: 100%;
 }
 
 .trip-select {
@@ -179,11 +183,17 @@
 
 .trip-card-header {
     display: flex;
-    align-items: baseline;
-    gap: 0.4rem;
+    flex-direction: column;
+    gap: 0.15rem;
     margin-bottom: 0.5rem;
     padding-bottom: 0.5rem;
     border-bottom: 1px solid var(--border-light);
+}
+
+.trip-card-header-date-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
 }
 
 .trip-card-empty {
@@ -271,11 +281,32 @@
     gap: 1rem;
 }
 
+.pinned-accommodation-title {
+    font-size: 0.85rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.05em;
+}
+
+.empty-placeholder:hover {
+    background-color: var(--border-light);
+}
+
 .no-activities-cal {
     text-align: center;
     color: var(--text-tertiary);
     padding: 2rem;
     font-style: italic;
+}
+
+.pinned-accommodation .day-detail-activity {
+    padding: 0.85rem 1.25rem;
+}
+
+.pinned-accommodation .day-detail-activity h4 {
+    font-size: 1rem;
 }
 
 .day-detail-activity {

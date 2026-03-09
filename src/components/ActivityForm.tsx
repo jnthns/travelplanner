@@ -14,6 +14,7 @@ interface ActivityFormProps {
     existingActivity?: Activity;
     nextOrder: number;
     defaultCurrency?: string;
+    isLodging?: boolean;
     onSave: (activity: Omit<Activity, 'id' | 'userId' | 'tripMembers'> | ({ id: string } & Partial<Omit<Activity, 'userId'>>)) => void;
     onCancel: () => void;
     onDelete?: () => void;
@@ -47,17 +48,17 @@ function snapTo30(time: string): string {
     return `${String(hours).padStart(2, '0')}:${snapped}`;
 }
 
-const ActivityForm: React.FC<ActivityFormProps> = ({ tripId, date, existingActivity, nextOrder, defaultCurrency, onSave, onCancel, onDelete }) => {
+const ActivityForm: React.FC<ActivityFormProps> = ({ tripId, date, existingActivity, nextOrder, defaultCurrency, isLodging, onSave, onCancel, onDelete }) => {
     const [title, setTitle] = useState(existingActivity?.title || '');
     const [details, setDetails] = useState(existingActivity?.details || '');
     const [time, setTime] = useState(() => snapTo30(existingActivity?.time || ''));
     const [location, setLocation] = useState(existingActivity?.location || '');
-    const [category, setCategory] = useState<Activity['category']>(existingActivity?.category || 'other');
+    const [category, setCategory] = useState<Activity['category']>(isLodging ? 'lodging' : (existingActivity?.category || 'other'));
     const [cost, setCost] = useState(existingActivity?.cost?.toString() || '');
     const [currency, setCurrency] = useState(existingActivity?.currency || defaultCurrency || 'USD');
     const [color, setColor] = useState(existingActivity?.color || '');
     const [tags, setTags] = useState(existingActivity?.tags?.join(', ') || '');
-    const [showOptional, setShowOptional] = useState(!!existingActivity);
+    const [showOptional, setShowOptional] = useState(isLodging || !!existingActivity);
     const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
     const [aiLoading, setAiLoading] = useState(false);
     const [aiError, setAiError] = useState<string | null>(null);
@@ -99,15 +100,15 @@ Prioritize actionable advice over general description. Use engaging but factual 
             tripId,
             date,
             title: title.trim(),
-            details: details.trim() || undefined,
-            time: time || undefined,
+            details: isLodging ? undefined : (details.trim() || undefined),
+            time: isLodging ? undefined : (time || undefined),
             location: location.trim() || undefined,
-            category,
+            category: isLodging ? 'lodging' : category,
             cost: cost ? parseFloat(cost) : undefined,
             currency: cost ? currency : undefined,
             order: existingActivity?.order ?? nextOrder,
-            color: color || undefined,
-            tags: parsedTags.length > 0 ? parsedTags : undefined,
+            color: isLodging ? undefined : (color || undefined),
+            tags: isLodging ? undefined : (parsedTags.length > 0 ? parsedTags : undefined),
         };
 
         onSave(activityData);
@@ -138,100 +139,108 @@ Prioritize actionable advice over general description. Use engaging but factual 
         <form className="activity-form animate-fade-in" onSubmit={handleSubmit}>
             <div className="form-row">
                 <div className="input-group" style={{ flex: 2 }}>
-                    <label className="input-label">Title *</label>
+                    <label className="input-label">{isLodging ? 'Hotel Option *' : 'Title *'}</label>
                     <input
                         className="input-field"
                         type="text"
                         value={title}
                         onChange={e => setTitle(e.target.value)}
-                        placeholder="e.g. Visit the Colosseum"
+                        placeholder={isLodging ? "e.g. Grand Hyatt Tokyo" : "e.g. Visit the Colosseum"}
                         autoFocus
                         required
                     />
                 </div>
-                <div className="input-group" style={{ flex: 0, minWidth: '130px' }}>
-                    <label className="input-label">Time</label>
-                    <select
-                        className="input-field"
-                        value={time}
-                        onChange={e => setTime(e.target.value)}
-                    >
-                        {TIME_OPTIONS.map(opt => (
-                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                    </select>
-                </div>
-            </div>
-
-            <div className="input-group">
-                <label className="input-label">Details</label>
-                <AutoTextarea
-                    className="input-field textarea"
-                    value={details}
-                    onChange={e => setDetails(e.target.value)}
-                    placeholder="What's happening?"
-                    minRows={6}
-                />
-                {title.trim() && (
-                    <div className="ai-suggestion-block">
-                        <button
-                            type="button"
-                            className="btn btn-sm ai-suggest-btn"
-                            onClick={handleAiSuggest}
-                            disabled={aiLoading}
+                {!isLodging && (
+                    <div className="input-group" style={{ flex: 0, minWidth: '130px' }}>
+                        <label className="input-label">Time</label>
+                        <select
+                            className="input-field"
+                            value={time}
+                            onChange={e => setTime(e.target.value)}
                         >
-                            {aiLoading ? <><Loader2 size={14} className="spin" /> Getting suggestion…</> : 'Suggest with AI'}
-                        </button>
-                        {aiError && <p className="ai-error">{aiError}</p>}
-                        {aiSuggestion && (
-                            <div className="ai-suggestion-card card">
-                                <Markdown className="ai-suggestion-text">{aiSuggestion}</Markdown>
-                                <div className="ai-suggestion-actions">
-                                    <button type="button" className="btn btn-primary btn-sm" onClick={() => { setDetails(aiSuggestion!); setAiSuggestion(null); logEvent('AI Suggestion Accepted', { activity_title: title.trim() }); }}>Accept</button>
-                                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setAiSuggestion(null); logEvent('AI Suggestion Declined', { activity_title: title.trim() }); }}>Decline</button>
-                                </div>
-                            </div>
-                        )}
+                            {TIME_OPTIONS.map(opt => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                        </select>
                     </div>
                 )}
             </div>
 
-            <div className="category-picker">
-                {categories.map(cat => (
-                    <button
-                        type="button"
-                        key={cat}
-                        className={`category-chip ${category === cat ? 'active' : ''}`}
-                        onClick={() => setCategory(cat)}
-                    >
-                        {CATEGORY_EMOJIS[cat]} {cat}
-                    </button>
-                ))}
-            </div>
+            {!isLodging && (
+                <div className="input-group">
+                    <label className="input-label">Details</label>
+                    <AutoTextarea
+                        className="input-field textarea"
+                        value={details}
+                        onChange={e => setDetails(e.target.value)}
+                        placeholder="What's happening?"
+                        minRows={6}
+                    />
+                    {title.trim() && (
+                        <div className="ai-suggestion-block">
+                            <button
+                                type="button"
+                                className="btn btn-sm ai-suggest-btn"
+                                onClick={handleAiSuggest}
+                                disabled={aiLoading}
+                            >
+                                {aiLoading ? <><Loader2 size={14} className="spin" /> Getting suggestion…</> : 'Suggest with AI'}
+                            </button>
+                            {aiError && <p className="ai-error">{aiError}</p>}
+                            {aiSuggestion && (
+                                <div className="ai-suggestion-card card">
+                                    <Markdown className="ai-suggestion-text">{aiSuggestion}</Markdown>
+                                    <div className="ai-suggestion-actions">
+                                        <button type="button" className="btn btn-primary btn-sm" onClick={() => { setDetails(aiSuggestion!); setAiSuggestion(null); logEvent('AI Suggestion Accepted', { activity_title: title.trim() }); }}>Accept</button>
+                                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setAiSuggestion(null); logEvent('AI Suggestion Declined', { activity_title: title.trim() }); }}>Decline</button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
 
-            {!showOptional && (
+            {!isLodging && (
+                <div className="category-picker">
+                    {categories.map(cat => (
+                        <button
+                            type="button"
+                            key={cat}
+                            className={`category-chip ${category === cat ? 'active' : ''}`}
+                            onClick={() => setCategory(cat)}
+                        >
+                            {CATEGORY_EMOJIS[cat]} {cat}
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {!showOptional && !isLodging && (
                 <button type="button" className="btn btn-ghost toggle-optional" onClick={() => setShowOptional(true)}>
                     + More details
                 </button>
             )}
 
             {showOptional && (
-                <div className="optional-fields animate-fade-in">
-                    <div className="input-group">
-                        <label className="input-label">Activity color</label>
-                        <div className="trip-color-picker">
-                            {ACTIVITY_COLORS.map((c) => (
-                                <button
-                                    key={c}
-                                    type="button"
-                                    className={`trip-color-swatch ${color === c ? 'active' : ''}`}
-                                    style={{ backgroundColor: c }}
-                                    onClick={() => setColor(c)}
-                                    aria-label={`Color ${c}`}
-                                />
-                            ))}
+                <div className="optional-fields animate-fade-in" style={isLodging ? { borderTop: 'none', paddingTop: 0, marginTop: 0 } : {}}>
+                    {!isLodging && (
+                        <div className="input-group">
+                            <label className="input-label">Activity color</label>
+                            <div className="trip-color-picker">
+                                {ACTIVITY_COLORS.map((c) => (
+                                    <button
+                                        key={c}
+                                        type="button"
+                                        className={`trip-color-swatch ${color === c ? 'active' : ''}`}
+                                        style={{ backgroundColor: c }}
+                                        onClick={() => setColor(c)}
+                                        aria-label={`Color ${c}`}
+                                    />
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                    )}
                     <div className="form-row">
                         <div className="input-group" style={{ flex: 2 }}>
                             <label className="input-label">Location</label>
@@ -267,17 +276,19 @@ Prioritize actionable advice over general description. Use engaging but factual 
                             </select>
                         </div>
                     </div>
-                    <div className="input-group">
-                        <label className="input-label">Tags</label>
-                        <input
-                            className="input-field"
-                            type="text"
-                            value={tags}
-                            onChange={e => setTags(e.target.value)}
-                            placeholder="e.g. shared, reimbursable, splurge"
-                        />
-                        <span className="input-hint">Comma-separated</span>
-                    </div>
+                    {!isLodging && (
+                        <div className="input-group">
+                            <label className="input-label">Tags</label>
+                            <input
+                                className="input-field"
+                                type="text"
+                                value={tags}
+                                onChange={e => setTags(e.target.value)}
+                                placeholder="e.g. shared, reimbursable, splurge"
+                            />
+                            <span className="input-hint">Comma-separated</span>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -290,7 +301,7 @@ Prioritize actionable advice over general description. Use engaging but factual 
                 <div className="form-actions-right">
                     <button type="button" className="btn btn-ghost" onClick={onCancel}>Cancel</button>
                     <button type="submit" className="btn btn-primary" disabled={!title.trim()}>
-                        {existingActivity ? 'Save Changes' : 'Add Activity'}
+                        {isLodging ? (existingActivity ? 'Save Lodging' : 'Add Lodging') : (existingActivity ? 'Save Changes' : 'Add Activity')}
                     </button>
                 </div>
             </div>

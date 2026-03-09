@@ -220,12 +220,7 @@ ${tripActs || "None planned yet."}`;
                         <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
                 </select>
-                {selectedTripId && (
-                    <div className="mt-2 text-xs opacity-50 flex justify-between">
-                        <span>Active Context Partition: {selectedTripId.slice(0, 8)}...</span>
-                        <span>{messages.length} messages loaded</span>
-                    </div>
-                )}
+
             </div>
 
             <div className="card flex flex-col flex-1 overflow-hidden p-0" style={{ marginBottom: '1rem' }}>

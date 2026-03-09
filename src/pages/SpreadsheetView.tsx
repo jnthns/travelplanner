@@ -1,12 +1,13 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { format, eachDayOfInterval, isSameDay, parseISO } from 'date-fns';
-import { Plus, Users, Pencil, Trash2, ChevronLeft, ChevronRight, Sunrise, Sun, Sunset, Clock, MapPin } from 'lucide-react';
+import { Plus, Users, Pencil, Trash2, ChevronLeft, ChevronRight, Sunrise, Sun, Sunset, Clock, MapPin, Download } from 'lucide-react';
 import { useTrips, useActivities } from '../lib/store';
 import { useAuth } from '../lib/AuthContext';
 import type { Activity, Trip } from '../lib/types';
 import { CATEGORY_EMOJIS, CATEGORY_COLORS, TRIP_COLORS } from '../lib/types';
 import { useLocalStorageState } from '../lib/persist';
+import { downloadCSV, generateTripCSV } from '../lib/csv';
 import ActivityForm from '../components/ActivityForm';
 import TripForm from '../components/TripForm';
 import ShareModal from '../components/ShareModal';
@@ -59,9 +60,10 @@ const SpreadsheetView: React.FC = () => {
     const [sharingTrip, setSharingTrip] = useState<import('../lib/types').Trip | null>(null);
     const [tripFormError, setTripFormError] = useState<string | null>(null);
     const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
-    const [addingCell, setAddingCell] = useState<{ date: string; slot: TimeSlot } | null>(null);
+    const [addingCell, setAddingCell] = useState<{ date: string; slot: TimeSlot; category?: string } | null>(null);
     const [dragOverCell, setDragOverCell] = useState<string | null>(null);
-    const [focusedDate, setFocusedDate] = useState<Date>(() => new Date());
+    const [focusedDate, setFocusedDate] = useState<Date>(new Date());
+    const initialFocusSet = useRef<string | null>(null);
     const spreadsheetWrapperRef = useRef<HTMLDivElement>(null);
 
     const selectedTrip = trips.find(t => t.id === selectedTripId);
@@ -77,10 +79,12 @@ const SpreadsheetView: React.FC = () => {
     }, [selectedTrip]);
 
     useEffect(() => {
-        if (tripDays.length === 0) return;
+        if (!selectedTripId || initialFocusSet.current === selectedTripId || tripDays.length === 0) return;
+
         const today = new Date();
         const inRange = tripDays.some(d => isSameDay(d, today));
         setFocusedDate(inRange ? today : tripDays[0]);
+        initialFocusSet.current = selectedTripId;
     }, [selectedTripId, tripDays]);
 
     const navigateDay = useCallback((direction: number) => {
@@ -116,9 +120,22 @@ const SpreadsheetView: React.FC = () => {
         return activities.filter(a => a.tripId === selectedTripId);
     }, [selectedTripId, activities]);
 
+    const accommodationsByDate = useMemo(() => {
+        if (!selectedTrip || !tripActivities.length) return {};
+        const activeLodging: Record<string, Activity> = {};
+
+        tripActivities.forEach(a => {
+            if (a.category === 'lodging') {
+                activeLodging[a.date] = a;
+            }
+        });
+
+        return activeLodging;
+    }, [tripActivities, selectedTrip]);
+
     const getCell = useCallback((dateStr: string, slot: TimeSlot): Activity[] => {
         return tripActivities
-            .filter(a => a.date === dateStr && getTimeSlot(a.time) === slot)
+            .filter(a => a.date === dateStr && getTimeSlot(a.time) === slot && a.category !== 'lodging')
             .sort((a, b) => a.order - b.order);
     }, [tripActivities]);
 
@@ -160,23 +177,23 @@ const SpreadsheetView: React.FC = () => {
         });
     };
 
-    const handleSaveActivity = (data: Omit<Activity, 'id' | 'userId' | 'tripMembers'> | ({ id: string } & Partial<Omit<Activity, 'userId'>>)) => {
+    const handleSaveActivity = async (data: Omit<Activity, 'id' | 'userId' | 'tripMembers'> | ({ id: string } & Partial<Omit<Activity, 'userId'>>)) => {
         if ('id' in data) {
-            updateActivity(data.id, data);
+            await updateActivity(data.id, data);
             logEvent('Activity Updated', { activity_title: data.title, source: 'spreadsheet' });
         } else {
             const trip = trips.find(t => t.id === selectedTripId);
-            addActivity(data as Omit<import('../lib/types').Activity, 'id' | 'userId' | 'tripMembers'>, trip?.members || []);
+            await addActivity(data as Omit<Activity, 'id' | 'userId' | 'tripMembers'>, trip?.members || []);
             logEvent('Activity Created', { activity_title: data.title, date: data.date, source: 'spreadsheet' });
         }
         setEditingActivity(null);
         setAddingCell(null);
     };
 
-    const handleDeleteFromModal = (id: string) => {
+    const handleDeleteFromModal = async (id: string) => {
         const act = tripActivities.find(a => a.id === id);
         if (!act) return;
-        deleteActivity(id);
+        await deleteActivity(id);
         logEvent('Activity Deleted', { activity_title: act.title, source: 'spreadsheet' });
         setEditingActivity(null);
         showToast(`"${act.title}" deleted`, () => {
@@ -192,17 +209,17 @@ const SpreadsheetView: React.FC = () => {
         try {
             if ('id' in tripData) {
                 await updateTrip(tripData.id, tripData);
-                logEvent('Trip Updated', { trip_name: tripData.name, start_date: tripData.startDate, end_date: tripData.endDate });
+                logEvent('Trip Updated', { trip_name: tripData.name });
             } else {
                 const newTrip = await addTrip(tripData);
                 setSelectedTripId(newTrip.id);
-                logEvent('Trip Created', { trip_name: tripData.name, start_date: tripData.startDate, end_date: tripData.endDate, default_currency: tripData.defaultCurrency });
+                logEvent('Trip Created', { trip_name: tripData.name });
             }
             setShowTripForm(false);
             setEditingTrip(null);
         } catch (err) {
             console.error('Failed to save trip:', err);
-            setTripFormError(err instanceof Error ? err.message : 'Failed to save trip. Check your connection and try again.');
+            setTripFormError(err instanceof Error ? err.message : 'Failed to save trip');
         }
     };
 
@@ -273,7 +290,6 @@ const SpreadsheetView: React.FC = () => {
                 </>
             )}
 
-            {/* Desktop: card grid */}
             <div className={`${styles['trip-selector']} ${styles['trip-selector-desktop'] || ''}`}>
                 {trips.map((trip, idx) => (
                     <div
@@ -291,6 +307,14 @@ const SpreadsheetView: React.FC = () => {
                         <div className={styles['trip-card-header']}>
                             <h3>{trip.name}</h3>
                             <div className={styles['trip-card-actions']} onClick={e => e.stopPropagation()}>
+                                <button className="btn btn-ghost btn-sm" onClick={() => {
+                                    const acts = getActivitiesByTrip(trip.id);
+                                    const csv = generateTripCSV(acts);
+                                    downloadCSV(`${trip.name.replace(/\s+/g, '_')}_itinerary.csv`, csv);
+                                    logEvent('Exported Trip CSV', { trip_name: trip.name });
+                                }} title="Export CSV">
+                                    <Download size={14} />
+                                </button>
                                 {!user?.isAnonymous && trip.userId === user?.uid && (
                                     <button className="btn btn-ghost btn-sm" onClick={() => setSharingTrip(trip)} title="Share Trip">
                                         <Users size={14} />
@@ -312,7 +336,6 @@ const SpreadsheetView: React.FC = () => {
                 ))}
             </div>
 
-            {/* Mobile: compact dropdown */}
             <div className={styles['trip-selector-mobile']}>
                 <select
                     className="input-field"
@@ -328,6 +351,17 @@ const SpreadsheetView: React.FC = () => {
                 </select>
                 {selectedTripId && (
                     <div className={styles['trip-mobile-actions']}>
+                        <button className="btn btn-ghost btn-sm" onClick={() => {
+                            const trip = trips.find(t => t.id === selectedTripId);
+                            if (trip) {
+                                const acts = getActivitiesByTrip(trip.id);
+                                const csv = generateTripCSV(acts);
+                                downloadCSV(`${trip.name.replace(/\s+/g, '_')}_itinerary.csv`, csv);
+                                logEvent('Exported Trip CSV', { trip_name: trip.name });
+                            }
+                        }} title="Export CSV">
+                            <Download size={14} />
+                        </button>
                         <button className="btn btn-ghost btn-sm" onClick={() => { setEditingTrip(selectedTripId); setShowTripForm(true); }}>
                             <Pencil size={14} />
                         </button>
@@ -372,7 +406,6 @@ const SpreadsheetView: React.FC = () => {
                             className={styles['spreadsheet-grid']}
                             style={{ gridTemplateColumns: `var(--sheet-label-width) repeat(${tripDays.length}, minmax(140px, 1fr))` }}
                         >
-                            {/* Header row */}
                             <div className={`${styles['sheet-header-cell']} ${styles['sheet-corner']}`} />
                             {tripDays.map((day, idx) => {
                                 const isFocused = isSameDay(day, focusedDate);
@@ -401,7 +434,44 @@ const SpreadsheetView: React.FC = () => {
                                 );
                             })}
 
-                            {/* Time slot rows */}
+                            <div className={`${styles['sheet-row-label']} ${styles['lodging-row']}`} title="Accommodation" style={{ color: 'var(--text-tertiary)', borderBottom: '2px solid var(--border-light)' }}>
+                                <span className={styles['slot-icon']}>🏨</span>
+                                <span className={styles['slot-text']}>Lodging</span>
+                            </div>
+                            {tripDays.map((day, idx) => {
+                                const dateStr = format(day, 'yyyy-MM-dd');
+                                const accomm = accommodationsByDate[dateStr];
+                                const isFocused = isSameDay(day, focusedDate);
+                                return (
+                                    <div
+                                        key={`accomm-${idx}`}
+                                        className={`${styles['sheet-cell']} ${styles['lodging-row']} ${isFocused ? styles['focused'] : ''}`}
+                                        style={{ borderBottom: '2px solid var(--border-light)', backgroundColor: accomm ? 'color-mix(in srgb, var(--surface-color) 40%, transparent)' : 'transparent' }}
+                                        onClick={(e) => {
+                                            if ((e.target as HTMLElement).closest('[class*="sheet-activity"]')) return;
+                                            setAddingCell({ date: dateStr, slot: 'unscheduled', category: 'lodging' });
+                                        }}
+                                    >
+                                        {accomm ? (
+                                            <div
+                                                className={styles['sheet-activity']}
+                                                onClick={(e) => { e.stopPropagation(); setEditingActivity(accomm); }}
+                                                style={{ borderLeftColor: accomm.color ?? CATEGORY_COLORS['lodging'], margin: 0, padding: '0.2rem 0.4rem' }}
+                                            >
+                                                <span className={styles['sheet-act-emoji']}>🏨</span>
+                                                <div className={styles['sheet-act-info']}>
+                                                    <span className={styles['sheet-act-title']} style={{ fontSize: '0.75rem' }}>{accomm.title}</span>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className={styles['sheet-cell-placeholder']} style={{ opacity: 1, fontSize: '0.9rem' }}>
+                                                <Plus size={14} />
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+
                             {TIME_SLOTS.map(slot => (
                                 <React.Fragment key={slot.key}>
                                     <div className={`${styles['sheet-row-label']} ${styles[`slot-${slot.key}`]}`} title={slot.label}>
@@ -462,40 +532,23 @@ const SpreadsheetView: React.FC = () => {
                 </div>
             )}
 
-            {/* Modal for editing an existing activity */}
-            {editingActivity && selectedTripId && createPortal(
-                <div className={styles['sheet-modal-overlay']} onClick={() => setEditingActivity(null)}>
+            {(addingCell || editingActivity) && selectedTripId && createPortal(
+                <div className={styles['sheet-modal-overlay']} onClick={() => { setAddingCell(null); setEditingActivity(null); }}>
                     <div className={styles['sheet-modal']} onClick={e => e.stopPropagation()}>
                         <ActivityForm
                             tripId={selectedTripId}
-                            date={editingActivity.date}
-                            existingActivity={editingActivity}
-                            nextOrder={editingActivity.order}
+                            date={(addingCell?.date || editingActivity?.date)!}
+                            existingActivity={editingActivity || undefined}
+                            isLodging={addingCell?.category === 'lodging' || editingActivity?.category === 'lodging'}
+                            nextOrder={addingCell ? getCell(addingCell.date, addingCell.slot).length : (editingActivity?.order || 0)}
                             defaultCurrency={selectedTrip?.defaultCurrency}
                             onSave={handleSaveActivity}
-                            onCancel={() => setEditingActivity(null)}
-                            onDelete={() => handleDeleteFromModal(editingActivity.id)}
+                            onCancel={() => { setAddingCell(null); setEditingActivity(null); }}
+                            onDelete={editingActivity ? () => handleDeleteFromModal(editingActivity.id) : undefined}
                         />
                     </div>
                 </div>,
-                document.body,
-            )}
-
-            {/* Modal for adding a new activity from a cell */}
-            {addingCell && selectedTripId && createPortal(
-                <div className={styles['sheet-modal-overlay']} onClick={() => setAddingCell(null)}>
-                    <div className={styles['sheet-modal']} onClick={e => e.stopPropagation()}>
-                        <ActivityForm
-                            tripId={selectedTripId}
-                            date={addingCell.date}
-                            nextOrder={getCell(addingCell.date, addingCell.slot).length}
-                            defaultCurrency={selectedTrip?.defaultCurrency}
-                            onSave={handleSaveActivity}
-                            onCancel={() => setAddingCell(null)}
-                        />
-                    </div>
-                </div>,
-                document.body,
+                document.body
             )}
 
             {sharingTrip && (

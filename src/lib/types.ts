@@ -52,7 +52,7 @@ export interface Activity {
     details?: string;
     time?: string;     // HH:mm
     location?: string;
-    category?: 'sightseeing' | 'food' | 'accommodation' | 'transport' | 'shopping' | 'other';
+    category?: 'sightseeing' | 'food' | 'accommodation' | 'transport' | 'shopping' | 'other' | 'lodging';
     cost?: number;
     currency?: string;
     notes?: string;
@@ -108,6 +108,7 @@ export const CATEGORY_COLORS: Record<string, string> = {
     transport: '#10b981',
     shopping: '#ec4899',
     other: '#64748b',
+    lodging: '#8b5cf6',
 };
 
 export const CATEGORY_EMOJIS: Record<string, string> = {
@@ -117,6 +118,7 @@ export const CATEGORY_EMOJIS: Record<string, string> = {
     transport: '🚌',
     shopping: '🛍️',
     other: '📌',
+    lodging: '🏨',
 };
 
 export const TRANSPORT_EMOJIS: Record<string, string> = {
