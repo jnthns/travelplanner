@@ -46,7 +46,7 @@ function saveCalendarPrefs(viewMode: ViewMode, selectedTripId: string | null, cu
 }
 
 const CalendarView: React.FC = () => {
-    const { trips } = useTrips();
+    const { trips, updateItineraryDay } = useTrips();
     const { activities, addActivity, updateActivity, deleteActivity, restoreActivity, reorderActivities } = useActivities();
     const { showToast } = useToast();
 
@@ -312,8 +312,8 @@ Ensure all provided activity IDs are included in the optimizedOrder array.`;
                             </button>
                             <span className={styles['current-label']}>
                                 {format(currentDate, 'EEEE, MMM d, yyyy')}
-                                {selectedTrip.dayLocations?.[currentDateStr] && (
-                                    <span className={styles['current-label-location']}>📍 {selectedTrip.dayLocations[currentDateStr]}</span>
+                                {(selectedTrip?.itinerary?.[currentDateStr]?.location || selectedTrip?.dayLocations?.[currentDateStr]) && (
+                                    <span className={styles['current-label-location']}>📍 {selectedTrip.itinerary?.[currentDateStr]?.location || selectedTrip.dayLocations?.[currentDateStr]}</span>
                                 )}
                             </span>
                             <button className="btn btn-ghost btn-sm" onClick={() => navigate(1)}>
@@ -347,7 +347,8 @@ Ensure all provided activity IDs are included in the optimizedOrder array.`;
                             const dateStr = format(day, 'yyyy-MM-dd');
                             const dayActs = getActivitiesForDate(day);
                             const isToday = isSameDay(day, new Date());
-                            const dayLocation = selectedTrip?.dayLocations?.[dateStr];
+                            const dayData = selectedTrip?.itinerary?.[dateStr];
+                            const dayLocation = dayData?.location || selectedTrip?.dayLocations?.[dateStr];
 
                             return (
                                 <div
@@ -357,9 +358,23 @@ Ensure all provided activity IDs are included in the optimizedOrder array.`;
                                 >
                                     <div className={styles['trip-card-header']}>
                                         <span className={styles['cal-day-number']}>{format(day, 'd')}</span>
-                                        <span className={styles['cal-day-label']}>{format(day, 'EEE')}</span>
-                                        {dayLocation && <span className={styles['cal-day-location']}>📍 {dayLocation}</span>}
+                                        <div className={styles['cal-day-info']}>
+                                            <span className={styles['cal-day-label']}>{format(day, 'EEE')}</span>
+                                            {dayLocation && <span className={styles['cal-day-location']}>📍 {dayLocation}</span>}
+                                        </div>
                                     </div>
+                                    {dayData?.accommodation ? (
+                                        <div className={styles['cal-day-accommodation']} title={`${dayData.accommodation.name}${dayData.accommodation.checkInTime ? ` • Check-in: ${dayData.accommodation.checkInTime}` : ''}`}>
+                                            <span className={styles['cal-acc-icon']}>🏠</span>
+                                            <span className={styles['cal-acc-name']}>{dayData.accommodation.name}</span>
+                                            {dayData.accommodation.checkInTime && <span className={styles['cal-acc-time']}>{dayData.accommodation.checkInTime}</span>}
+                                        </div>
+                                    ) : (
+                                        <div className={`${styles['cal-day-accommodation']} ${styles['empty']}`}>
+                                            <span className={styles['cal-acc-icon']}>🏠</span>
+                                            <span className={styles['cal-acc-name']}>Add stay...</span>
+                                        </div>
+                                    )}
                                     {dayActs.length > 0 ? (
                                         <div className={styles['cal-day-activities']}>
                                             {dayActs.map(act => (
@@ -383,6 +398,74 @@ Ensure all provided activity IDs are included in the optimizedOrder array.`;
             {/* Day Detail View */}
             {viewMode === 'day' && (
                 <div className={styles['day-detail-view']}>
+                    <div className={`${styles['day-accommodation-card']} card`}>
+                        <div className={styles['acc-card-header']}>
+                            <div className={styles['acc-card-icon']}>🏠</div>
+                            <div className={styles['acc-card-info']}>
+                                <label className={styles['acc-label']}>Accommodation</label>
+                                <input
+                                    type="text"
+                                    className={`${styles['acc-name-input']} input-transparent`}
+                                    placeholder="Add accommodation..."
+                                    defaultValue={selectedTrip?.itinerary?.[currentDateStr]?.accommodation?.name ?? ''}
+                                    key={`acc-name-${selectedTripId}-${currentDateStr}`}
+                                    onBlur={e => {
+                                        const val = e.target.value.trim();
+                                        const current = selectedTrip?.itinerary?.[currentDateStr]?.accommodation;
+                                        if (val !== (current?.name ?? '')) {
+                                            updateItineraryDay(selectedTripId!, currentDateStr, {
+                                                accommodation: { ...current, name: val }
+                                            });
+                                        }
+                                    }}
+                                />
+                            </div>
+                        </div>
+                        <div className={styles['acc-card-meta']}>
+                            <div className={styles['acc-meta-item']}>
+                                <span className={styles['acc-meta-label']}>Check-In</span>
+                                <input
+                                    type="time"
+                                    className={`${styles['acc-time-input']} input-transparent`}
+                                    defaultValue={selectedTrip?.itinerary?.[currentDateStr]?.accommodation?.checkInTime ?? ''}
+                                    key={`acc-time-${selectedTripId}-${currentDateStr}`}
+                                    onBlur={e => {
+                                        const val = e.target.value;
+                                        const current = selectedTrip?.itinerary?.[currentDateStr]?.accommodation;
+                                        if (val !== (current?.checkInTime ?? '')) {
+                                            updateItineraryDay(selectedTripId!, currentDateStr, {
+                                                accommodation: { ...current, name: current?.name || '', checkInTime: val }
+                                            });
+                                        }
+                                    }}
+                                />
+                            </div>
+                            <div className={styles['acc-meta-item']}>
+                                <span className={styles['acc-meta-label']}>Cost ({selectedTrip?.defaultCurrency || '$'})</span>
+                                <input
+                                    type="number"
+                                    className={`${styles['acc-cost-input']} input-transparent`}
+                                    placeholder="0"
+                                    defaultValue={selectedTrip?.itinerary?.[currentDateStr]?.accommodation?.cost ?? ''}
+                                    key={`acc-cost-${selectedTripId}-${currentDateStr}`}
+                                    onBlur={e => {
+                                        const val = parseFloat(e.target.value);
+                                        const current = selectedTrip?.itinerary?.[currentDateStr]?.accommodation;
+                                        if (val !== (current?.cost ?? 0)) {
+                                            updateItineraryDay(selectedTripId!, currentDateStr, {
+                                                accommodation: {
+                                                    ...current,
+                                                    name: current?.name || '',
+                                                    cost: isNaN(val) ? undefined : val,
+                                                    currency: current?.currency || selectedTrip?.defaultCurrency || 'USD'
+                                                }
+                                            });
+                                        }
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    </div>
                     {selectedTripId && tripActivitiesForSummary.length > 0 && (
                         <div className={styles['day-summary-section']}>
                             <div className="ai-buttons-row" style={{ display: 'flex', gap: '0.5rem' }}>

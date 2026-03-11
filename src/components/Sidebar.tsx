@@ -11,12 +11,12 @@ const Sidebar: React.FC = () => {
   const toggleCollapse = () => setIsCollapsed((prev) => !prev);
 
   const navLinks = [
-    { to: '/spreadsheet', icon: <Table size={20} />, label: 'Trips' },
-    { to: '/calendar', icon: <Calendar size={20} />, label: 'Calendar' },
-    { to: '/transportation', icon: <Map size={20} />, label: 'Transportation' },
-    { to: '/budget', icon: <Wallet size={20} />, label: 'Budget' },
-    { to: '/notes', icon: <StickyNote size={20} />, label: 'Notes' },
-    { to: '/assistant', icon: <Bot size={20} />, label: 'Assistant' },
+    { to: 'spreadsheet', icon: <Table size={20} />, label: 'Trips' },
+    { to: 'calendar', icon: <Calendar size={20} />, label: 'Calendar' },
+    { to: 'transportation', icon: <Map size={20} />, label: 'Transportation' },
+    { to: 'budget', icon: <Wallet size={20} />, label: 'Budget' },
+    { to: 'notes', icon: <StickyNote size={20} />, label: 'Notes' },
+    { to: 'assistant', icon: <Bot size={20} />, label: 'Assistant' },
   ];
 
   return (
@@ -51,14 +51,14 @@ const Sidebar: React.FC = () => {
 
       <div className="sidebar-bottom">
         <NavLink
-          to="/import"
+          to="import"
           className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
         >
           <span className="nav-icon"><Upload size={20} /></span>
           <span className="nav-label">Import</span>
         </NavLink>
         <NavLink
-          to="/settings"
+          to="settings"
           className={({ isActive }) => `nav-item nav-item-settings ${isActive ? 'active' : ''}`}
         >
           <span className="nav-icon"><Settings size={20} /></span>

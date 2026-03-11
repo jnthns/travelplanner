@@ -3,6 +3,18 @@ export const TRIP_COLORS = [
     '#ec4899', '#06b6d4', '#84cc16',
 ];
 
+export interface Accommodation {
+    name: string;
+    checkInTime?: string;
+    cost?: number;
+    currency?: string;
+}
+
+export interface ItineraryDay {
+    location?: string;
+    accommodation?: Accommodation;
+}
+
 export interface Trip {
     id: string;
     userId: string; // owner UID
@@ -12,7 +24,8 @@ export interface Trip {
     description?: string;
     defaultCurrency?: string;
     color?: string; // hex for calendar overlay and UI
-    dayLocations?: Record<string, string>; // "YYYY-MM-DD" -> location name
+    dayLocations?: Record<string, string>; // DEPRECATED: "YYYY-MM-DD" -> location name (moving to itinerary)
+    itinerary?: Record<string, ItineraryDay>; // "YYYY-MM-DD" -> day details
     budgetTarget?: number;
     budgetCurrency?: string;
     members: string[];          // [ownerUid, ...collaboratorUids]

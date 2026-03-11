@@ -44,7 +44,7 @@ const safeFormatDate = (dateStr: string | undefined, fmt: string, fallback = 'â€
 };
 
 const SpreadsheetView: React.FC = () => {
-    const { trips, loading: tripsLoading, addTrip, updateTrip, deleteTrip, restoreTrip } = useTrips();
+    const { trips, loading: tripsLoading, addTrip, updateTrip, deleteTrip, restoreTrip, updateItineraryDay } = useTrips();
     const { activities, addActivity, updateActivity, deleteActivity, restoreActivity, getActivitiesByTrip } = useActivities();
     const { showToast } = useToast();
     const { user } = useAuth();
@@ -221,12 +221,10 @@ const SpreadsheetView: React.FC = () => {
         });
     };
 
-    const handleUpdateDayLocation = useCallback((dateStr: string, location: string) => {
+    const handleUpdateItineraryDay = useCallback((dateStr: string, updates: Partial<import('../lib/types').ItineraryDay>) => {
         if (!selectedTrip) return;
-        const dayLocations = { ...selectedTrip.dayLocations, [dateStr]: location };
-        if (!location.trim()) delete dayLocations[dateStr];
-        updateTrip(selectedTrip.id, { dayLocations });
-    }, [selectedTrip, updateTrip]);
+        updateItineraryDay(selectedTrip.id, dateStr, updates);
+    }, [selectedTrip, updateItineraryDay]);
 
     if (tripsLoading) {
         return <div className={`page-container animate-fade-in ${styles['spreadsheet-page']}`} />;
@@ -377,25 +375,81 @@ const SpreadsheetView: React.FC = () => {
                             {tripDays.map((day, idx) => {
                                 const isFocused = isSameDay(day, focusedDate);
                                 const dateStr = format(day, 'yyyy-MM-dd');
-                                const dayLocation = selectedTrip?.dayLocations?.[dateStr] ?? '';
+                                const dayData = selectedTrip?.itinerary?.[dateStr];
+                                const dayLocation = dayData?.location ?? selectedTrip?.dayLocations?.[dateStr] ?? '';
+                                const dayAccommodation = dayData?.accommodation;
+
                                 return (
                                     <div key={idx} className={`${styles['sheet-header-cell']} ${isFocused ? styles['focused'] : ''}`}>
                                         <span className={styles['sheet-day-label']}>Day {idx + 1}</span>
                                         <span className={styles['sheet-day-date']}>{format(day, 'EEE, MMM d')}</span>
-                                        <div className={styles['sheet-day-location']}>
-                                            <MapPin size={10} />
-                                            <input
-                                                type="text"
-                                                className={styles['day-location-input']}
-                                                placeholder="Location..."
-                                                defaultValue={dayLocation}
-                                                key={`${selectedTripId}-${dateStr}`}
-                                                onBlur={e => {
-                                                    const val = e.target.value.trim();
-                                                    if (val !== dayLocation) handleUpdateDayLocation(dateStr, val);
-                                                }}
-                                                onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                                            />
+
+                                        <div className={styles['sheet-header-inputs']}>
+                                            <div className={styles['sheet-day-location']}>
+                                                <MapPin size={10} />
+                                                <input
+                                                    type="text"
+                                                    className={styles['day-location-input']}
+                                                    placeholder="City..."
+                                                    defaultValue={dayLocation}
+                                                    key={`loc-${selectedTripId}-${dateStr}`}
+                                                    onBlur={e => {
+                                                        const val = e.target.value.trim();
+                                                        if (val !== dayLocation) handleUpdateItineraryDay(dateStr, { location: val });
+                                                    }}
+                                                    onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                                                />
+                                            </div>
+
+                                            <div className={styles['sheet-day-accommodation']}>
+                                                <input
+                                                    type="text"
+                                                    className={styles['day-accommodation-input']}
+                                                    placeholder="Accommodation..."
+                                                    defaultValue={dayAccommodation?.name ?? ''}
+                                                    key={`acc-name-${selectedTripId}-${dateStr}`}
+                                                    onBlur={e => {
+                                                        const val = e.target.value.trim();
+                                                        if (val !== (dayAccommodation?.name ?? '')) {
+                                                            handleUpdateItineraryDay(dateStr, { accommodation: { ...dayAccommodation, name: val } });
+                                                        }
+                                                    }}
+                                                    onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                                                />
+                                                <div className={styles['accommodation-details']}>
+                                                    <div className={styles['input-with-label']}>
+                                                        <Clock size={8} />
+                                                        <input
+                                                            type="time"
+                                                            className={styles['day-accommodation-time']}
+                                                            defaultValue={dayAccommodation?.checkInTime ?? ''}
+                                                            key={`acc-time-${selectedTripId}-${dateStr}`}
+                                                            onBlur={e => {
+                                                                const val = e.target.value;
+                                                                if (val !== (dayAccommodation?.checkInTime ?? '')) {
+                                                                    handleUpdateItineraryDay(dateStr, { accommodation: { ...dayAccommodation, name: dayAccommodation?.name || '', checkInTime: val } });
+                                                                }
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <div className={styles['input-with-label']}>
+                                                        <span className={styles['currency-symbol']}>{selectedTrip?.defaultCurrency || '$'}</span>
+                                                        <input
+                                                            type="number"
+                                                            className={styles['day-accommodation-cost']}
+                                                            placeholder="0"
+                                                            defaultValue={dayAccommodation?.cost ?? ''}
+                                                            key={`acc-cost-${selectedTripId}-${dateStr}`}
+                                                            onBlur={e => {
+                                                                const val = parseFloat(e.target.value);
+                                                                if (val !== (dayAccommodation?.cost ?? 0)) {
+                                                                    handleUpdateItineraryDay(dateStr, { accommodation: { ...dayAccommodation, name: dayAccommodation?.name || '', cost: isNaN(val) ? undefined : val, currency: dayAccommodation?.currency || selectedTrip?.defaultCurrency || 'USD' } });
+                                                                }
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 );

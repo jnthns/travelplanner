@@ -229,6 +229,61 @@
     font-weight: 500;
 }
 
+.cal-day-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.cal-day-accommodation {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.4rem;
+    background-color: color-mix(in srgb, var(--primary-color) 4%, var(--surface-color));
+    border: 1px solid color-mix(in srgb, var(--primary-color) 10%, var(--border-light));
+    border-radius: var(--radius-sm);
+    margin-bottom: 0.5rem;
+    font-size: 0.75rem;
+    min-width: 0;
+    transition: all 0.2s ease;
+}
+
+.cal-day-accommodation.empty {
+    background-color: transparent;
+    border: 1px dashed var(--border-color);
+    color: var(--text-tertiary);
+    opacity: 0.6;
+}
+
+.cal-day-accommodation.empty:hover {
+    opacity: 1;
+    border-color: var(--primary-color);
+    background-color: color-mix(in srgb, var(--primary-color) 4%, transparent);
+}
+
+.cal-acc-icon {
+    font-size: 0.7rem;
+    flex-shrink: 0;
+}
+
+.cal-acc-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+}
+
+.cal-acc-time {
+    font-size: 0.65rem;
+    color: var(--primary-color);
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
 /* Trip expanded activities */
 .cal-day-activities {
     display: flex;
@@ -269,6 +324,90 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
+}
+
+.day-accommodation-card {
+    padding: 1.25rem;
+    border-left: 4px solid var(--primary-color);
+    background: linear-gradient(to right, color-mix(in srgb, var(--primary-color) 5%, var(--surface-color)), var(--surface-color));
+}
+
+.acc-card-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.acc-card-icon {
+    font-size: 1.75rem;
+}
+
+.acc-card-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.acc-label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-tertiary);
+    margin-bottom: 0.1rem;
+}
+
+.acc-name {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.acc-card-meta {
+    display: flex;
+    gap: 1.5rem;
+}
+
+.acc-meta-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.acc-meta-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-tertiary);
+}
+
+.acc-meta-value,
+.acc-name-input,
+.acc-time-input,
+.acc-cost-input {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.acc-name-input {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+.input-transparent {
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: inherit;
+}
+
+.input-transparent:focus {
+    background-color: rgba(var(--primary-color-rgb), 0.05);
+    border-radius: var(--radius-sm);
 }
 
 .no-activities-cal {

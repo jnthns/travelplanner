@@ -89,7 +89,19 @@ export function useTrips() {
         await setDoc(doc(db, 'trips', id), stripUndefined(data));
     }, []);
 
-    return { trips, loading, addTrip, updateTrip, deleteTrip, restoreTrip };
+    const updateItineraryDay = useCallback(async (tripId: string, date: string, updates: Partial<import('./types').ItineraryDay>) => {
+        const firestoreUpdates: Record<string, any> = {};
+        if (updates.location !== undefined) firestoreUpdates[`itinerary.${date}.location`] = updates.location;
+        if (updates.accommodation) {
+            if (updates.accommodation.name !== undefined) firestoreUpdates[`itinerary.${date}.accommodation.name`] = updates.accommodation.name;
+            if (updates.accommodation.checkInTime !== undefined) firestoreUpdates[`itinerary.${date}.accommodation.checkInTime`] = updates.accommodation.checkInTime;
+            if (updates.accommodation.cost !== undefined) firestoreUpdates[`itinerary.${date}.accommodation.cost`] = updates.accommodation.cost;
+            if (updates.accommodation.currency !== undefined) firestoreUpdates[`itinerary.${date}.accommodation.currency`] = updates.accommodation.currency;
+        }
+        await updateDoc(doc(db, 'trips', tripId), firestoreUpdates);
+    }, []);
+
+    return { trips, loading, addTrip, updateTrip, deleteTrip, restoreTrip, updateItineraryDay };
 }
 
 // ---- Activities ----

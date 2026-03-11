@@ -165,7 +165,15 @@ const Budget: React.FC = () => {
         return routes.filter(r => r.tripId === selectedTripId);
     }, [selectedTripId, routes]);
 
-    const locationsByDate = useMemo(() => selectedTrip?.dayLocations ?? {}, [selectedTrip]);
+    const locationsByDate = useMemo(() => {
+        const locs: Record<string, string> = { ...(selectedTrip?.dayLocations || {}) };
+        if (selectedTrip?.itinerary) {
+            Object.entries(selectedTrip.itinerary).forEach(([date, day]) => {
+                if (day.location) locs[date] = day.location;
+            });
+        }
+        return locs;
+    }, [selectedTrip]);
 
     const uniqueLocations = useMemo(() => {
         const locs = new Set(Object.values(locationsByDate).filter(Boolean));
@@ -200,12 +208,27 @@ const Budget: React.FC = () => {
         return items.filter(r => filteredDates.has(r.date));
     }, [tripRoutes, filteredDates]);
 
+    const costedAccommodations = useMemo(() => {
+        if (!selectedTrip?.itinerary) return [];
+        let items = Object.entries(selectedTrip.itinerary)
+            .filter(([, day]) => day.accommodation?.cost != null && day.accommodation.cost > 0)
+            .map(([date, day]) => ({
+                date,
+                title: `Accommodation: ${day.accommodation!.name}`,
+                cost: day.accommodation!.cost!,
+                currency: day.accommodation!.currency || 'USD',
+            }));
+        if (filteredDates) items = items.filter(a => filteredDates.has(a.date));
+        return items;
+    }, [selectedTrip, filteredDates]);
+
     const usedCurrencies = useMemo(() => {
         const set = new Set<string>();
         costedActivities.forEach(a => set.add(a.currency || 'USD'));
         costedRoutes.forEach(r => set.add(r.currency || 'USD'));
+        costedAccommodations.forEach(a => set.add(a.currency || 'USD'));
         return Array.from(set).sort();
-    }, [costedActivities, costedRoutes]);
+    }, [costedActivities, costedRoutes, costedAccommodations]);
 
     const tripRates = useMemo(() =>
         (selectedTripId && exchangeRates[selectedTripId]) || {},
@@ -220,8 +243,11 @@ const Budget: React.FC = () => {
         for (const r of costedRoutes) {
             total += convertAmount(r.cost!, r.currency || 'USD', displayCurrency, tripRates);
         }
+        for (const a of costedAccommodations) {
+            total += convertAmount(a.cost, a.currency, displayCurrency, tripRates);
+        }
         return total;
-    }, [displayCurrency, costedActivities, costedRoutes, tripRates]);
+    }, [displayCurrency, costedActivities, costedRoutes, costedAccommodations, tripRates]);
 
     const grandTotal = useMemo(() => {
         const totals: CurrencyTotal = {};
@@ -233,8 +259,12 @@ const Budget: React.FC = () => {
             const cur = r.currency || 'USD';
             totals[cur] = (totals[cur] || 0) + r.cost!;
         }
+        for (const a of costedAccommodations) {
+            const cur = a.currency;
+            totals[cur] = (totals[cur] || 0) + a.cost;
+        }
         return totals;
-    }, [costedActivities, costedRoutes]);
+    }, [costedActivities, costedRoutes, costedAccommodations]);
 
     const categoryBreakdown = useMemo(() => {
         const breakdown: Record<string, CurrencyTotal> = {};
@@ -250,8 +280,12 @@ const Budget: React.FC = () => {
             const cur = r.currency || 'USD';
             breakdown['transport_routes'][cur] = (breakdown['transport_routes'][cur] || 0) + r.cost!;
         }
+        for (const a of costedAccommodations) {
+            const cur = a.currency;
+            breakdown['accommodation'][cur] = (breakdown['accommodation'][cur] || 0) + a.cost;
+        }
         return breakdown;
-    }, [costedActivities, costedRoutes]);
+    }, [costedActivities, costedRoutes, costedAccommodations]);
 
     const donutSegments = useMemo(() => {
         const segments: { label: string; value: number; color: string }[] = [];
@@ -281,8 +315,9 @@ const Budget: React.FC = () => {
         };
         for (const a of costedActivities) addItem(a.date, a.cost!, a.currency || 'USD');
         for (const r of costedRoutes) addItem(r.date, r.cost!, r.currency || 'USD');
+        for (const a of costedAccommodations) addItem(a.date, a.cost, a.currency);
         return breakdown;
-    }, [costedActivities, costedRoutes, locationsByDate]);
+    }, [costedActivities, costedRoutes, costedAccommodations, locationsByDate]);
 
     const allTripDays = useMemo(() => {
         if (!selectedTrip) return [];
@@ -296,14 +331,16 @@ const Budget: React.FC = () => {
             const dateStr = format(day, 'yyyy-MM-dd');
             const dayActivities = costedActivities.filter(a => a.date === dateStr);
             const dayRoutes = costedRoutes.filter(r => r.date === dateStr);
+            const dayAccommodations = costedAccommodations.filter(a => a.date === dateStr);
 
             const totals: CurrencyTotal = {};
             for (const a of dayActivities) { const cur = a.currency || 'USD'; totals[cur] = (totals[cur] || 0) + a.cost!; }
             for (const r of dayRoutes) { const cur = r.currency || 'USD'; totals[cur] = (totals[cur] || 0) + r.cost!; }
+            for (const a of dayAccommodations) { const cur = a.currency; totals[cur] = (totals[cur] || 0) + a.cost; }
 
-            return { date: day, dateStr, location: locationsByDate[dateStr] || '', activities: dayActivities, routes: dayRoutes, totals, itemCount: dayActivities.length + dayRoutes.length };
+            return { date: day, dateStr, location: locationsByDate[dateStr] || '', activities: dayActivities, routes: dayRoutes, accommodations: dayAccommodations, totals, itemCount: dayActivities.length + dayRoutes.length + dayAccommodations.length };
         }).filter(d => d.itemCount > 0);
-    }, [allTripDays, costedActivities, costedRoutes, locationsByDate]);
+    }, [allTripDays, costedActivities, costedRoutes, costedAccommodations, locationsByDate]);
 
     const cumulativeData = useMemo(() => {
         let running = 0;
@@ -311,11 +348,13 @@ const Budget: React.FC = () => {
             const dateStr = format(day, 'yyyy-MM-dd');
             const dayActs = costedActivities.filter(a => a.date === dateStr);
             const dayRoutes = costedRoutes.filter(r => r.date === dateStr);
+            const dayAccs = costedAccommodations.filter(a => a.date === dateStr);
             for (const a of dayActs) running += displayCurrency ? convertAmount(a.cost!, a.currency || 'USD', displayCurrency, tripRates) : a.cost!;
             for (const r of dayRoutes) running += displayCurrency ? convertAmount(r.cost!, r.currency || 'USD', displayCurrency, tripRates) : r.cost!;
+            for (const a of dayAccs) running += displayCurrency ? convertAmount(a.cost, a.currency, displayCurrency, tripRates) : a.cost;
             return { label: format(day, 'MMM d'), cumulative: running };
         });
-    }, [allTripDays, costedActivities, costedRoutes, displayCurrency, tripRates]);
+    }, [allTripDays, costedActivities, costedRoutes, costedAccommodations, displayCurrency, tripRates]);
 
     const topExpenses = useMemo(() => {
         const items: { emoji: string; title: string; cost: number; currency: string; date: string; converted?: number }[] = [];
@@ -339,9 +378,19 @@ const Budget: React.FC = () => {
                 converted: displayCurrency ? convertAmount(r.cost!, r.currency || 'USD', displayCurrency, tripRates) : undefined,
             });
         }
+        for (const a of costedAccommodations) {
+            items.push({
+                emoji: '🏠',
+                title: a.title,
+                cost: a.cost,
+                currency: a.currency,
+                date: a.date,
+                converted: displayCurrency ? convertAmount(a.cost, a.currency, displayCurrency, tripRates) : undefined,
+            });
+        }
         items.sort((a, b) => (b.converted ?? b.cost) - (a.converted ?? a.cost));
         return items.slice(0, 5);
-    }, [costedActivities, costedRoutes, displayCurrency, tripRates]);
+    }, [costedActivities, costedRoutes, costedAccommodations, displayCurrency, tripRates]);
 
     const avgDailySpend = useMemo(() => {
         if (allTripDays.length === 0) return null;
@@ -383,7 +432,7 @@ const Budget: React.FC = () => {
         return max;
     }, [locationBreakdown, displayCurrency, tripRates]);
 
-    const totalExpenses = costedActivities.length + costedRoutes.length;
+    const totalExpenses = costedActivities.length + costedRoutes.length + costedAccommodations.length;
     const budgetTarget = selectedTrip?.budgetTarget;
     const budgetCurrency = selectedTrip?.budgetCurrency || selectedTrip?.defaultCurrency || 'USD';
 
@@ -768,6 +817,15 @@ const Budget: React.FC = () => {
                                                 <div className="h-full rounded-full transition-all duration-300 min-w-1" style={{ width: `${barWidth}%`, background: 'linear-gradient(90deg, var(--primary-color), var(--secondary-color))' }} />
                                             </div>
                                             <div className="flex flex-col gap-1">
+                                                {day.accommodations.map((a, idx) => (
+                                                    <div key={`acc-${idx}`} className="flex items-center gap-xs py-1 px-2 rounded-sm bg-border-light text-xs">
+                                                        <span className="shrink-0">🏠</span>
+                                                        <span className="flex-1 font-medium text-primary truncate">{a.title}</span>
+                                                        <span className="font-bold text-secondary shrink-0">
+                                                            {displayCurrency ? formatCurrency(convertAmount(a.cost, a.currency, displayCurrency, tripRates), displayCurrency) : formatCurrency(a.cost, a.currency)}
+                                                        </span>
+                                                    </div>
+                                                ))}
                                                 {day.activities.map(a => (
                                                     <div key={a.id} className="flex items-center gap-xs py-1 px-2 rounded-sm bg-border-light text-xs">
                                                         <span className="shrink-0">{CATEGORY_EMOJIS[a.category || 'other']}</span>

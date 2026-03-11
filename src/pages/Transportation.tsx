@@ -409,6 +409,35 @@ Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid 
                                     <span className="text-xs text-subtle bg-border-light rounded-sm px-xs py-1" style={{ backgroundColor: 'var(--border-light)' }}>Ref: {route.bookingRef}</span>
                                 )}
                             </div>
+                            {(() => {
+                                const acc = selectedTrip?.itinerary?.[route.date]?.accommodation;
+                                if (!acc) return null;
+
+                                const hasTimeConflict = route.arrivalTime && acc.checkInTime && route.arrivalTime > acc.checkInTime;
+                                const isEarlyArrival = route.arrivalTime && acc.checkInTime && route.arrivalTime < acc.checkInTime;
+
+                                return (
+                                    <div className={`mt-md p-sm rounded-md border text-xs flex flex-col gap-1 ${hasTimeConflict ? 'bg-error-subtle border-error' : 'bg-primary-subtle border-primary-light'}`}
+                                        style={{
+                                            marginTop: '0.75rem', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid',
+                                            ...(hasTimeConflict ? { backgroundColor: 'rgba(239, 68, 68, 0.05)', borderColor: 'rgba(239, 68, 68, 0.2)' } : { backgroundColor: 'rgba(var(--primary-rgb), 0.05)', borderColor: 'rgba(var(--primary-rgb), 0.1)' })
+                                        }}>
+                                        <div className="flex items-center justify-between">
+                                            <span className="font-semibold text-primary">🏠 Accommodation: {acc.name}</span>
+                                            {acc.checkInTime && <span className="text-subtle">Check-in: {acc.checkInTime}</span>}
+                                        </div>
+                                        {route.arrivalTime && acc.checkInTime && (
+                                            <div className={`flex items-center gap-1 font-medium ${hasTimeConflict ? 'text-danger' : 'text-success'}`}>
+                                                {hasTimeConflict ? (
+                                                    <>⚠️ Arrives {route.arrivalTime} (after check-in)</>
+                                                ) : isEarlyArrival ? (
+                                                    <>🕒 Arrives {route.arrivalTime} ({acc.checkInTime} check-in)</>
+                                                ) : null}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })()}
                             {route.notes && (
                                 <div className="text-xs text-secondary mt-sm pt-sm border-t italic" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                                     <Markdown>{route.notes}</Markdown>
