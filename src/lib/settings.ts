@@ -131,11 +131,11 @@ async function pushToCloud() {
   }
 }
 
-async function pullFromCloud(uid: string): Promise<Partial<AppSettings> | null> {
+async function pullFromCloud(uid: string): Promise<(Partial<AppSettings> & { updatedAt?: string }) | null> {
   try {
     const snap = await getDoc(getDocRef(uid));
     if (!snap.exists()) return null;
-    return snap.data() as Partial<AppSettings>;
+    return snap.data() as Partial<AppSettings> & { updatedAt?: string };
   } catch {
     return null;
   }
