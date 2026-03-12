@@ -120,6 +120,19 @@
     max-width: 100%;
 }
 
+.zoom-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.zoom-value {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    min-width: 76px;
+    text-align: center;
+}
+
 .spreadsheet-page .day-pill {
     display: flex;
     flex-direction: column;

@@ -1,12 +1,14 @@
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, Check, AlertCircle, Plus, X, Plane } from 'lucide-react';
-import { useTrips, useActivities } from '../lib/store';
+import { useTrips, useActivities, useTransportRoutes, useNotes } from '../lib/store';
 import { useLocalStorageState } from '../hooks/useLocalStorageState';
 import { CATEGORY_EMOJIS } from '../lib/types';
 import type { Activity } from '../lib/types';
 import { generateWithGemini } from '../lib/gemini';
+import { useToast } from '../components/Toast';
 import { logEvent } from '../lib/amplitude';
+import { buildTripExportPayload, downloadTextFile, slugifyFilename, toTripCsv } from '../lib/exportTrip';
 
 interface ParsedActivity {
     date: string;
@@ -25,6 +27,8 @@ interface ParsedItinerary {
 }
 
 type Stage = 'input' | 'preview' | 'saving' | 'done';
+type ImportExportMode = 'import' | 'export';
+type ExportFormat = 'json' | 'csv';
 
 const CATEGORY_LIST = ['sightseeing', 'food', 'accommodation', 'transport', 'shopping', 'other'] as const;
 const CURRENCY_LIST = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'KRW', 'TWD', 'THB', 'SGD'];
@@ -199,6 +203,13 @@ const ImportItinerary: React.FC = () => {
     const navigate = useNavigate();
     const { trips, addTrip, updateTrip } = useTrips();
     const { addActivity, getActivitiesByTrip } = useActivities();
+    const { getRoutesByTrip } = useTransportRoutes();
+    const { getNotesByTrip } = useNotes();
+    const { showToast } = useToast();
+
+    const [mode, setMode] = useState<ImportExportMode>('import');
+    const [exportTripId, setExportTripId] = useState<string>('');
+    const [exportFormat, setExportFormat] = useState<ExportFormat>('json');
 
     const [rawText, setRawText] = useLocalStorageState('travelplanner_import_raw', '');
     const [stage, setStage] = useLocalStorageState<Stage>('travelplanner_import_stage', 'input');
@@ -423,6 +434,53 @@ const ImportItinerary: React.FC = () => {
     const grouped = parsed ? groupByDate(parsed.activities) : null;
     let globalIdx = 0;
 
+    const selectedExportTrip = trips.find(t => t.id === exportTripId) || null;
+
+    const handleExport = useCallback(() => {
+        if (!selectedExportTrip) {
+            showToast('Select a trip to export');
+            return;
+        }
+
+        try {
+            const activitiesForTrip = getActivitiesByTrip(selectedExportTrip.id);
+            const routesForTrip = getRoutesByTrip(selectedExportTrip.id);
+            const notesForTrip = getNotesByTrip(selectedExportTrip.id);
+            const baseFilename = `${slugifyFilename(selectedExportTrip.name)}-${selectedExportTrip.startDate}-${selectedExportTrip.endDate}`;
+
+            if (exportFormat === 'json') {
+                const payload = buildTripExportPayload({
+                    trip: selectedExportTrip,
+                    activities: activitiesForTrip,
+                    transportRoutes: routesForTrip,
+                    notes: notesForTrip,
+                });
+                downloadTextFile(`${baseFilename}.json`, JSON.stringify(payload, null, 2), 'application/json;charset=utf-8');
+            } else {
+                const csv = toTripCsv({
+                    trip: selectedExportTrip,
+                    activities: activitiesForTrip,
+                    transportRoutes: routesForTrip,
+                    notes: notesForTrip,
+                });
+                downloadTextFile(`${baseFilename}-trip.csv`, csv, 'text/csv;charset=utf-8');
+            }
+
+            logEvent('Trip Exported', {
+                trip_id: selectedExportTrip.id,
+                trip_name: selectedExportTrip.name,
+                format: exportFormat,
+                activity_count: activitiesForTrip.length,
+                route_count: routesForTrip.length,
+                note_count: notesForTrip.length,
+            });
+            showToast(`Exported ${selectedExportTrip.name} as ${exportFormat.toUpperCase()}`);
+        } catch (err) {
+            console.error('Export failed:', err);
+            showToast('Export failed. Please try again.');
+        }
+    }, [selectedExportTrip, showToast, getActivitiesByTrip, getRoutesByTrip, getNotesByTrip, exportFormat]);
+
     return (
         <div className="page-container animate-fade-in">
             <header className="page-header">
@@ -432,8 +490,81 @@ const ImportItinerary: React.FC = () => {
                 </div>
             </header>
 
+            <div className="flex items-center gap-xs mb-lg">
+                <button
+                    type="button"
+                    className={`btn btn-sm ${mode === 'import' ? 'btn-primary' : 'btn-ghost'}`}
+                    onClick={() => setMode('import')}
+                >
+                    Import
+                </button>
+                <button
+                    type="button"
+                    className={`btn btn-sm ${mode === 'export' ? 'btn-primary' : 'btn-ghost'}`}
+                    onClick={() => {
+                        setMode('export');
+                        if (!exportTripId && trips.length > 0) {
+                            setExportTripId(trips[0].id);
+                        }
+                    }}
+                >
+                    Export
+                </button>
+            </div>
+
+            {mode === 'export' && (
+                <div className="card p-xl flex flex-col gap-md">
+                    <div className="flex flex-wrap items-end gap-sm">
+                        <div className="flex flex-col gap-xs" style={{ minWidth: '240px', flex: '1 1 280px' }}>
+                            <label className="input-label">Select trip</label>
+                            <select
+                                className="input-field"
+                                value={exportTripId}
+                                onChange={(e) => setExportTripId(e.target.value)}
+                            >
+                                <option value="">Choose a trip...</option>
+                                {trips.map((t) => (
+                                    <option key={t.id} value={t.id}>
+                                        {t.name} ({t.startDate} to {t.endDate})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="flex flex-col gap-xs">
+                            <label className="input-label">Format</label>
+                            <select
+                                className="input-field"
+                                value={exportFormat}
+                                onChange={(e) => setExportFormat(e.target.value as ExportFormat)}
+                            >
+                                <option value="json">JSON</option>
+                                <option value="csv">CSV (trip.csv)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <p className="text-sm text-tertiary">
+                        {exportFormat === 'json'
+                            ? 'JSON export includes trip metadata plus activities, transport routes, and notes.'
+                            : 'CSV export creates trip.csv with metadata and flattened itinerary records.'}
+                    </p>
+
+                    <div className="flex justify-end">
+                        <button
+                            type="button"
+                            className="btn btn-primary"
+                            onClick={handleExport}
+                            disabled={!exportTripId}
+                        >
+                            Export {exportFormat.toUpperCase()}
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Input Stage */}
-            {stage === 'input' && !loading && (
+            {mode === 'import' && stage === 'input' && !loading && (
                 <div className="flex flex-col gap-sm">
                     {isAppending && (
                         <div className="flex items-center gap-sm p-sm rounded-md text-sm text-secondary" style={{ backgroundColor: 'color-mix(in srgb, var(--primary-color) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--primary-color) 20%, transparent)' }}>
@@ -486,12 +617,12 @@ const ImportItinerary: React.FC = () => {
             )}
 
             {/* Loading / Parsing Stage */}
-            {stage === 'input' && loading && (
+            {mode === 'import' && stage === 'input' && loading && (
                 <LoadingJokes progress={parseProgress} />
             )}
 
             {/* Preview Stage */}
-            {stage === 'preview' && parsed && grouped && (() => { globalIdx = 0; return true; })() && (
+            {mode === 'import' && stage === 'preview' && parsed && grouped && (() => { globalIdx = 0; return true; })() && (
                 <div className="flex flex-col gap-xl">
                     <style>{`
                         @media (max-width: 768px) {
@@ -644,7 +775,7 @@ const ImportItinerary: React.FC = () => {
             )}
 
             {/* Saving Stage */}
-            {stage === 'saving' && (
+            {mode === 'import' && stage === 'saving' && (
                 <div className="flex flex-col items-center gap-sm text-tertiary" style={{ padding: '3rem 0' }}>
                     <Loader2 size={32} className="spin" />
                     <p>{isAppending ? 'Adding activities...' : 'Creating trip and activities...'}</p>
@@ -652,7 +783,7 @@ const ImportItinerary: React.FC = () => {
             )}
 
             {/* Done Stage */}
-            {stage === 'done' && parsed && (
+            {mode === 'import' && stage === 'done' && parsed && (
                 <div className="flex flex-col items-center text-center gap-sm" style={{ padding: '3rem 1rem' }}>
                     <div className="sticky-actions mobile-actions w-full" style={{ position: 'relative', top: 'unset', marginBottom: '1.5rem' }}>
                         <button className="btn btn-ghost mobile-discard" onClick={handleAddMore}>

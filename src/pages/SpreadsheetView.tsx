@@ -63,6 +63,10 @@ const SpreadsheetView: React.FC = () => {
         'travelplanner_spreadsheet_selectedTripId',
         null,
     );
+    const [sheetZoom, setSheetZoom] = useLocalStorageState<number>(
+        'travelplanner_spreadsheet_zoom',
+        100,
+    );
 
     const [showTripForm, setShowTripForm] = useState(false);
     const [editingTrip, setEditingTrip] = useState<string | null>(null);
@@ -78,6 +82,9 @@ const SpreadsheetView: React.FC = () => {
     const [quickNoteForDate, setQuickNoteForDate] = useState<string | null>(null);
     const [quickNoteContent, setQuickNoteContent] = useState('');
     const [editingNote, setEditingNote] = useState<Note | null>(null);
+
+    const clampZoom = useCallback((value: number) => Math.min(140, Math.max(70, Math.round(value))), []);
+    const zoomScale = clampZoom(sheetZoom) / 100;
 
     const selectedTrip = trips.find(t => t.id === selectedTripId);
 
@@ -418,6 +425,33 @@ const SpreadsheetView: React.FC = () => {
                                 <ChevronRight size={18} />
                             </button>
                         </div>
+                        <div className={styles['zoom-controls']}>
+                            <button
+                                type="button"
+                                className="btn btn-ghost btn-sm"
+                                onClick={() => setSheetZoom((prev) => clampZoom(prev - 10))}
+                                aria-label="Zoom out spreadsheet"
+                            >
+                                -
+                            </button>
+                            <span className={styles['zoom-value']}>Zoom: {clampZoom(sheetZoom)}%</span>
+                            <button
+                                type="button"
+                                className="btn btn-ghost btn-sm"
+                                onClick={() => setSheetZoom(100)}
+                                aria-label="Reset spreadsheet zoom"
+                            >
+                                Reset
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-ghost btn-sm"
+                                onClick={() => setSheetZoom((prev) => clampZoom(prev + 10))}
+                                aria-label="Zoom in spreadsheet"
+                            >
+                                +
+                            </button>
+                        </div>
                         <div className={styles['day-pills']}>
                             {tripDays.map((day, idx) => (
                                 <button
@@ -436,7 +470,11 @@ const SpreadsheetView: React.FC = () => {
                     <div className={styles['spreadsheet-wrapper']} ref={spreadsheetWrapperRef}>
                         <div
                             className={styles['spreadsheet-grid']}
-                            style={{ gridTemplateColumns: `var(--sheet-label-width) repeat(${tripDays.length}, minmax(140px, 1fr))` }}
+                            style={{
+                                gridTemplateColumns: `var(--sheet-label-width) repeat(${tripDays.length}, minmax(140px, 1fr))`,
+                                zoom: zoomScale,
+                                transformOrigin: 'top left',
+                            }}
                         >
                             {/* Header row */}
                             <div className={`${styles['sheet-header-cell']} ${styles['sheet-corner']}`} />

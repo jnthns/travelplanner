@@ -176,30 +176,24 @@ const CalendarView: React.FC = () => {
         setEditingActivityId(null);
     };
 
-    const tripActivitiesForSummary = useMemo(() => {
-        if (!selectedTripId) return [];
-        return activities.filter(a => a.tripId === selectedTripId);
-    }, [selectedTripId, activities]);
-
     const handleGenerateSummary = async () => {
-        if (!selectedTrip || tripActivitiesForSummary.length === 0) return;
+        if (!selectedTrip || dayViewActivities.length === 0) return;
         setSummaryLoading(true);
         setSummaryError(null);
         setTripSummary(null);
 
-        const itinerary = tripDays.map((day, idx) => {
-            const dateStr = format(day, 'yyyy-MM-dd');
-            const dayActs = tripActivitiesForSummary
-                .filter(a => a.date === dateStr)
-                .sort((a, b) => a.order - b.order)
-                .map(a => `${a.time || 'TBD'} - ${a.title}${a.location ? ` (${a.location})` : ''}`)
-                .join('; ');
-            return `Day ${idx + 1} (${format(day, 'EEE, MMM d')}): ${dayActs || 'No activities'}`;
-        }).join('\n');
+        const dayData = selectedTrip.itinerary?.[currentDateStr];
+        const dayLocation = dayData?.location || selectedTrip.dayLocations?.[currentDateStr];
+        const dayAccommodation = dayData?.accommodation?.name;
+        const dayItinerary = dayViewActivities
+            .map(a => `${a.time || 'TBD'} - ${a.title}${a.location ? ` (${a.location})` : ''}`)
+            .join('; ');
 
-        const prompt = `Here is the itinerary for a given day of a trip to "${selectedTrip.name}":
+        const prompt = `Here is the itinerary for ${format(currentDate, 'EEEE, MMM d, yyyy')} on a trip to "${selectedTrip.name}":
 
-${itinerary}
+Location: ${dayLocation || 'Not specified'}
+Accommodation: ${dayAccommodation || 'Not specified'}
+Activities: ${dayItinerary}
 
 Respond with a JSON object matching this exact schema:
 {
@@ -213,10 +207,25 @@ Respond with a JSON object matching this exact schema:
 
 Be specific to the actual destinations and activities. Each highlight should be one concise sentence. Do not include activities already in the itinerary in the highlights.`;
 
-        logEvent('Trip Summary Requested', { trip_name: selectedTrip.name, activity_count: tripActivitiesForSummary.length });
+        logEvent('Trip Summary Requested', { trip_name: selectedTrip.name, activity_count: dayViewActivities.length, date: currentDateStr });
         try {
             const raw = await generateWithGemini(prompt, {
-                responseMimeType: 'application/json'
+                systemInstruction: 'You are a day-itinerary travel assistant. Summarize only the provided day context and activities.',
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: 'object',
+                    properties: {
+                        summary: { type: 'string' },
+                        highlights: {
+                            type: 'array',
+                            items: { type: 'string' },
+                            minItems: 0,
+                            maxItems: 3,
+                        },
+                    },
+                    required: ['summary', 'highlights'],
+                    additionalProperties: false,
+                },
             });
             const parsed = JSON.parse(raw) as { summary: string; highlights: string[] };
             if (!parsed.summary || !Array.isArray(parsed.highlights)) throw new Error('Invalid response format');
@@ -466,7 +475,7 @@ Ensure all provided activity IDs are included in the optimizedOrder array.`;
                             </div>
                         </div>
                     </div>
-                    {selectedTripId && tripActivitiesForSummary.length > 0 && (
+                    {selectedTripId && dayViewActivities.length > 0 && (
                         <div className={styles['day-summary-section']}>
                             <div className="ai-buttons-row" style={{ display: 'flex', gap: '0.5rem' }}>
                                 <button
