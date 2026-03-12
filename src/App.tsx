@@ -5,7 +5,9 @@ import { AuthProvider, useAuth } from './lib/AuthContext';
 import AnalyticsProvider from './lib/amplitude';
 import { ToastProvider } from './components/Toast';
 import { loadThemeConfig, getResolvedTokens, getDarkTokens, applyTheme } from './design-system/themes';
+import { getSettingsSnapshot } from './lib/settings';
 import OnlineStatus from './components/OnlineStatus';
+import GeminiUsageHeader from './components/GeminiUsageHeader';
 import { Loader2 } from 'lucide-react';
 import './theme.css';
 
@@ -46,19 +48,14 @@ const App: React.FC = () => {
     const config = loadThemeConfig();
     let tokens = getResolvedTokens(config);
 
-    try {
-      const raw = localStorage.getItem('travelplanner_settings');
-      if (raw) {
-        const s = JSON.parse(raw) as { textSize?: number; compactLayout?: boolean; darkMode?: boolean };
-        if (s.textSize) document.documentElement.style.setProperty('--text-size', `${s.textSize}%`);
-        if (s.compactLayout) document.body.classList.add('compact-layout');
-        if (s.darkMode) {
-          tokens = getDarkTokens(tokens);
-          document.body.classList.add('dark-mode');
-          document.documentElement.style.setProperty('color-scheme', 'dark');
-        }
-      }
-    } catch { /* ignore */ }
+    const s = getSettingsSnapshot();
+    if (s.textSize) document.documentElement.style.setProperty('--text-size', `${s.textSize}%`);
+    if (s.compactLayout) document.body.classList.add('compact-layout');
+    if (s.darkMode) {
+      tokens = getDarkTokens(tokens);
+      document.body.classList.add('dark-mode');
+      document.documentElement.style.setProperty('color-scheme', 'dark');
+    }
 
     applyTheme(tokens);
   }, []);
@@ -73,6 +70,7 @@ const App: React.FC = () => {
             <div className="app-container">
               <Sidebar />
               <main className="main-content">
+                <GeminiUsageHeader />
                 <Suspense fallback={null}>
                   <Routes>
                     <Route path="/" element={<Navigate to="/spreadsheet" replace />} />

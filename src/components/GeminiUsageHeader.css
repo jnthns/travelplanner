@@ -1,0 +1,118 @@
+.gemini-usage-header {
+  position: sticky;
+  top: 0;
+  z-index: 35;
+  padding: 0.75rem 2rem 0;
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--bg-color) 94%, transparent) 0%,
+      color-mix(in srgb, var(--bg-color) 82%, transparent) 100%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.gemini-usage-header__inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--surface-color) 82%, transparent);
+  box-shadow: var(--shadow-sm);
+}
+
+.gemini-usage-header__title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.gemini-usage-header__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.gemini-usage-header__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.gemini-usage-header__subtitle {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+.gemini-usage-header__subtitle code {
+  font-family: inherit;
+  font-size: 0.72rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: var(--radius-full);
+  background: var(--border-light);
+  color: var(--text-secondary);
+}
+
+.gemini-usage-header__metrics {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.gemini-usage-metric {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: var(--radius-full);
+  background: var(--border-light);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.gemini-usage-metric--primary {
+  background: color-mix(in srgb, var(--primary-color) 12%, transparent);
+  color: var(--primary-color);
+}
+
+.gemini-usage-metric--warning {
+  background: color-mix(in srgb, var(--error-color) 10%, transparent);
+  color: var(--error-color);
+}
+
+.gemini-usage-metric__value {
+  font-weight: 700;
+  color: inherit;
+}
+
+.gemini-usage-metric__label {
+  color: inherit;
+}
+
+@media (max-width: 768px) {
+  .gemini-usage-header {
+    padding: 0.5rem 1rem 0;
+  }
+
+  .gemini-usage-header__inner {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .gemini-usage-header__metrics {
+    justify-content: flex-start;
+  }
+}

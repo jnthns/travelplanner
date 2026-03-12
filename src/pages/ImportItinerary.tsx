@@ -5,26 +5,10 @@ import { useTrips, useActivities, useTransportRoutes, useNotes } from '../lib/st
 import { useLocalStorageState } from '../hooks/useLocalStorageState';
 import { CATEGORY_EMOJIS } from '../lib/types';
 import type { Activity } from '../lib/types';
-import { generateWithGemini } from '../lib/gemini';
 import { useToast } from '../components/Toast';
 import { logEvent } from '../lib/amplitude';
 import { buildTripExportPayload, downloadTextFile, slugifyFilename, toTripCsv } from '../lib/exportTrip';
-
-interface ParsedActivity {
-    date: string;
-    title: string;
-    details?: string;
-    time?: string | null;
-    location?: string;
-    category?: Activity['category'];
-}
-
-interface ParsedItinerary {
-    tripName: string;
-    startDate: string;
-    endDate: string;
-    activities: ParsedActivity[];
-}
+import { parseItineraryChunk, type ParsedActivity, type ParsedItinerary } from '../lib/ai/actions/importItinerary';
 
 type Stage = 'input' | 'preview' | 'saving' | 'done';
 type ImportExportMode = 'import' | 'export';
@@ -32,71 +16,6 @@ type ExportFormat = 'json' | 'csv';
 
 const CATEGORY_LIST = ['sightseeing', 'food', 'accommodation', 'transport', 'shopping', 'other'] as const;
 const CURRENCY_LIST = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'KRW', 'TWD', 'THB', 'SGD'];
-
-// JSON Schema for Gemini structured output — guarantees valid JSON
-const ITINERARY_SCHEMA = {
-    type: 'object',
-    properties: {
-        tripName: { type: 'string' },
-        startDate: { type: 'string', description: 'YYYY-MM-DD' },
-        endDate: { type: 'string', description: 'YYYY-MM-DD' },
-        activities: {
-            type: 'array',
-            items: {
-                type: 'object',
-                properties: {
-                    date: { type: 'string', description: 'YYYY-MM-DD' },
-                    title: { type: 'string' },
-                    details: { type: 'string' },
-                    time: { type: 'string', description: 'HH:mm or null' },
-                    location: { type: 'string' },
-                    category: { type: 'string', enum: ['sightseeing', 'food', 'accommodation', 'transport', 'shopping', 'other'] },
-                },
-                required: ['date', 'title', 'category'],
-            },
-        },
-    },
-    required: ['tripName', 'startDate', 'endDate', 'activities'],
-};
-
-function buildPrompt(raw: string): string {
-    const year = new Date().getFullYear();
-    return `Parse this travel itinerary. Be concise: keep details under 80 chars.
-
-Rules:
-- Split each distinct activity/place into its own entry.
-- Infer category from context.
-- If year is not specified, assume ${year}.
-- Use 09:00 for morning, 13:00 for afternoon, 18:00 for evening if exact time unknown.
-- Order activities chronologically within each day.
-
-Itinerary:
-${raw}`;
-}
-
-function tryParseJSON(text: string): { data: ParsedItinerary | null, cleanText: string } {
-    let cleanText = text.trim();
-    // Strip opening markdown codeblock if present
-    cleanText = cleanText.replace(/^```(?:json)?\s*/i, '');
-    // Strip closing markdown codeblock if present
-    cleanText = cleanText.replace(/\s*```$/, '');
-
-    try {
-        const parsed = JSON.parse(cleanText) as Partial<ParsedItinerary>;
-        if (Array.isArray(parsed.activities) && parsed.activities.length > 0) {
-            const data: ParsedItinerary = {
-                tripName: parsed.tripName || "Imported Trip",
-                startDate: parsed.startDate || parsed.activities[0]?.date || new Date().toISOString().split('T')[0],
-                endDate: parsed.endDate || parsed.activities[parsed.activities.length - 1]?.date || new Date().toISOString().split('T')[0],
-                activities: parsed.activities,
-            };
-            return { data, cleanText };
-        }
-    } catch (e) {
-        console.error("JSON parse failure:", e, "\\nRaw text:", cleanText);
-    }
-    return { data: null, cleanText };
-}
 
 function splitIntoChunks(text: string, maxChunks: number): string[] {
     const lines = text.split('\n');
@@ -255,20 +174,7 @@ const ImportItinerary: React.FC = () => {
     }, [setParsed, setRawText, setStage]);
 
     async function parseChunk(text: string): Promise<ParsedItinerary> {
-        const response = await generateWithGemini(buildPrompt(text), {
-            responseMimeType: 'application/json',
-            responseSchema: ITINERARY_SCHEMA,
-        });
-        const { data: result, cleanText } = tryParseJSON(response);
-        if (!result) {
-            const isTruncated = !/}\s*$/.test(cleanText);
-            throw new Error(
-                isTruncated
-                    ? 'TRUNCATED'
-                    : 'Failed to parse AI response as JSON. Try again or simplify your input.'
-            );
-        }
-        return result;
+        return parseItineraryChunk(text);
     }
 
     const handleParse = async () => {

@@ -9,7 +9,10 @@ interface RequestBody {
     systemInstruction?: string;
     responseMimeType?: string;
     responseSchema?: Record<string, unknown>;
+    model?: string;
 }
+
+const DEFAULT_GEMINI_MODEL = 'gemini-3-flash-preview';
 
 const CORS_HEADERS: Record<string, string> = {
     'Access-Control-Allow-Origin': '*',
@@ -47,6 +50,9 @@ export default {
         }
 
         const { prompt, systemInstruction, responseMimeType, responseSchema } = body;
+        const model = typeof body.model === 'string' && body.model.trim()
+            ? body.model.trim()
+            : DEFAULT_GEMINI_MODEL;
 
         if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
             return json({ error: 'prompt is required' }, 400);
@@ -78,7 +84,7 @@ export default {
                 const ai = new GoogleGenAI({ apiKey: currentKey });
 
                 const response = await ai.models.generateContent({
-                    model: 'gemini-2.5-flash',
+                    model,
                     contents: prompt,
                     config,
                 });
@@ -89,7 +95,7 @@ export default {
                     throw new Error('Empty response from model');
                 }
 
-                return json({ text });
+                return json({ text, model });
             } catch (err) {
                 lastError = err;
                 const message = err instanceof Error ? err.message : String(err);

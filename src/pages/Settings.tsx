@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Check, Sun, Moon } from 'lucide-react';
+import { Check, Sun, Moon, Trash2, RotateCcw } from 'lucide-react';
 import {
   THEME_PRESETS,
   type ThemeConfig,
@@ -8,16 +8,10 @@ import {
   getResolvedTokens,
   getDarkTokens,
   applyTheme,
+  preloadPresetFonts,
 } from '../design-system/themes';
+import { useSettings, updateSettings, resetSettings, clearLocalDrafts, type AppSettings } from '../lib/settings';
 import { logEvent } from '../lib/amplitude';
-
-const SETTINGS_STORAGE_KEY = 'travelplanner_settings';
-
-type SettingsState = {
-  compactLayout: boolean;
-  textSize: number;
-  darkMode: boolean;
-};
 
 const TEXT_SIZE_OPTIONS = [
   { label: 'Small', value: 75 },
@@ -27,30 +21,53 @@ const TEXT_SIZE_OPTIONS = [
   { label: 'Extra Large', value: 112 },
 ];
 
-const loadSettings = (): SettingsState => {
-  try {
-    const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
-    if (!raw) return { compactLayout: false, textSize: 80, darkMode: false };
-    const parsed = JSON.parse(raw) as Partial<SettingsState>;
-    return {
-      compactLayout: parsed.compactLayout ?? false,
-      textSize: parsed.textSize ?? 80,
-      darkMode: parsed.darkMode ?? false,
-    };
-  } catch {
-    return { compactLayout: false, textSize: 80, darkMode: false };
-  }
-};
+const ZOOM_OPTIONS = [70, 80, 90, 100, 110, 120, 130, 140];
+
+const HEADER_COLOR_OPTIONS: { value: AppSettings['headerRowColor']; label: string; preview?: string }[] = [
+  { value: 'default', label: 'Default' },
+  { value: 'primary', label: 'Primary', preview: 'var(--primary-color)' },
+  { value: 'secondary', label: 'Secondary', preview: 'var(--secondary-color)' },
+  { value: 'accent', label: 'Accent', preview: 'var(--accent-color)' },
+  { value: 'slate', label: 'Slate', preview: 'var(--text-tertiary)' },
+  { value: 'transparent', label: 'None' },
+];
+
+function SettingsToggle({ id, label, description, checked, onChange }: {
+  id: string;
+  label: string;
+  description?: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-xs">
+      <label className="text-sm font-medium text-primary" htmlFor={id}>
+        <input
+          id={id}
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          style={{ marginRight: '0.5rem' }}
+        />
+        {label}
+      </label>
+      {description && <p className="text-sm text-subtle m-0" style={{ paddingLeft: '1.5rem' }}>{description}</p>}
+    </div>
+  );
+}
 
 const Settings: React.FC = () => {
-  const [settings, setSettings] = useState<SettingsState>(() => loadSettings());
+  const settings = useSettings();
   const [themeConfig, setThemeConfig] = useState<ThemeConfig>(() => loadThemeConfig());
 
   const resolvedTokens = useMemo(() => getResolvedTokens(themeConfig), [themeConfig]);
   const activePreset = THEME_PRESETS.find((p) => p.id === themeConfig.presetId) ?? THEME_PRESETS[0];
 
   useEffect(() => {
-    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+    preloadPresetFonts();
+  }, []);
+
+  useEffect(() => {
     document.body.classList.toggle('compact-layout', settings.compactLayout);
     document.body.classList.toggle('dark-mode', settings.darkMode);
     document.documentElement.style.setProperty('color-scheme', settings.darkMode ? 'dark' : 'light');
@@ -61,7 +78,11 @@ const Settings: React.FC = () => {
       : getResolvedTokens(themeConfig);
     applyTheme(tokens);
     saveThemeConfig(themeConfig);
-  }, [settings, themeConfig]);
+  }, [settings.compactLayout, settings.darkMode, settings.textSize, themeConfig]);
+
+  const set = (patch: Parameters<typeof updateSettings>[0]) => {
+    updateSettings(patch);
+  };
 
   const selectPreset = (presetId: string) => {
     setThemeConfig({ presetId, colorOverrides: {} });
@@ -100,12 +121,12 @@ const Settings: React.FC = () => {
         .preset-card:hover { border-color: var(--primary-color); transform: translateY(-2px); box-shadow: var(--shadow-md); }
         .preset-card.active { border-color: var(--primary-color); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color) 15%, transparent); }
         
-        .text-size-btn {
+        .text-size-btn, .zoom-btn {
             padding: 0.35rem 0.85rem; border-radius: var(--radius-full); border: 1px solid var(--border-color);
             background-color: var(--surface-color); font-size: 0.8rem; font-family: inherit; cursor: pointer; transition: all 0.2s ease;
         }
-        .text-size-btn:hover { border-color: var(--primary-color); }
-        .text-size-btn.active { background-color: var(--primary-color); color: white; border-color: var(--primary-color); }
+        .text-size-btn:hover, .zoom-btn:hover { border-color: var(--primary-color); }
+        .text-size-btn.active, .zoom-btn.active { background-color: var(--primary-color); color: white; border-color: var(--primary-color); }
 
         .dark-mode-toggle {
             position: relative; width: 64px; height: 34px; border-radius: 17px; border: 2px solid var(--border-color);
@@ -123,6 +144,8 @@ const Settings: React.FC = () => {
         .dark-mode-toggle.active .toggle-sun { opacity: 0.4; }
         .dark-mode-toggle.active .toggle-moon { opacity: 1; }
 
+        .settings-section-title { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-tertiary); margin-bottom: 0.75rem; }
+
         @media (max-width: 768px) {
             .mobile-preset-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important; }
         }
@@ -130,10 +153,11 @@ const Settings: React.FC = () => {
       <header className="page-header">
         <div>
           <h1>Settings</h1>
-          <p>Customize your TravelPlanner experience.</p>
+          <p>Customize your TravelPlanner experience. Settings sync across devices when signed in.</p>
         </div>
       </header>
 
+      {/* Appearance */}
       <div className="card p-lg mb-lg" style={{ background: 'linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 5%, var(--surface-color)), color-mix(in srgb, var(--secondary-color) 5%, var(--surface-color)))' }}>
         <div className="flex justify-between items-center gap-md">
           <div>
@@ -144,7 +168,7 @@ const Settings: React.FC = () => {
             type="button"
             className={`dark-mode-toggle ${settings.darkMode ? 'active' : ''}`}
             onClick={() => {
-              setSettings(prev => ({ ...prev, darkMode: !prev.darkMode }));
+              set({ darkMode: !settings.darkMode });
               logEvent('Dark Mode Toggled', { enabled: !settings.darkMode });
             }}
             aria-label={settings.darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
@@ -156,6 +180,7 @@ const Settings: React.FC = () => {
         </div>
       </div>
 
+      {/* Theme */}
       <div className="card p-lg mb-lg">
         <h2 className="text-lg font-bold mb-md">Theme</h2>
         <div className="grid grid-cols-auto-140 gap-md mobile-preset-grid">
@@ -165,6 +190,7 @@ const Settings: React.FC = () => {
               type="button"
               className={`preset-card ${preset.id === themeConfig.presetId ? 'active' : ''}`}
               onClick={() => selectPreset(preset.id)}
+              style={{ fontFamily: preset.tokens.fontFamily }}
             >
               <div className="flex gap-[4px] mb-[0.25rem]">
                 <span style={{ width: '20px', height: '20px', borderRadius: '50%', border: '1px solid rgba(0, 0, 0, 0.08)', background: preset.preview.bg }} />
@@ -182,6 +208,7 @@ const Settings: React.FC = () => {
         </div>
       </div>
 
+      {/* Color palette */}
       <div className="card p-lg mb-lg">
         <div className="flex justify-between items-center mb-xs">
           <h2 className="text-lg font-bold m-0">Color palette</h2>
@@ -218,42 +245,191 @@ const Settings: React.FC = () => {
         </div>
       </div>
 
+      {/* Layout */}
       <div className="card p-lg mb-lg">
         <h2 className="text-lg font-bold mb-md">Layout</h2>
-        <div className="flex flex-col gap-xs mb-md">
-          <label className="text-sm font-medium text-primary" htmlFor="compact-layout-toggle">
-            <input
-              id="compact-layout-toggle"
-              type="checkbox"
-              checked={settings.compactLayout}
-              onChange={(e) => {
-                setSettings((prev) => ({ ...prev, compactLayout: e.target.checked }));
-                logEvent('Compact Layout Toggled', { enabled: e.target.checked });
-              }}
-              style={{ marginRight: '0.5rem' }}
-            />
-            Compact layout
-          </label>
-          <p>
-            Use tighter spacing to fit more information on screen.
-          </p>
+        <div className="flex flex-col gap-md">
+          <SettingsToggle
+            id="compact-layout"
+            label="Compact layout"
+            description="Use tighter spacing to fit more information on screen."
+            checked={settings.compactLayout}
+            onChange={(v) => { set({ compactLayout: v }); logEvent('Compact Layout Toggled', { enabled: v }); }}
+          />
+          <div className="flex flex-col gap-xs" style={{ marginTop: '0.5rem' }}>
+            <label className="text-sm font-medium text-primary">Text size</label>
+            <div className="flex flex-wrap gap-sm">
+              {TEXT_SIZE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={`text-size-btn ${settings.textSize === opt.value ? 'active' : ''}`}
+                  onClick={() => { set({ textSize: opt.value }); logEvent('Text Size Changed', { size: opt.label, value: opt.value }); }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
-        <div className="flex flex-col gap-xs" style={{ marginTop: '1rem' }}>
-          <label className="text-sm font-medium text-primary">Text size</label>
-          <div className="flex flex-wrap gap-sm">
-            {TEXT_SIZE_OPTIONS.map((opt) => (
+      </div>
+
+      {/* Spreadsheet */}
+      <div className="card p-lg mb-lg">
+        <h2 className="text-lg font-bold mb-md">Spreadsheet</h2>
+        <div className="flex flex-col gap-md">
+          <SettingsToggle
+            id="color-coded-rows"
+            label="Color-coded time rows"
+            description="Apply the morning/afternoon/evening tint across the entire spreadsheet row, not just the label."
+            checked={settings.colorCodedTimeRows}
+            onChange={(v) => { set({ colorCodedTimeRows: v }); logEvent('Setting Changed', { key: 'colorCodedTimeRows', value: v }); }}
+          />
+          {settings.colorCodedTimeRows && (
+            <div className="flex flex-col gap-xs" style={{ paddingLeft: '1.5rem' }}>
+              <label className="text-sm font-medium text-primary">
+                Row tint opacity — {settings.colorCodingOpacity}%
+              </label>
+              <input
+                type="range"
+                min={1}
+                max={20}
+                step={1}
+                value={settings.colorCodingOpacity}
+                onChange={(e) => set({ colorCodingOpacity: Number(e.target.value) })}
+                style={{ maxWidth: '220px', accentColor: 'var(--primary-color)' }}
+              />
+            </div>
+          )}
+          <div className="flex flex-col gap-xs">
+            <label className="text-sm font-medium text-primary">Day header row color</label>
+            <p className="text-sm text-subtle m-0">Tint the day column headers to distinguish them from the grid.</p>
+            <div className="flex flex-wrap gap-sm" style={{ marginTop: '0.25rem' }}>
+              {HEADER_COLOR_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={`zoom-btn ${settings.headerRowColor === opt.value ? 'active' : ''}`}
+                  onClick={() => { set({ headerRowColor: opt.value }); logEvent('Setting Changed', { key: 'headerRowColor', value: opt.value }); }}
+                  style={opt.preview ? { borderLeft: `3px solid ${opt.preview}` } : undefined}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <SettingsToggle
+            id="show-unscheduled"
+            label="Show unscheduled section"
+            description="Show the collapsible unscheduled activities section below the spreadsheet grid."
+            checked={settings.showUnscheduledSection}
+            onChange={(v) => { set({ showUnscheduledSection: v }); logEvent('Setting Changed', { key: 'showUnscheduledSection', value: v }); }}
+          />
+          <div className="flex flex-col gap-xs" style={{ marginTop: '0.25rem' }}>
+            <label className="text-sm font-medium text-primary">Default zoom level</label>
+            <div className="flex flex-wrap gap-sm">
+              {ZOOM_OPTIONS.map((z) => (
+                <button
+                  key={z}
+                  type="button"
+                  className={`zoom-btn ${settings.defaultSpreadsheetZoom === z ? 'active' : ''}`}
+                  onClick={() => { set({ defaultSpreadsheetZoom: z }); logEvent('Setting Changed', { key: 'defaultSpreadsheetZoom', value: z }); }}
+                >
+                  {z}%
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Calendar */}
+      <div className="card p-lg mb-lg">
+        <h2 className="text-lg font-bold mb-md">Calendar</h2>
+        <div className="flex flex-col gap-md">
+          <div className="flex flex-col gap-xs">
+            <label className="text-sm font-medium text-primary">Default view</label>
+            <div className="flex gap-sm">
+              {(['trip', 'day'] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  className={`text-size-btn ${settings.defaultCalendarView === v ? 'active' : ''}`}
+                  onClick={() => { set({ defaultCalendarView: v }); logEvent('Setting Changed', { key: 'defaultCalendarView', value: v }); }}
+                >
+                  {v.charAt(0).toUpperCase() + v.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+          <SettingsToggle
+            id="show-accommodation-cards"
+            label="Show accommodation on trip cards"
+            description="Display the accommodation row on calendar trip grid cards."
+            checked={settings.showAccommodationOnTripCards}
+            onChange={(v) => { set({ showAccommodationOnTripCards: v }); logEvent('Setting Changed', { key: 'showAccommodationOnTripCards', value: v }); }}
+          />
+        </div>
+      </div>
+
+      {/* Planning */}
+      <div className="card p-lg mb-lg">
+        <h2 className="text-lg font-bold mb-md">Planning</h2>
+        <div className="flex flex-col gap-md">
+          <SettingsToggle
+            id="show-planning-checks"
+            label="Show planning checks"
+            description="Display issue badges and conflict details on day pills."
+            checked={settings.showPlanningChecks}
+            onChange={(v) => { set({ showPlanningChecks: v }); logEvent('Setting Changed', { key: 'showPlanningChecks', value: v }); }}
+          />
+          <SettingsToggle
+            id="show-budget-warnings"
+            label="Show budget warnings"
+            description="Display budget threshold alerts on the Budget page."
+            checked={settings.showBudgetWarnings}
+            onChange={(v) => { set({ showBudgetWarnings: v }); logEvent('Setting Changed', { key: 'showBudgetWarnings', value: v }); }}
+          />
+        </div>
+      </div>
+
+      {/* Data */}
+      <div className="card p-lg mb-lg">
+        <h2 className="text-lg font-bold mb-md">Data</h2>
+        <div className="flex flex-col gap-md">
+          <div className="flex flex-col gap-xs">
+            <div className="flex items-center gap-sm">
               <button
-                key={opt.value}
                 type="button"
-                className={`text-size-btn ${settings.textSize === opt.value ? 'active' : ''}`}
+                className="btn btn-ghost btn-sm"
                 onClick={() => {
-                  setSettings((prev) => ({ ...prev, textSize: opt.value }));
-                  logEvent('Text Size Changed', { size: opt.label, value: opt.value });
+                  if (window.confirm('Delete all local what-if drafts? This cannot be undone.')) {
+                    clearLocalDrafts();
+                    logEvent('Local Drafts Cleared');
+                  }
                 }}
               >
-                {opt.label}
+                <Trash2 size={14} /> Clear local drafts
               </button>
-            ))}
+            </div>
+            <p className="text-sm text-subtle m-0" style={{ paddingLeft: '0.25rem' }}>Remove all what-if scenario snapshots stored in your browser.</p>
+          </div>
+          <div className="flex flex-col gap-xs">
+            <div className="flex items-center gap-sm">
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => {
+                  if (window.confirm('Reset all settings to defaults? Your theme selection will be kept.')) {
+                    resetSettings();
+                    logEvent('Settings Reset');
+                  }
+                }}
+              >
+                <RotateCcw size={14} /> Reset all settings
+              </button>
+            </div>
+            <p className="text-sm text-subtle m-0" style={{ paddingLeft: '0.25rem' }}>Restore all settings to their default values.</p>
           </div>
         </div>
       </div>

@@ -9,6 +9,11 @@
     display: flex;
     gap: 0.75rem;
     align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+.form-row .input-group {
+    min-width: 0;
 }
 
 .textarea {
@@ -137,11 +142,12 @@
     }
 
     .activity-form .form-row {
-        flex-direction: row;
+        flex-direction: column;
     }
 
     .activity-form .input-group {
         margin-bottom: 0.5rem;
+        width: 100%;
     }
 
     .category-picker {

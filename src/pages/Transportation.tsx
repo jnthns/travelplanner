@@ -4,11 +4,13 @@ import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { useTrips, useTransportRoutes } from '../lib/store';
 import type { TransportRoute } from '../lib/types';
 import { TRANSPORT_EMOJIS } from '../lib/types';
-import { generateWithGemini } from '../lib/gemini';
 import { useLocalStorageState } from '../lib/persist';
 import Markdown from '../components/Markdown';
 import { useToast } from '../components/Toast';
 import { logEvent } from '../lib/amplitude';
+import { suggestTransportOptions } from '../lib/ai/actions/transport';
+import ConflictList from '../components/ConflictList';
+import { getTripPlanningConflicts } from '../lib/planning/conflicts';
 
 const transportTypes = ['flight', 'train', 'bus', 'car', 'ferry', 'taxi', 'walk', 'other'] as const;
 
@@ -59,6 +61,30 @@ const Transportation: React.FC = () => {
 
     const selectedTrip = trips.find((t) => t.id === selectedTripId);
 
+    const planningConflicts = useMemo(() => {
+        if (!selectedTrip) return [];
+        return getTripPlanningConflicts({
+            trip: selectedTrip,
+            activities: [],
+            routes: tripRoutes,
+        });
+    }, [selectedTrip, tripRoutes]);
+
+    const tripLevelConflicts = useMemo(
+        () => planningConflicts.filter(conflict => conflict.scope === 'trip'),
+        [planningConflicts],
+    );
+
+    const routeConflictsById = useMemo(() => {
+        const grouped: Record<string, typeof planningConflicts> = {};
+        planningConflicts.forEach((conflict) => {
+            if (!conflict.routeId) return;
+            if (!grouped[conflict.routeId]) grouped[conflict.routeId] = [];
+            grouped[conflict.routeId].push(conflict);
+        });
+        return grouped;
+    }, [planningConflicts]);
+
     const resetForm = (overrides?: Partial<typeof formData>) => {
         setFormData({
             date: '', type: 'flight', from: '', to: '',
@@ -105,15 +131,11 @@ const Transportation: React.FC = () => {
         setAiRoutesError(null);
         setAiRoutesSuggestion(null);
         logEvent('AI Route Suggestion Requested', { from: formData.from.trim(), to: formData.to.trim() });
-        const prompt = `From "${formData.from.trim()}" to "${formData.to.trim()}", list the 2-3 most practical transport options. 
-
-For each option use a bullet with:
-- Sub-bullets: approximate duration, typical cost range, popularity (e.g. common/niche), and one line description.
-- Include a booking or info URL (real link if you know one, or a placeholder like https://example.com) for each option.
-
-Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid superlatives.`;
         try {
-            const text = await generateWithGemini(prompt);
+            const text = await suggestTransportOptions({
+                from: formData.from,
+                to: formData.to,
+            });
             setAiRoutesSuggestion(text);
         } catch (e) {
             setAiRoutesError(e instanceof Error ? e.message : 'AI suggestion failed');
@@ -199,6 +221,12 @@ Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid 
                             </span>
                         ))}
                     </div>
+                </div>
+            )}
+
+            {selectedTrip && (
+                <div className="mb-lg">
+                    <ConflictList conflicts={tripLevelConflicts} title="Transport checks" compact />
                 </div>
             )}
 
@@ -413,31 +441,21 @@ Format: short bullet list only. Maximum 200 words. Be direct and factual; avoid 
                                 const acc = selectedTrip?.itinerary?.[route.date]?.accommodation;
                                 if (!acc) return null;
 
-                                const hasTimeConflict = route.arrivalTime && acc.checkInTime && route.arrivalTime > acc.checkInTime;
-                                const isEarlyArrival = route.arrivalTime && acc.checkInTime && route.arrivalTime < acc.checkInTime;
-
                                 return (
-                                    <div className={`mt-md p-sm rounded-md border text-xs flex flex-col gap-1 ${hasTimeConflict ? 'bg-error-subtle border-error' : 'bg-primary-subtle border-primary-light'}`}
+                                    <div className="mt-md p-sm rounded-md border text-xs flex flex-col gap-1"
                                         style={{
                                             marginTop: '0.75rem', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid',
-                                            ...(hasTimeConflict ? { backgroundColor: 'rgba(239, 68, 68, 0.05)', borderColor: 'rgba(239, 68, 68, 0.2)' } : { backgroundColor: 'rgba(var(--primary-rgb), 0.05)', borderColor: 'rgba(var(--primary-rgb), 0.1)' })
+                                            backgroundColor: 'rgba(var(--primary-rgb), 0.05)', borderColor: 'rgba(var(--primary-rgb), 0.1)',
                                         }}>
                                         <div className="flex items-center justify-between">
                                             <span className="font-semibold text-primary">🏠 Accommodation: {acc.name}</span>
                                             {acc.checkInTime && <span className="text-subtle">Check-in: {acc.checkInTime}</span>}
                                         </div>
-                                        {route.arrivalTime && acc.checkInTime && (
-                                            <div className={`flex items-center gap-1 font-medium ${hasTimeConflict ? 'text-danger' : 'text-success'}`}>
-                                                {hasTimeConflict ? (
-                                                    <>⚠️ Arrives {route.arrivalTime} (after check-in)</>
-                                                ) : isEarlyArrival ? (
-                                                    <>🕒 Arrives {route.arrivalTime} ({acc.checkInTime} check-in)</>
-                                                ) : null}
-                                            </div>
-                                        )}
+                                        {route.arrivalTime && <div className="text-subtle">Arrival: {route.arrivalTime}</div>}
                                     </div>
                                 );
                             })()}
+                            <ConflictList conflicts={routeConflictsById[route.id] || []} title="Route checks" compact />
                             {route.notes && (
                                 <div className="text-xs text-secondary mt-sm pt-sm border-t italic" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                                     <Markdown>{route.notes}</Markdown>

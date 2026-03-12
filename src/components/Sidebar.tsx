@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Calendar, Map, Table, Wallet, StickyNote, Upload, Settings, ChevronLeft, ChevronRight, LogOut, User, Bot } from 'lucide-react';
+import { Calendar, Map, Table, Wallet, StickyNote, Upload, Settings, LogOut, User, Bot } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
 import './Sidebar.css';
 
@@ -8,7 +8,9 @@ const Sidebar: React.FC = () => {
   const { user, signOut } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(true);
 
-  const toggleCollapse = () => setIsCollapsed((prev) => !prev);
+  const toggleSidebarFromLogo = () => {
+    setIsCollapsed((prev) => !prev);
+  };
 
   const navLinks = [
     { to: 'spreadsheet', icon: <Table size={20} />, label: 'Trips' },
@@ -22,17 +24,14 @@ const Sidebar: React.FC = () => {
   return (
     <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
       <div className="sidebar-header">
-        <div className="logo-container">
-          <span className="logo-icon">✈️</span>
-          <span className="logo-text">TravelPlanner</span>
-        </div>
         <button
           type="button"
-          className="btn btn-ghost collapse-toggle"
-          onClick={toggleCollapse}
-          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className="logo-container logo-button"
+          onClick={toggleSidebarFromLogo}
+          aria-label={isCollapsed ? 'Open sidebar' : 'Collapse sidebar'}
         >
-          {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+          <span className="logo-icon">✈️</span>
+          <span className="logo-text">TravelPlanner</span>
         </button>
       </div>
 

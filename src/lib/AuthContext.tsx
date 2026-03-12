@@ -8,6 +8,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, googleProvider, db } from './firebase';
+import { onAuthChange } from './settings';
 
 interface AuthContextType {
     user: User | null;
@@ -37,10 +38,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         displayName: u.displayName ?? null,
                     }, { merge: true });
                 } catch (e) {
-                    // Non-critical — don't block app startup
                     console.warn('Failed to upsert user profile:', e);
                 }
             }
+
+            onAuthChange(u?.uid ?? null, u?.isAnonymous ?? true).catch(() => {});
         });
         return unsub;
     }, []);

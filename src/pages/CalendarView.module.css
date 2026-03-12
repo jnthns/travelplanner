@@ -105,6 +105,8 @@
     display: flex;
     gap: 0.5rem;
     overflow-x: auto;
+    overflow-y: visible;
+    padding-top: 8px;
     padding-bottom: 0.5rem;
     scrollbar-width: thin;
     max-width: 100%;
@@ -160,6 +162,85 @@
     font-weight: 600;
     line-height: 1;
     margin-top: 0.2rem;
+}
+
+.day-pill {
+    position: relative;
+}
+
+.issue-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: var(--error-color);
+    color: #fff;
+    font-size: 0.6rem;
+    font-weight: 700;
+    line-height: 16px;
+    text-align: center;
+    pointer-events: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.issue-badge-inline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: var(--error-color);
+    color: #fff;
+    font-size: 0.6rem;
+    font-weight: 700;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.inline-conflicts {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.6rem 0.75rem;
+    background: color-mix(in srgb, var(--error-color) 5%, var(--surface-color));
+    border: 1px solid color-mix(in srgb, var(--error-color) 15%, var(--border-light));
+    border-radius: var(--radius-lg);
+    animation: slideDown 0.15s ease-out;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.inline-conflict-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.inline-conflict-icon {
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+    color: var(--error-color);
+}
+
+.inline-conflict-icon.info {
+    color: var(--accent-color);
+}
+
+.inline-conflict-title {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-right: 0.35rem;
 }
 
 /* Calendar Grid */
@@ -335,6 +416,87 @@
     gap: 1rem;
 }
 
+.planning-action-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    padding-bottom: 0.25rem;
+}
+
+.planner-action-btn {
+    white-space: nowrap;
+}
+
+.action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 2.5rem;
+    padding: 0.7rem 1rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+    box-shadow: var(--shadow-sm);
+    white-space: nowrap;
+}
+
+.action-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.action-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+    transform: none;
+    box-shadow: var(--shadow-sm);
+}
+
+.action-btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+}
+
+.action-btn-sky {
+    background: color-mix(in srgb, #60a5fa 16%, var(--surface-color));
+    color: #1d4ed8;
+    border-color: color-mix(in srgb, #60a5fa 35%, var(--border-light));
+}
+
+.action-btn-violet {
+    background: color-mix(in srgb, #a78bfa 16%, var(--surface-color));
+    color: #6d28d9;
+    border-color: color-mix(in srgb, #a78bfa 35%, var(--border-light));
+}
+
+.action-btn-amber {
+    background: color-mix(in srgb, #fbbf24 18%, var(--surface-color));
+    color: #b45309;
+    border-color: color-mix(in srgb, #fbbf24 35%, var(--border-light));
+}
+
+.action-btn-mint {
+    background: color-mix(in srgb, #34d399 16%, var(--surface-color));
+    color: #047857;
+    border-color: color-mix(in srgb, #34d399 35%, var(--border-light));
+}
+
+.planner-toggle-inactive {
+    opacity: 0.7;
+}
+
+.planner-toggle-inactive:hover {
+    opacity: 1;
+}
+
 .day-accommodation-card {
     padding: 1.25rem;
     border-left: 4px solid var(--primary-color);
@@ -444,6 +606,15 @@
 .day-detail-view .add-activity-btn {
     width: 100%;
     margin-bottom: 0.5rem;
+}
+
+.floating-add-btn {
+    position: fixed;
+    right: 1rem;
+    bottom: calc(1rem + env(safe-area-inset-bottom));
+    z-index: 80;
+    box-shadow: var(--shadow-lg);
+    padding-right: 1.1rem;
 }
 
 .detail-header {
@@ -622,10 +793,107 @@
     .days-grid.trip {
         grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     }
+
+    .planning-action-row {
+        gap: 0.35rem;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .floating-add-btn {
+        right: 0.75rem;
+        bottom: calc(0.75rem + env(safe-area-inset-bottom));
+    }
+
+    .action-btn {
+        min-height: 2.35rem;
+        padding: 0.65rem 0.9rem;
+        font-size: 0.82rem;
+    }
 }
 
 .day-summary-section {
     margin-bottom: 1rem;
+}
+
+.description-suggestion-card {
+    padding: 1rem;
+    margin-top: 0.75rem;
+    border-left: 3px solid #8b5cf6;
+}
+
+.description-suggestion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.description-suggestion-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.description-suggestion-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 0.85rem 0.9rem;
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, #8b5cf6 5%, var(--surface-color));
+    border: 1px solid color-mix(in srgb, #8b5cf6 15%, var(--border-light));
+}
+
+.description-suggestion-copy {
+    min-width: 0;
+    flex: 1;
+}
+
+.description-suggestion-title {
+    margin: 0 0 0.4rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.description-suggestion-summary {
+    margin: 0 0 0.55rem;
+    font-size: 0.84rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+.description-suggestion-tips {
+    margin: 0;
+    padding-left: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    color: var(--text-primary);
+}
+
+.description-suggestion-tips li {
+    font-size: 0.8rem;
+    line-height: 1.45;
+}
+
+.description-suggestion-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+    .description-suggestion-header,
+    .description-suggestion-item {
+        flex-direction: column;
+    }
 }
 
 .trip-summary-header {

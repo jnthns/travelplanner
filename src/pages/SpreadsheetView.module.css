@@ -115,9 +115,52 @@
     display: flex;
     gap: 0.5rem;
     overflow-x: auto;
+    overflow-y: visible;
+    padding-top: 8px;
     padding-bottom: 0.5rem;
     scrollbar-width: thin;
     max-width: 100%;
+}
+
+.inline-conflicts {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.6rem 0.75rem;
+    background: color-mix(in srgb, var(--error-color) 5%, var(--surface-color));
+    border: 1px solid color-mix(in srgb, var(--error-color) 15%, var(--border-light));
+    border-radius: var(--radius-lg);
+    animation: slideDown 0.15s ease-out;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.inline-conflict-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.inline-conflict-icon {
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+    color: var(--error-color);
+}
+
+.inline-conflict-icon.info {
+    color: var(--accent-color);
+}
+
+.inline-conflict-title {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-right: 0.35rem;
 }
 
 .zoom-controls {
@@ -176,6 +219,28 @@
     line-height: 1;
 }
 
+.spreadsheet-page .day-pill {
+    position: relative;
+}
+
+.spreadsheet-page .issue-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: var(--error-color);
+    color: #fff;
+    font-size: 0.6rem;
+    font-weight: 700;
+    line-height: 16px;
+    text-align: center;
+    pointer-events: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
 .spreadsheet-page .day-pill-dow {
     font-size: 0.7rem;
     text-transform: uppercase;
@@ -209,6 +274,31 @@
     text-align: center;
     border-bottom: 2px solid var(--border-color);
     border-right: 1px solid var(--border-light);
+}
+
+.header-primary .sheet-header-cell:not(.sheet-corner) {
+    background-color: color-mix(in srgb, var(--primary-color) 10%, var(--surface-color));
+    border-bottom-color: var(--primary-color);
+}
+
+.header-accent .sheet-header-cell:not(.sheet-corner) {
+    background-color: color-mix(in srgb, var(--accent-color) 10%, var(--surface-color));
+    border-bottom-color: var(--accent-color);
+}
+
+.header-secondary .sheet-header-cell:not(.sheet-corner) {
+    background-color: color-mix(in srgb, var(--secondary-color) 10%, var(--surface-color));
+    border-bottom-color: var(--secondary-color);
+}
+
+.header-slate .sheet-header-cell:not(.sheet-corner) {
+    background-color: color-mix(in srgb, var(--text-tertiary) 8%, var(--surface-color));
+    border-bottom-color: var(--text-tertiary);
+}
+
+.header-transparent .sheet-header-cell:not(.sheet-corner) {
+    background-color: transparent;
+    border-bottom-color: var(--border-light);
 }
 
 .sheet-header-cell:last-child {
@@ -382,6 +472,18 @@
     background-color: color-mix(in srgb, var(--primary-color) 4%, var(--surface-color));
     border-right: 4px solid color-mix(in srgb, var(--primary-color) 60%, var(--text-tertiary));
     color: color-mix(in srgb, var(--primary-color) 70%, var(--text-secondary));
+}
+
+.cell-morning {
+    background-color: color-mix(in srgb, var(--accent-color) var(--row-tint-pct, 4%), transparent);
+}
+
+.cell-afternoon {
+    background-color: color-mix(in srgb, var(--primary-color) var(--row-tint-pct, 4%), transparent);
+}
+
+.cell-evening {
+    background-color: color-mix(in srgb, var(--secondary-color) var(--row-tint-pct, 4%), transparent);
 }
 
 .slot-icon {

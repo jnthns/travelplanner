@@ -1,5 +1,13 @@
 
+import {
+  recordAiRequestAttempt,
+  recordAiRequestFailure,
+  recordAiRequestRetry,
+  recordAiRequestSuccess,
+} from './aiUsage';
+
 const MIN_CALL_SPACING_MS = 1200;
+export const DEFAULT_GEMINI_MODEL = 'gemini-3-flash-preview';
 
 let lastCallAt = 0;
 const inflight = new Map<string, Promise<string>>();
@@ -32,12 +40,13 @@ async function sleep(ms: number) {
  */
 export async function generateWithGemini(
   prompt: string,
-  options?: { systemInstruction?: string; responseMimeType?: 'text/plain' | 'application/json', responseSchema?: Record<string, any> }
+  options?: { systemInstruction?: string; responseMimeType?: 'text/plain' | 'application/json', responseSchema?: Record<string, any>, model?: string }
 ): Promise<string> {
   const opts = options || {};
   const { systemInstruction, responseMimeType, responseSchema } = opts;
+  const model = opts.model?.trim() || DEFAULT_GEMINI_MODEL;
 
-  const key = `${responseMimeType || 'text/plain'}:${systemInstruction || ''}:${prompt}`;
+  const key = `${model}:${responseMimeType || 'text/plain'}:${systemInstruction || ''}:${prompt}`;
   const existing = inflight.get(key);
   if (existing) return existing;
 
@@ -52,10 +61,11 @@ export async function generateWithGemini(
     // eslint-disable-next-line no-constant-condition
     while (true) {
       try {
+        recordAiRequestAttempt(model);
         const response = await fetch(`${proxyUrl}/generate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt, systemInstruction, responseMimeType, responseSchema }),
+          body: JSON.stringify({ prompt, systemInstruction, responseMimeType, responseSchema, model }),
         });
 
         const data = await response.json() as { text?: string; error?: string };
@@ -67,14 +77,17 @@ export async function generateWithGemini(
         console.log('Gemini raw response:', data);
         const text = data.text?.trim() ?? '';
         if (!text) throw new Error('Empty response from AI proxy');
+        recordAiRequestSuccess();
         return text;
       } catch (err) {
         if (attempt < 3 && isRateLimitError(err)) {
           const backoff = 1000 * Math.pow(2, attempt) + Math.random() * 500;
           attempt += 1;
+          recordAiRequestRetry();
           await sleep(backoff);
           continue;
         }
+        recordAiRequestFailure();
         throw err instanceof Error ? err : new Error(String(err));
       }
     }

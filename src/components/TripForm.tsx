@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import type { Trip } from '../lib/types';
 import { TRIP_COLORS } from '../lib/types';
-import { generateWithGemini } from '../lib/gemini';
 import { logEvent } from '../lib/amplitude';
 import Markdown from './Markdown';
+import { generateTripAutofillSuggestion } from '../lib/ai/actions/forms';
 
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD'] as const;
 
@@ -30,21 +30,12 @@ const TripForm: React.FC<TripFormProps> = ({ existing, onSave, onCancel }) => {
         setAiLoading(true);
         setAiError(null);
         setAiSuggestion(null);
-        const dateRange = startDate && endDate ? ` from ${startDate} to ${endDate}` : '';
-        const prompt = `For a trip to "${name.trim()}"${dateRange}, suggest popular activities and highlights.
-
-Include:
-- Must-see attractions and landmarks
-- Local food and dining experiences
-- Cultural or seasonal events worth attending
-- Neighborhoods or areas to explore
-- Day-trip options nearby
-
-Format as a concise bullet list. Maximum 200 words. Be specific and practical.`;
         logEvent('AI Trip Autofill Requested', { trip_name: name.trim() });
         try {
-            const text = await generateWithGemini(prompt, {
-                systemInstruction: "You are an expert travel planner."
+            const text = await generateTripAutofillSuggestion({
+                name,
+                startDate,
+                endDate,
             });
             setAiSuggestion(text);
         } catch (e) {

@@ -4,6 +4,11 @@ import { useTrips, useActivities, useTransportRoutes } from '../lib/store';
 import { CATEGORY_EMOJIS, CATEGORY_COLORS } from '../lib/types';
 import { useLocalStorageState } from '../lib/persist';
 import { logEvent } from '../lib/amplitude';
+import ConflictList from '../components/ConflictList';
+import ScenarioSwitcher from '../components/ScenarioSwitcher';
+import { getBudgetConflicts } from '../lib/planning/conflicts';
+import { useSettings } from '../lib/settings';
+import { useTripScenarios } from '../lib/scenarios';
 
 const CATEGORIES = ['sightseeing', 'food', 'accommodation', 'transport', 'shopping', 'other'] as const;
 const COMMON_CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY', 'KRW', 'SGD', 'THB', 'MXN'] as const;
@@ -153,27 +158,33 @@ const Budget: React.FC = () => {
     );
     const [showRateEditor, setShowRateEditor] = useState(false);
 
+    const appSettings = useSettings();
+
     const selectedTrip = trips.find(t => t.id === selectedTripId);
+    const { activeScenario } = useTripScenarios(selectedTripId);
+    const effectiveTrip = activeScenario?.tripSnapshot ?? selectedTrip;
 
     const tripActivities = useMemo(() => {
         if (!selectedTripId) return [];
         return activities.filter(a => a.tripId === selectedTripId);
     }, [selectedTripId, activities]);
+    const effectiveActivities = activeScenario?.activitiesSnapshot ?? tripActivities;
 
     const tripRoutes = useMemo(() => {
         if (!selectedTripId) return [];
         return routes.filter(r => r.tripId === selectedTripId);
     }, [selectedTripId, routes]);
+    const effectiveRoutes = activeScenario?.transportRoutesSnapshot ?? tripRoutes;
 
     const locationsByDate = useMemo(() => {
-        const locs: Record<string, string> = { ...(selectedTrip?.dayLocations || {}) };
-        if (selectedTrip?.itinerary) {
-            Object.entries(selectedTrip.itinerary).forEach(([date, day]) => {
+        const locs: Record<string, string> = { ...(effectiveTrip?.dayLocations || {}) };
+        if (effectiveTrip?.itinerary) {
+            Object.entries(effectiveTrip.itinerary).forEach(([date, day]) => {
                 if (day.location) locs[date] = day.location;
             });
         }
         return locs;
-    }, [selectedTrip]);
+    }, [effectiveTrip]);
 
     const uniqueLocations = useMemo(() => {
         const locs = new Set(Object.values(locationsByDate).filter(Boolean));
@@ -182,9 +193,9 @@ const Budget: React.FC = () => {
 
     const allTags = useMemo(() => {
         const tags = new Set<string>();
-        tripActivities.forEach(a => a.tags?.forEach(t => tags.add(t)));
+        effectiveActivities.forEach(a => a.tags?.forEach(t => tags.add(t)));
         return Array.from(tags).sort();
-    }, [tripActivities]);
+    }, [effectiveActivities]);
 
     const filteredDates = useMemo(() => {
         if (!locationFilter) return null;
@@ -196,21 +207,21 @@ const Budget: React.FC = () => {
     }, [locationFilter, locationsByDate]);
 
     const costedActivities = useMemo(() => {
-        let items = tripActivities.filter(a => a.cost != null && a.cost > 0);
+        let items = effectiveActivities.filter(a => a.cost != null && a.cost > 0);
         if (filteredDates) items = items.filter(a => filteredDates.has(a.date));
         if (tagFilter) items = items.filter(a => a.tags?.includes(tagFilter));
         return items;
-    }, [tripActivities, filteredDates, tagFilter]);
+    }, [effectiveActivities, filteredDates, tagFilter]);
 
     const costedRoutes = useMemo(() => {
-        const items = tripRoutes.filter(r => r.cost != null && r.cost > 0);
+        const items = effectiveRoutes.filter(r => r.cost != null && r.cost > 0);
         if (!filteredDates) return items;
         return items.filter(r => filteredDates.has(r.date));
-    }, [tripRoutes, filteredDates]);
+    }, [effectiveRoutes, filteredDates]);
 
     const costedAccommodations = useMemo(() => {
-        if (!selectedTrip?.itinerary) return [];
-        let items = Object.entries(selectedTrip.itinerary)
+        if (!effectiveTrip?.itinerary) return [];
+        let items = Object.entries(effectiveTrip.itinerary)
             .filter(([, day]) => day.accommodation?.cost != null && day.accommodation.cost > 0)
             .map(([date, day]) => ({
                 date,
@@ -220,7 +231,7 @@ const Budget: React.FC = () => {
             }));
         if (filteredDates) items = items.filter(a => filteredDates.has(a.date));
         return items;
-    }, [selectedTrip, filteredDates]);
+    }, [effectiveTrip, filteredDates]);
 
     const usedCurrencies = useMemo(() => {
         const set = new Set<string>();
@@ -320,11 +331,11 @@ const Budget: React.FC = () => {
     }, [costedActivities, costedRoutes, costedAccommodations, locationsByDate]);
 
     const allTripDays = useMemo(() => {
-        if (!selectedTrip) return [];
+        if (!effectiveTrip) return [];
         try {
-            return eachDayOfInterval({ start: parseISO(selectedTrip.startDate), end: parseISO(selectedTrip.endDate) });
+            return eachDayOfInterval({ start: parseISO(effectiveTrip.startDate), end: parseISO(effectiveTrip.endDate) });
         } catch { return []; }
-    }, [selectedTrip]);
+    }, [effectiveTrip]);
 
     const dailyBreakdown = useMemo(() => {
         return allTripDays.map(day => {
@@ -433,8 +444,8 @@ const Budget: React.FC = () => {
     }, [locationBreakdown, displayCurrency, tripRates]);
 
     const totalExpenses = costedActivities.length + costedRoutes.length + costedAccommodations.length;
-    const budgetTarget = selectedTrip?.budgetTarget;
-    const budgetCurrency = selectedTrip?.budgetCurrency || selectedTrip?.defaultCurrency || 'USD';
+    const budgetTarget = effectiveTrip?.budgetTarget;
+    const budgetCurrency = effectiveTrip?.budgetCurrency || effectiveTrip?.defaultCurrency || 'USD';
 
     const budgetProgress = useMemo(() => {
         if (!budgetTarget) return null;
@@ -446,6 +457,15 @@ const Budget: React.FC = () => {
         }
         return { spent, target: budgetTarget, pct: Math.min((spent / budgetTarget) * 100, 100) };
     }, [budgetTarget, budgetCurrency, displayCurrency, convertedTotal, grandTotal]);
+
+    const budgetConflicts = useMemo(() => {
+        if (!budgetProgress) return [];
+        return getBudgetConflicts({
+            spent: budgetProgress.spent,
+            target: budgetProgress.target,
+            currency: budgetCurrency,
+        });
+    }, [budgetProgress, budgetCurrency]);
 
     const handleSaveBudget = useCallback(() => {
         if (!selectedTrip) return;
@@ -481,19 +501,19 @@ const Budget: React.FC = () => {
         if (!selectedTrip) return;
         let tripDays: string[] = [];
         try {
-            tripDays = eachDayOfInterval({ start: parseISO(selectedTrip.startDate), end: parseISO(selectedTrip.endDate) }).map(d => format(d, 'yyyy-MM-dd'));
+            tripDays = eachDayOfInterval({ start: parseISO(effectiveTrip?.startDate ?? selectedTrip.startDate), end: parseISO(effectiveTrip?.endDate ?? selectedTrip.endDate) }).map(d => format(d, 'yyyy-MM-dd'));
         } catch { return; }
         const daysWithCost = new Set(costedActivities.map(a => a.date));
-        const daysWithActivity = new Set(tripActivities.map(a => a.date));
+        const daysWithActivity = new Set(effectiveActivities.map(a => a.date));
         logEvent('Budget Viewed', {
             trip_id: selectedTrip.id, trip_name: selectedTrip.name,
-            duration_days: tripDays.length, total_activities: tripActivities.length,
+            duration_days: tripDays.length, total_activities: effectiveActivities.length,
             costed_activities: costedActivities.length, total_expense_items: totalExpenses,
             days_with_any_activity: tripDays.filter(d => daysWithActivity.has(d)).length,
             days_with_any_cost: tripDays.filter(d => daysWithCost.has(d)).length,
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedTripId]);
+    }, [selectedTripId, effectiveTrip, effectiveActivities, costedActivities.length, totalExpenses]);
 
     useEffect(() => { setLocationFilter(''); setTagFilter(''); }, [selectedTripId]);
 
@@ -560,6 +580,7 @@ const Budget: React.FC = () => {
                 )}
             </div>
 
+
             {/* Exchange rate editor */}
             {showRateEditor && displayCurrency && selectedTripId && (
                 <div className="card p-md mb-xl">
@@ -596,6 +617,11 @@ const Budget: React.FC = () => {
 
             {selectedTrip && (
                 <>
+                    {appSettings.showBudgetWarnings && budgetConflicts.length > 0 && (
+                        <div className="mb-lg">
+                            <ConflictList conflicts={budgetConflicts} title="Budget checks" compact />
+                        </div>
+                    )}
                     {/* Stats row */}
                     <div className="grid gap-md mb-xl" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
                         {/* Grand total */}
@@ -855,6 +881,10 @@ const Budget: React.FC = () => {
                         </div>
                     )}
                 </>
+            )}
+
+            {selectedTrip && (
+                <ScenarioSwitcher trip={selectedTrip} activities={effectiveActivities} routes={effectiveRoutes} />
             )}
         </div>
     );

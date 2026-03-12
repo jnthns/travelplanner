@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { format, eachDayOfInterval, isSameDay, parseISO } from 'date-fns';
-import { Plus, Users, Pencil, Trash2, ChevronLeft, ChevronRight, Sunrise, Sun, Sunset, StickyNote, Clock, MapPin } from 'lucide-react';
-import { useTrips, useActivities, useNotes } from '../lib/store';
+import { AlertTriangle, Plus, Users, Pencil, Trash2, ChevronLeft, ChevronRight, Info, Sunrise, Sun, Sunset, StickyNote, Clock, MapPin } from 'lucide-react';
+import { useTrips, useActivities, useNotes, useTransportRoutes } from '../lib/store';
 import { useAuth } from '../lib/AuthContext';
 import type { Activity, Note, Trip } from '../lib/types';
 import { CATEGORY_EMOJIS, CATEGORY_COLORS, TRIP_COLORS } from '../lib/types';
@@ -13,8 +13,19 @@ import ShareModal from '../components/ShareModal';
 import Markdown from '../components/Markdown';
 import NoteCard from '../components/NoteCard';
 import NoteEditor from '../components/NoteEditor';
+import ScenarioSwitcher from '../components/ScenarioSwitcher';
 import { useToast } from '../components/Toast';
 import { logEvent } from '../lib/amplitude';
+import { getTripEmoji } from '../lib/tripEmoji';
+import { getTripPlanningConflicts } from '../lib/planning/conflicts';
+import { useSettings } from '../lib/settings';
+import {
+    createScenarioActivity,
+    removeScenarioActivity,
+    updateScenarioTripSnapshot,
+    upsertScenarioActivity,
+    useTripScenarios,
+} from '../lib/scenarios';
 import styles from './SpreadsheetView.module.css';
 
 type ActivitySlot = 'morning' | 'afternoon' | 'evening' | 'unscheduled';
@@ -56,8 +67,10 @@ const SpreadsheetView: React.FC = () => {
     const { trips, loading: tripsLoading, addTrip, updateTrip, deleteTrip, restoreTrip, updateItineraryDay } = useTrips();
     const { activities, addActivity, updateActivity, deleteActivity, restoreActivity, getActivitiesByTrip } = useActivities();
     const { addNote, updateNote, deleteNote, restoreNote, getNotesByTrip } = useNotes();
+    const { getRoutesByTrip } = useTransportRoutes();
     const { showToast } = useToast();
     const { user } = useAuth();
+    const appSettings = useSettings();
 
     const [selectedTripId, setSelectedTripId] = useLocalStorageState<string | null>(
         'travelplanner_spreadsheet_selectedTripId',
@@ -82,14 +95,17 @@ const SpreadsheetView: React.FC = () => {
     const [quickNoteForDate, setQuickNoteForDate] = useState<string | null>(null);
     const [quickNoteContent, setQuickNoteContent] = useState('');
     const [editingNote, setEditingNote] = useState<Note | null>(null);
+    const [conflictsExpandedDate, setConflictsExpandedDate] = useState<string | null>(null);
 
     const clampZoom = useCallback((value: number) => Math.min(140, Math.max(70, Math.round(value))), []);
     const zoomScale = clampZoom(sheetZoom) / 100;
 
     const selectedTrip = trips.find(t => t.id === selectedTripId);
+    const { activeScenario } = useTripScenarios(selectedTripId);
+    const effectiveTrip = activeScenario?.tripSnapshot ?? selectedTrip;
 
-    const tripStartDate = selectedTrip?.startDate;
-    const tripEndDate = selectedTrip?.endDate;
+    const tripStartDate = effectiveTrip?.startDate;
+    const tripEndDate = effectiveTrip?.endDate;
     const tripDays = useMemo(() => {
         if (!tripStartDate || !tripEndDate) return [];
         try {
@@ -139,12 +155,19 @@ const SpreadsheetView: React.FC = () => {
         if (!selectedTripId) return [];
         return activities.filter(a => a.tripId === selectedTripId);
     }, [selectedTripId, activities]);
+    const effectiveActivities = activeScenario?.activitiesSnapshot ?? tripActivities;
+
+    const tripRoutes = useMemo(() => {
+        if (!selectedTripId) return [];
+        return getRoutesByTrip(selectedTripId);
+    }, [selectedTripId, getRoutesByTrip]);
+    const effectiveRoutes = activeScenario?.transportRoutesSnapshot ?? tripRoutes;
 
     const getCell = useCallback((dateStr: string, slot: Exclude<ActivitySlot, 'unscheduled'>): Activity[] => {
-        return tripActivities
+        return effectiveActivities
             .filter(a => a.date === dateStr && getTimeSlot(a.time) === slot)
             .sort((a, b) => a.order - b.order);
-    }, [tripActivities]);
+    }, [effectiveActivities]);
 
     const tripNotes = useMemo(() => {
         if (!selectedTripId) return [];
@@ -160,10 +183,28 @@ const SpreadsheetView: React.FC = () => {
 
     const unscheduledActivitiesForFocusedDay = useMemo(() => {
         const dateStr = format(focusedDate, 'yyyy-MM-dd');
-        return tripActivities
+        return effectiveActivities
             .filter(a => a.date === dateStr && getTimeSlot(a.time) === 'unscheduled')
             .sort((a, b) => a.order - b.order);
-    }, [tripActivities, focusedDate]);
+    }, [effectiveActivities, focusedDate]);
+
+    const planningConflicts = useMemo(() => {
+        if (!effectiveTrip) return [];
+        return getTripPlanningConflicts({
+            trip: effectiveTrip,
+            activities: effectiveActivities,
+            routes: effectiveRoutes,
+        });
+    }, [effectiveTrip, effectiveActivities, effectiveRoutes]);
+
+    const dayConflictCounts = useMemo(() => {
+        const counts: Record<string, number> = {};
+        planningConflicts.forEach((conflict) => {
+            if (!conflict.date) return;
+            counts[conflict.date] = (counts[conflict.date] || 0) + 1;
+        });
+        return counts;
+    }, [planningConflicts]);
 
     const handleDragStart = (e: React.DragEvent, activity: Activity) => {
         e.dataTransfer.setData('text/plain', activity.id);
@@ -186,7 +227,7 @@ const SpreadsheetView: React.FC = () => {
         const activityId = e.dataTransfer.getData('text/plain');
         if (!activityId) return;
 
-        const activity = tripActivities.find(a => a.id === activityId);
+        const activity = effectiveActivities.find(a => a.id === activityId);
         if (!activity) return;
 
         const slotMeta = TIME_SLOTS.find(s => s.key === slot);
@@ -194,7 +235,11 @@ const SpreadsheetView: React.FC = () => {
         const changed = activity.date !== dateStr || getTimeSlot(activity.time) !== slot;
         if (!changed) return;
 
-        updateActivity(activityId, { date: dateStr, time: newTime });
+        if (selectedTripId && activeScenario) {
+            upsertScenarioActivity(selectedTripId, activeScenario.id, { ...activity, date: dateStr, time: newTime });
+        } else {
+            updateActivity(activityId, { date: dateStr, time: newTime });
+        }
         logEvent('Activity Moved in Spreadsheet', {
             activity_title: activity.title,
             from_date: activity.date,
@@ -205,27 +250,51 @@ const SpreadsheetView: React.FC = () => {
 
     const handleSaveActivity = (data: Omit<Activity, 'id' | 'userId' | 'tripMembers'> | ({ id: string } & Partial<Omit<Activity, 'userId'>>)) => {
         if ('id' in data) {
-            updateActivity(data.id, data);
-            logEvent('Activity Updated', { activity_title: data.title, source: 'spreadsheet' });
+            if (selectedTripId && activeScenario) {
+                const existingActivity = effectiveActivities.find((activity) => activity.id === data.id);
+                if (!existingActivity) return;
+                upsertScenarioActivity(selectedTripId, activeScenario.id, { ...existingActivity, ...data });
+            } else {
+                updateActivity(data.id, data);
+            }
+            logEvent('Activity Updated', { activity_title: data.title, source: 'spreadsheet', scenario_mode: Boolean(activeScenario) });
         } else {
             const trip = trips.find(t => t.id === selectedTripId);
-            addActivity(data as Omit<import('../lib/types').Activity, 'id' | 'userId' | 'tripMembers'>, trip?.members || []);
-            logEvent('Activity Created', { activity_title: data.title, date: data.date, source: 'spreadsheet' });
+            if (selectedTripId && activeScenario) {
+                const nextOrder = data.order ?? effectiveActivities.filter((activity) => activity.date === data.date).length;
+                const scenarioActivity = createScenarioActivity({
+                    ...(data as Omit<Activity, 'id'>),
+                    tripId: selectedTripId,
+                    order: nextOrder,
+                    userId: user?.uid || trip?.userId || 'scenario-user',
+                    tripMembers: trip?.members || [],
+                });
+                upsertScenarioActivity(selectedTripId, activeScenario.id, scenarioActivity);
+            } else {
+                addActivity(data as Omit<import('../lib/types').Activity, 'id' | 'userId' | 'tripMembers'>, trip?.members || []);
+            }
+            logEvent('Activity Created', { activity_title: data.title, date: data.date, source: 'spreadsheet', scenario_mode: Boolean(activeScenario) });
         }
         setEditingActivity(null);
         setAddingCell(null);
     };
 
     const handleDeleteFromModal = (id: string) => {
-        const act = tripActivities.find(a => a.id === id);
+        const act = effectiveActivities.find(a => a.id === id);
         if (!act) return;
-        deleteActivity(id);
-        logEvent('Activity Deleted', { activity_title: act.title, source: 'spreadsheet' });
+        if (selectedTripId && activeScenario) {
+            removeScenarioActivity(selectedTripId, activeScenario.id, id);
+        } else {
+            deleteActivity(id);
+        }
+        logEvent('Activity Deleted', { activity_title: act.title, source: 'spreadsheet', scenario_mode: Boolean(activeScenario) });
         setEditingActivity(null);
-        showToast(`"${act.title}" deleted`, () => {
-            restoreActivity(act);
-            logEvent('Activity Delete Undone', { activity_title: act.title });
-        });
+        if (!activeScenario) {
+            showToast(`"${act.title}" deleted`, () => {
+                restoreActivity(act);
+                logEvent('Activity Delete Undone', { activity_title: act.title });
+            });
+        }
     };
 
     const cellKey = (dateStr: string, slot: Exclude<ActivitySlot, 'unscheduled'>) => `${dateStr}__${slot}`;
@@ -297,9 +366,24 @@ const SpreadsheetView: React.FC = () => {
     };
 
     const handleUpdateItineraryDay = useCallback((dateStr: string, updates: Partial<import('../lib/types').ItineraryDay>) => {
+        if (!selectedTripId) return;
+        if (activeScenario) {
+            updateScenarioTripSnapshot(selectedTripId, activeScenario.id, (trip) => ({
+                ...trip,
+                itinerary: {
+                    ...(trip.itinerary || {}),
+                    [dateStr]: {
+                        ...(trip.itinerary?.[dateStr] || {}),
+                        ...updates,
+                    },
+                },
+            }));
+            return;
+        }
+
         if (!selectedTrip) return;
         updateItineraryDay(selectedTrip.id, dateStr, updates);
-    }, [selectedTrip, updateItineraryDay]);
+    }, [activeScenario, selectedTrip, selectedTripId, updateItineraryDay]);
 
     if (tripsLoading) {
         return <div className={`page-container animate-fade-in ${styles['spreadsheet-page']}`} />;
@@ -362,7 +446,7 @@ const SpreadsheetView: React.FC = () => {
                         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedTripId(selectedTripId === trip.id ? null : trip.id); }}
                     >
                         <div className={styles['trip-card-header']}>
-                            <h3>{trip.name}</h3>
+                            <h3>{getTripEmoji(trip.name)} {trip.name}</h3>
                             <div className={styles['trip-card-actions']} onClick={e => e.stopPropagation()}>
                                 {!user?.isAnonymous && trip.userId === user?.uid && (
                                     <button className="btn btn-ghost btn-sm" onClick={() => setSharingTrip(trip)} title="Share Trip">
@@ -395,7 +479,7 @@ const SpreadsheetView: React.FC = () => {
                     <option value="">Select a trip...</option>
                     {trips.map(t => (
                         <option key={t.id} value={t.id}>
-                            {t.name} ({safeFormatDate(t.startDate, 'MMM d')} – {safeFormatDate(t.endDate, 'MMM d')})
+                            {getTripEmoji(t.name)} {t.name} ({safeFormatDate(t.startDate, 'MMM d')} – {safeFormatDate(t.endDate, 'MMM d')})
                         </option>
                     ))}
                 </select>
@@ -453,36 +537,65 @@ const SpreadsheetView: React.FC = () => {
                             </button>
                         </div>
                         <div className={styles['day-pills']}>
-                            {tripDays.map((day, idx) => (
-                                <button
-                                    key={idx}
-                                    type="button"
-                                    className={`${styles['day-pill']} ${isSameDay(day, focusedDate) ? styles['active'] : ''} ${isSameDay(day, new Date()) ? styles['today'] : ''}`}
-                                    onClick={() => setFocusedDate(day)}
-                                    title={format(day, 'EEEE, MMM d')}
-                                >
-                                    <span className={styles['day-pill-num']}>{format(day, 'd')}</span>
-                                    <span className={styles['day-pill-dow']}>{format(day, 'EEE')}</span>
-                                </button>
-                            ))}
+                            {tripDays.map((day, idx) => {
+                                const dateStr = format(day, 'yyyy-MM-dd');
+                                const conflictCount = dayConflictCounts[dateStr] || 0;
+                                return (
+                                    <button
+                                        key={idx}
+                                        type="button"
+                                        className={`${styles['day-pill']} ${isSameDay(day, focusedDate) ? styles['active'] : ''} ${isSameDay(day, new Date()) ? styles['today'] : ''}`}
+                                        onClick={() => {
+                                            setFocusedDate(day);
+                                            if (conflictCount > 0) {
+                                                setConflictsExpandedDate(prev => prev === dateStr ? null : dateStr);
+                                            } else {
+                                                setConflictsExpandedDate(null);
+                                            }
+                                        }}
+                                        title={format(day, 'EEEE, MMM d')}
+                                    >
+                                        <span className={styles['day-pill-num']}>{format(day, 'd')}</span>
+                                        <span className={styles['day-pill-dow']}>{format(day, 'EEE')}</span>
+                                        {appSettings.showPlanningChecks && conflictCount > 0 && <span className={styles['issue-badge']}>{conflictCount}</span>}
+                                    </button>
+                                );
+                            })}
                         </div>
+                        {appSettings.showPlanningChecks && conflictsExpandedDate && (() => {
+                            const expanded = planningConflicts.filter(c => c.date === conflictsExpandedDate);
+                            if (expanded.length === 0) return null;
+                            return (
+                                <div className={styles['inline-conflicts']}>
+                                    {expanded.map(c => (
+                                        <div key={c.id} className={styles['inline-conflict-item']}>
+                                            <span className={`${styles['inline-conflict-icon']} ${c.severity === 'info' ? styles['info'] : ''}`}>
+                                                {c.severity === 'warning' ? <AlertTriangle size={13} /> : <Info size={13} />}
+                                            </span>
+                                            <span><span className={styles['inline-conflict-title']}>{c.title}</span>{c.message}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            );
+                        })()}
                     </div>
                     <div className={styles['spreadsheet-wrapper']} ref={spreadsheetWrapperRef}>
                         <div
-                            className={styles['spreadsheet-grid']}
+                            className={`${styles['spreadsheet-grid']} ${appSettings.headerRowColor !== 'default' ? styles[`header-${appSettings.headerRowColor}`] ?? '' : ''}`}
                             style={{
                                 gridTemplateColumns: `var(--sheet-label-width) repeat(${tripDays.length}, minmax(140px, 1fr))`,
                                 zoom: zoomScale,
                                 transformOrigin: 'top left',
-                            }}
+                                '--row-tint-pct': `${appSettings.colorCodingOpacity}%`,
+                            } as React.CSSProperties}
                         >
                             {/* Header row */}
                             <div className={`${styles['sheet-header-cell']} ${styles['sheet-corner']}`} />
                             {tripDays.map((day, idx) => {
                                 const isFocused = isSameDay(day, focusedDate);
                                 const dateStr = format(day, 'yyyy-MM-dd');
-                                const dayData = selectedTrip?.itinerary?.[dateStr];
-                                const dayLocation = dayData?.location ?? selectedTrip?.dayLocations?.[dateStr] ?? '';
+                                const dayData = effectiveTrip?.itinerary?.[dateStr];
+                                const dayLocation = dayData?.location ?? effectiveTrip?.dayLocations?.[dateStr] ?? '';
                                 const dayAccommodation = dayData?.accommodation;
 
                                 return (
@@ -498,7 +611,7 @@ const SpreadsheetView: React.FC = () => {
                                                     className={styles['day-location-input']}
                                                     placeholder="Accommodation"
                                                     defaultValue={dayAccommodation?.name ?? ''}
-                                                    key={`acc-name-${selectedTripId}-${dateStr}`}
+                                                    key={`acc-name-${selectedTripId}-${activeScenario?.id ?? 'live'}-${dateStr}`}
                                                     onBlur={e => {
                                                         const val = e.target.value.trim();
                                                         if (val !== (dayAccommodation?.name ?? '')) {
@@ -515,7 +628,7 @@ const SpreadsheetView: React.FC = () => {
                                                     className={styles['day-accommodation-input']}
                                                     placeholder="City"
                                                     defaultValue={dayLocation}
-                                                    key={`loc-${selectedTripId}-${dateStr}`}
+                                                    key={`loc-${selectedTripId}-${activeScenario?.id ?? 'live'}-${dateStr}`}
                                                     onBlur={e => {
                                                         const val = e.target.value.trim();
                                                         if (val !== dayLocation) handleUpdateItineraryDay(dateStr, { location: val });
@@ -549,6 +662,7 @@ const SpreadsheetView: React.FC = () => {
                                                     onClick={(e) => {
                                                         if ((e.target as HTMLElement).closest('[data-note-card]')) return;
                                                         if ((e.target as HTMLElement).closest('textarea')) return;
+                                                        if (activeScenario) return;
                                                         setQuickNoteForDate(dateStr);
                                                     }}
                                                 >
@@ -559,6 +673,7 @@ const SpreadsheetView: React.FC = () => {
                                                             data-note-card
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
+                                                                if (activeScenario) return;
                                                                 setEditingNote(n);
                                                             }}
                                                         >
@@ -566,7 +681,7 @@ const SpreadsheetView: React.FC = () => {
                                                         </div>
                                                     ))}
 
-                                                    {isQuickAddOpen && (
+                                                    {isQuickAddOpen && !activeScenario && (
                                                         <div className={styles['quick-note-wrap']} onClick={(e) => e.stopPropagation()}>
                                                             <textarea
                                                                 className={styles['quick-note-textarea']}
@@ -585,7 +700,9 @@ const SpreadsheetView: React.FC = () => {
                                                         </div>
                                                     )}
 
-                                                    <span className={`${styles['sheet-cell-placeholder']} ${dayNotes.length > 0 ? styles['has-items'] : ''}`}>+</span>
+                                                    <span className={`${styles['sheet-cell-placeholder']} ${dayNotes.length > 0 ? styles['has-items'] : ''}`}>
+                                                        {activeScenario ? 'Live notes only' : '+'}
+                                                    </span>
                                                 </div>
                                             );
                                         }
@@ -598,7 +715,7 @@ const SpreadsheetView: React.FC = () => {
                                         return (
                                             <div
                                                 key={ck}
-                                                className={`${styles['sheet-cell']} ${isDragOver ? styles['drag-over'] : ''} ${isFocused ? styles['focused'] : ''}`}
+                                                className={`${styles['sheet-cell']} ${isDragOver ? styles['drag-over'] : ''} ${isFocused ? styles['focused'] : ''} ${appSettings.colorCodedTimeRows ? styles[`cell-${slotKey}`] ?? '' : ''}`}
                                                 onDragOver={e => handleDragOver(e, ck)}
                                                 onDragLeave={handleDragLeave}
                                                 onDrop={e => handleDrop(e, dateStr, slotKey)}
@@ -632,8 +749,12 @@ const SpreadsheetView: React.FC = () => {
                         </div>
                     </div>
 
+                    {selectedTrip && (
+                        <ScenarioSwitcher trip={selectedTrip} activities={effectiveActivities} routes={effectiveRoutes} />
+                    )}
+
                     {/* Unscheduled activities (focused day) */}
-                    <div className={styles['unscheduled-wrap']}>
+                    {appSettings.showUnscheduledSection && <div className={styles['unscheduled-wrap']}>
                         <div
                             className={styles['unscheduled-header']}
                             role="button"
@@ -674,7 +795,7 @@ const SpreadsheetView: React.FC = () => {
                                 )}
                             </div>
                         )}
-                    </div>
+                    </div>}
                 </>
             )}
 
@@ -695,7 +816,7 @@ const SpreadsheetView: React.FC = () => {
                             date={editingActivity.date}
                             existingActivity={editingActivity}
                             nextOrder={editingActivity.order}
-                            defaultCurrency={selectedTrip?.defaultCurrency}
+                            defaultCurrency={effectiveTrip?.defaultCurrency}
                             onSave={handleSaveActivity}
                             onCancel={() => setEditingActivity(null)}
                             onDelete={() => handleDeleteFromModal(editingActivity.id)}
@@ -713,7 +834,7 @@ const SpreadsheetView: React.FC = () => {
                             tripId={selectedTripId}
                             date={addingCell.date}
                             nextOrder={getCell(addingCell.date, addingCell.slot).length}
-                            defaultCurrency={selectedTrip?.defaultCurrency}
+                            defaultCurrency={effectiveTrip?.defaultCurrency}
                             onSave={handleSaveActivity}
                             onCancel={() => setAddingCell(null)}
                         />
@@ -723,7 +844,7 @@ const SpreadsheetView: React.FC = () => {
             )}
 
             {/* Modal for editing a note */}
-            {editingNote && selectedTripId && createPortal(
+            {editingNote && selectedTripId && !activeScenario && createPortal(
                 <div className={styles['sheet-modal-overlay']} onClick={() => setEditingNote(null)}>
                     <div className={styles['sheet-modal']} onClick={e => e.stopPropagation()}>
                         <NoteEditor

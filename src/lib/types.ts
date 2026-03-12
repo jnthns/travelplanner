@@ -33,6 +33,18 @@ export interface Trip {
     _pendingWrite?: boolean;
 }
 
+export interface TripScenario {
+    id: string;
+    tripId: string;
+    name: string;
+    objective?: string;
+    createdAt: string;
+    updatedAt: string;
+    tripSnapshot: Trip;
+    activitiesSnapshot: Activity[];
+    transportRoutesSnapshot: TransportRoute[];
+}
+
 export interface UserProfile {
     uid: string;
     email: string;
