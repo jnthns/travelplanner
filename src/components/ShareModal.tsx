@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, UserPlus, Loader2, Trash2 } from 'lucide-react';
-import { collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
+import { collection, query, where, getDocs, writeBatch, type DocumentReference } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useTrips } from '../lib/store';
 import type { Trip } from '../lib/types';
@@ -21,6 +21,17 @@ const ShareModal: React.FC<ShareModalProps> = ({ trip, onClose }) => {
 
     // Prevent closing when clicking inside the modal
     const stopPropagation = (e: React.MouseEvent) => e.stopPropagation();
+
+    const toErrorMessage = (err: unknown, fallback: string) => {
+        if (!(err instanceof Error) || !err.message) return fallback;
+        if (/permission|missing or insufficient permissions/i.test(err.message)) {
+            return 'You do not have permission to update sharing for this trip.';
+        }
+        if (/network/i.test(err.message)) {
+            return 'Network error while updating collaborators. Please try again.';
+        }
+        return fallback;
+    };
 
     const handleAddCollaborator = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -47,11 +58,29 @@ const ShareModal: React.FC<ShareModalProps> = ({ trip, onClose }) => {
             }
 
             const targetUserDoc = querySnapshot.docs[0];
-            const targetUid = targetUserDoc.data().uid;
+            const targetUid = typeof targetUserDoc.data().uid === 'string' && targetUserDoc.data().uid.trim()
+                ? targetUserDoc.data().uid
+                : targetUserDoc.id;
+
+            if (!targetUid) {
+                throw new Error('Collaborator account is missing a valid UID.');
+            }
+
+            if (targetUid === trip.userId) {
+                setError('You already own this trip.');
+                setLoading(false);
+                return;
+            }
+
+            if ((trip.members || []).includes(targetUid)) {
+                setError('User is already a collaborator on this trip.');
+                setLoading(false);
+                return;
+            }
 
             // 2. Update the Trip's members and sharedWithEmails array
-            const newMembers = [...(trip.members || [trip.userId]), targetUid];
-            const newShared = [...(trip.sharedWithEmails || []), targetEmail];
+            const newMembers = Array.from(new Set([...(trip.members || [trip.userId]), targetUid])).filter(Boolean);
+            const newShared = Array.from(new Set([...(trip.sharedWithEmails || []), targetEmail])).filter(Boolean);
 
             // Only update the trip doc here, not the child docs immediately
             await updateTrip(trip.id, {
@@ -59,31 +88,35 @@ const ShareModal: React.FC<ShareModalProps> = ({ trip, onClose }) => {
                 sharedWithEmails: newShared
             });
 
-            // 3. Batch update the denormalized `tripMembers` array on all activities, notes, and routes for this trip
-            // This is required so the tight security rules work without `get()` calls.
-            const batch = writeBatch(db);
+            // 3. Batch update denormalized `tripMembers` on child docs (chunked; Firestore limit 500 per batch)
             const collectionsToUpdate = ['activities', 'notes', 'transportRoutes', 'chat_history'];
-
+            const BATCH_LIMIT = 500;
+            const refs: DocumentReference[] = [];
             for (const collName of collectionsToUpdate) {
-                // Query by tripId only - isMember() in firestore.rules handles auth with isOwner() fallback
-                const subQ = query(
-                    collection(db, collName),
-                    where('tripId', '==', trip.id)
-                );
+                const subQ = query(collection(db, collName), where('tripId', '==', trip.id));
                 const subSnapshot = await getDocs(subQ);
-                subSnapshot.forEach((docSnap) => {
-                    batch.update(docSnap.ref, { tripMembers: newMembers });
-                });
+                subSnapshot.forEach((docSnap) => refs.push(docSnap.ref));
             }
-
-            await batch.commit();
+            try {
+                for (let i = 0; i < refs.length; i += BATCH_LIMIT) {
+                    const batch = writeBatch(db);
+                    refs.slice(i, i + BATCH_LIMIT).forEach((ref) => batch.update(ref, { tripMembers: newMembers }));
+                    await batch.commit();
+                }
+            } catch (batchErr) {
+                console.warn('Batch sync after add collaborator failed:', batchErr);
+                showToast(`${targetEmail} was added. If something looks wrong, try refreshing.`);
+                setEmail('');
+                setLoading(false);
+                return;
+            }
 
             logEvent('Collaborator Added', { trip_id: trip.id });
             showToast(`${targetEmail} can now collaborate on this trip!`);
             setEmail('');
         } catch (err) {
             console.error('Failed to add collaborator:', err);
-            setError('An error occurred while adding the collaborator.');
+            setError(toErrorMessage(err, 'An error occurred while adding the collaborator.'));
         } finally {
             setLoading(false);
         }
@@ -91,13 +124,17 @@ const ShareModal: React.FC<ShareModalProps> = ({ trip, onClose }) => {
 
     const handleRemoveCollaborator = async (emailToRemove: string) => {
         setLoading(true);
+        setError(null);
         try {
             // 1. Lookup the UID for this email to remove it
             const q = query(collection(db, 'users'), where('email', '==', emailToRemove));
             const querySnapshot = await getDocs(q);
-            let uidToRemove = null;
+            let uidToRemove: string | null = null;
             if (!querySnapshot.empty) {
-                uidToRemove = querySnapshot.docs[0].data().uid;
+                const userDoc = querySnapshot.docs[0];
+                uidToRemove = typeof userDoc.data().uid === 'string' && userDoc.data().uid.trim()
+                    ? userDoc.data().uid
+                    : userDoc.id;
             }
 
             // 2. Filter out arrays
@@ -107,33 +144,39 @@ const ShareModal: React.FC<ShareModalProps> = ({ trip, onClose }) => {
                 newMembers = newMembers.filter(uid => uid !== uidToRemove);
             }
 
-            // 3. Update trip
+            // 3. Update trip first so the collaborator is removed from the trip doc
             await updateTrip(trip.id, {
                 members: newMembers,
                 sharedWithEmails: newShared
             });
 
-            // 4. Update children
-            const batch = writeBatch(db);
+            // 4. Batch update child docs (chunked; Firestore limit 500 per batch)
             const collectionsToUpdate = ['activities', 'notes', 'transportRoutes', 'chat_history'];
+            const BATCH_LIMIT = 500;
+            const refs: DocumentReference[] = [];
             for (const collName of collectionsToUpdate) {
-                // Query by tripId only - isMember() in firestore.rules handles auth with isOwner() fallback
-                const subQ = query(
-                    collection(db, collName),
-                    where('tripId', '==', trip.id)
-                );
+                const subQ = query(collection(db, collName), where('tripId', '==', trip.id));
                 const subSnapshot = await getDocs(subQ);
-                subSnapshot.forEach((docSnap) => {
-                    batch.update(docSnap.ref, { tripMembers: newMembers });
-                });
+                subSnapshot.forEach((docSnap) => refs.push(docSnap.ref));
             }
-            await batch.commit();
+            try {
+                for (let i = 0; i < refs.length; i += BATCH_LIMIT) {
+                    const batch = writeBatch(db);
+                    refs.slice(i, i + BATCH_LIMIT).forEach((ref) => batch.update(ref, { tripMembers: newMembers }));
+                    await batch.commit();
+                }
+            } catch (batchErr) {
+                console.warn('Batch sync after remove collaborator failed:', batchErr);
+                showToast(`${emailToRemove} was removed from the trip. If something looks wrong, try refreshing.`);
+                setLoading(false);
+                return;
+            }
 
             logEvent('Collaborator Removed', { trip_id: trip.id });
             showToast(`${emailToRemove} removed.`);
         } catch (err) {
             console.error('Failed to remove collaborator:', err);
-            setError('Could not remove collaborator.');
+            setError(toErrorMessage(err, 'Could not remove collaborator.'));
         } finally {
             setLoading(false);
         }

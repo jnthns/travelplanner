@@ -19,6 +19,11 @@ service cloud.firestore {
       );
     }
 
+    // Trip owner can always update child docs (e.g. sync tripMembers when adding/removing collaborators)
+    function isTripOwnerOf(tripId) {
+      return isAuthenticated() && tripId != null && get(/databases/$(database)/documents/trips/$(tripId)).data.userId == request.auth.uid;
+    }
+
     // Trip: readable by owner or any member; writable only by owner
     match /trips/{tripId} {
       allow read: if isAuthenticated() && (
@@ -37,19 +42,19 @@ service cloud.firestore {
     match /activities/{activityId} {
       allow read: if isMember();
       allow create: if isAuthenticated() && request.auth.uid in request.resource.data.tripMembers;
-      allow update, delete: if isMember();
+      allow update, delete: if isMember() || isTripOwnerOf(resource.data.tripId);
     }
 
     match /transportRoutes/{routeId} {
       allow read: if isMember();
       allow create: if isAuthenticated() && request.auth.uid in request.resource.data.tripMembers;
-      allow update, delete: if isMember();
+      allow update, delete: if isMember() || isTripOwnerOf(resource.data.tripId);
     }
 
     match /notes/{noteId} {
       allow read: if isMember();
       allow create: if isAuthenticated() && request.auth.uid in request.resource.data.tripMembers;
-      allow update, delete: if isMember();
+      allow update, delete: if isMember() || isTripOwnerOf(resource.data.tripId);
     }
 
     match /chat_history/{messageId} {
@@ -58,7 +63,7 @@ service cloud.firestore {
         request.auth.uid in request.resource.data.tripMembers ||
         request.auth.uid == request.resource.data.userId
       );
-      allow update, delete: if isMember();
+      allow update, delete: if isMember() || isTripOwnerOf(resource.data.tripId);
     }
 
     // User directory: authenticated users can read anyone's profile;

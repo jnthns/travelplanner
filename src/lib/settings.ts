@@ -131,11 +131,14 @@ async function pushToCloud() {
   }
 }
 
-async function pullFromCloud(uid: string): Promise<Partial<AppSettings> | null> {
+/** Cloud doc shape: settings fields plus updatedAt */
+type CloudSettings = Partial<AppSettings> & { updatedAt?: string };
+
+async function pullFromCloud(uid: string): Promise<CloudSettings | null> {
   try {
     const snap = await getDoc(getDocRef(uid));
     if (!snap.exists()) return null;
-    return snap.data() as Partial<AppSettings>;
+    return snap.data() as CloudSettings;
   } catch {
     return null;
   }
@@ -152,7 +155,7 @@ export async function onAuthChange(uid: string | null, isAnonymous: boolean) {
     return;
   }
 
-  const cloudUpdated = cloud.updatedAt as string | undefined;
+  const cloudUpdated = cloud.updatedAt;
   const merged = { ...DEFAULTS, ...cloud };
   delete (merged as Record<string, unknown>).updatedAt;
   persistLocal(merged as AppSettings);

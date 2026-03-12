@@ -218,11 +218,6 @@ const CalendarView: React.FC = () => {
         });
     }, [effectiveTrip, effectiveActivities, effectiveRoutes]);
 
-    const dayViewConflicts = useMemo(
-        () => planningConflicts.filter(conflict => conflict.date === currentDateStr),
-        [planningConflicts, currentDateStr],
-    );
-
     const conflictCountsByDate = useMemo(() => {
         const counts: Record<string, number> = {};
         planningConflicts.forEach((conflict) => {
