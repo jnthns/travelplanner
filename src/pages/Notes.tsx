@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Plus, Pencil, Trash2, GripVertical, Copy, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { eachDayOfInterval, format, isSameDay, parseISO } from 'date-fns';
 import { useTrips, useNotes } from '../lib/store';
@@ -50,6 +50,18 @@ const Notes: React.FC = () => {
         return tripNotes;
     }, [tripNotes, filterMode, dayFilterDateStr]);
 
+    useEffect(() => {
+        if (!selectedTrip || tripDays.length === 0) return;
+        if (filterMode !== 'day') return;
+
+        const focusedInRange = tripDays.some(d => isSameDay(d, focusedDay));
+        if (focusedInRange) return;
+
+        const today = new Date();
+        const nextDay = tripDays.some(d => isSameDay(d, today)) ? today : tripDays[0];
+        setFocusedDay(nextDay);
+    }, [selectedTrip, tripDays, focusedDay, filterMode]);
+
     const handleAddNote = useCallback(async (data: { content: string; format: Note['format']; color?: string; images?: string[] }) => {
         if (!selectedTripId) return;
         setError(null);
@@ -91,7 +103,9 @@ const Notes: React.FC = () => {
         try {
             await deleteNote(note.id);
             logEvent('Note Deleted', { note_id: note.id });
-            showToast(`"${note.title}" deleted`, () => {
+            const firstLine = note.content.split('\n')[0]?.trim() || 'Empty note';
+            const snippet = firstLine.length > 40 ? `${firstLine.slice(0, 40)}...` : firstLine;
+            showToast(`"${snippet}" deleted`, () => {
                 restoreNote(note);
                 logEvent('Note Delete Undone', { note_id: note.id });
             });
@@ -103,6 +117,7 @@ const Notes: React.FC = () => {
     }, [deleteNote, restoreNote, showToast, editingNoteId]);
 
     const handleReorder = useCallback((reordered: Note[]) => {
+        if (filterMode !== 'all') return;
         const updates = reordered
             .map((n, idx) => ({ id: n.id, order: idx }))
             .filter((u, idx) => reordered[idx].order !== u.order);
@@ -110,7 +125,7 @@ const Notes: React.FC = () => {
             reorderNotes(updates);
             logEvent('Notes Reordered', { count: updates.length });
         }
-    }, [reorderNotes]);
+    }, [reorderNotes, filterMode]);
 
     const handleCopyNote = useCallback((content: string, id: string) => {
         navigator.clipboard.writeText(content).then(() => {
@@ -118,6 +133,10 @@ const Notes: React.FC = () => {
             showToast('Note copied to clipboard');
             logEvent('Note Copied');
             setTimeout(() => setCopiedId(null), 2000);
+        }).catch((err) => {
+            console.error('Failed to copy note:', err);
+            showToast('Could not copy note. Please copy manually.');
+            logEvent('Note Copy Failed');
         });
     }, [showToast]);
 
@@ -248,7 +267,7 @@ const Notes: React.FC = () => {
                     items={filteredNotes}
                     keyFn={n => n.id}
                     onReorder={handleReorder}
-                    disabled={editingNoteId !== null}
+                    disabled={editingNoteId !== null || filterMode !== 'all'}
                     className="grid grid-cols-auto-280 gap-md"
                     renderItem={(note, _idx, dragHandleProps) => (
                         editingNoteId === note.id ? (
