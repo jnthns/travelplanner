@@ -310,7 +310,7 @@ export function loadThemeConfig(): ThemeConfig {
     if (legacy) {
       const p = JSON.parse(legacy) as Record<string, string>;
       return {
-        presetId: 'y2k-retro',
+        presetId: 'modern',
         colorOverrides: {
           primaryColor: p.primary,
           secondaryColor: p.secondary,
@@ -319,7 +319,7 @@ export function loadThemeConfig(): ThemeConfig {
       };
     }
   } catch { /* ignore corrupt storage */ }
-  return { presetId: 'y2k-retro', colorOverrides: {} };
+  return { presetId: 'modern', colorOverrides: {} };
 }
 
 export function saveThemeConfig(config: ThemeConfig): void {

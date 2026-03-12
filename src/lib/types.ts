@@ -98,7 +98,7 @@ export interface Note {
     userId: string;
     tripId: string;
     tripMembers: string[]; // denormalized from trip.members for security rules
-    title: string;
+    date?: string; // ISO date YYYY-MM-DD (optional; absence means "General")
     content: string;
     format: 'freeform' | 'bullet' | 'numbered';
     order: number;

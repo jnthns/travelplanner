@@ -353,7 +353,7 @@ Ensure all provided activity IDs are included in the optimizedOrder array.`;
                             return (
                                 <div
                                     key={idx}
-                                    className={`calendar-day trip-card ${isToday ? 'today' : ''}`}
+                                    className={`${styles['calendar-day']} ${isToday ? styles['today'] : ''}`}
                                     onClick={() => { setCurrentDate(day); setViewMode('day'); logEvent('Calendar View Changed', { view_mode: 'day', source: 'trip_card_click' }); }}
                                 >
                                     <div className={styles['trip-card-header']}>
@@ -405,7 +405,7 @@ Ensure all provided activity IDs are included in the optimizedOrder array.`;
                                 <label className={styles['acc-label']}>Accommodation</label>
                                 <input
                                     type="text"
-                                    className={`${styles['acc-name-input']} input-transparent`}
+                                    className={`${styles['acc-name-input']} ${styles['input-transparent']}`}
                                     placeholder="Add accommodation..."
                                     defaultValue={selectedTrip?.itinerary?.[currentDateStr]?.accommodation?.name ?? ''}
                                     key={`acc-name-${selectedTripId}-${currentDateStr}`}
@@ -426,7 +426,7 @@ Ensure all provided activity IDs are included in the optimizedOrder array.`;
                                 <span className={styles['acc-meta-label']}>Check-In</span>
                                 <input
                                     type="time"
-                                    className={`${styles['acc-time-input']} input-transparent`}
+                                    className={`${styles['acc-time-input']} ${styles['input-transparent']}`}
                                     defaultValue={selectedTrip?.itinerary?.[currentDateStr]?.accommodation?.checkInTime ?? ''}
                                     key={`acc-time-${selectedTripId}-${currentDateStr}`}
                                     onBlur={e => {
@@ -444,7 +444,7 @@ Ensure all provided activity IDs are included in the optimizedOrder array.`;
                                 <span className={styles['acc-meta-label']}>Cost ({selectedTrip?.defaultCurrency || '$'})</span>
                                 <input
                                     type="number"
-                                    className={`${styles['acc-cost-input']} input-transparent`}
+                                    className={`${styles['acc-cost-input']} ${styles['input-transparent']}`}
                                     placeholder="0"
                                     defaultValue={selectedTrip?.itinerary?.[currentDateStr]?.accommodation?.cost ?? ''}
                                     key={`acc-cost-${selectedTripId}-${currentDateStr}`}

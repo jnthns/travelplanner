@@ -46,23 +46,29 @@
     font-size: 0.95rem;
     text-align: center;
     white-space: nowrap;
+    min-width: 0;
 }
 
 .current-label-location {
     display: block;
-    font-size: 0.75rem;
-    font-weight: 400;
-    color: var(--text-tertiary);
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    white-space: normal;
+    max-width: 320px;
+    line-height: 1.35;
+    margin-top: 0.2rem;
 }
 
 .cal-day-location {
-    font-size: 0.65rem;
-    color: var(--text-tertiary);
+    font-size: 0.85rem;
+    color: var(--text-secondary);
     margin-left: auto;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 90px;
+    white-space: normal;
+    overflow: visible;
+    max-width: 100%;
+    line-height: 1.3;
+    margin-top: 0.15rem;
 }
 
 .trip-select {
@@ -83,13 +89,15 @@
 .nav-controls-modern {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.5rem;
     background-color: var(--surface-color);
-    padding: 0.25rem 0.5rem;
+    padding: 0.5rem 0.75rem;
     border-radius: var(--radius-full);
     border: 1px solid var(--border-color);
     box-shadow: var(--shadow-sm);
     width: fit-content;
+    max-width: 100%;
+    min-width: 0;
 }
 
 /* Day pills */
@@ -269,6 +277,7 @@
 }
 
 .cal-acc-name {
+    font-size: 0.95rem;
     font-weight: 600;
     color: var(--text-primary);
     overflow: hidden;
@@ -329,6 +338,7 @@
 .day-accommodation-card {
     padding: 1.25rem;
     border-left: 4px solid var(--primary-color);
+    border-radius: var(--radius-xl);
     background: linear-gradient(to right, color-mix(in srgb, var(--primary-color) 5%, var(--surface-color)), var(--surface-color));
 }
 
@@ -381,33 +391,39 @@
 }
 
 .acc-meta-value,
-.acc-name-input,
 .acc-time-input,
 .acc-cost-input {
-    font-size: 0.9rem;
-    font-weight: 700;
+    font-size: 0.85rem;
+    font-weight: 600;
     color: var(--primary-color);
 }
 
 .acc-name-input {
-    font-size: 1.25rem;
-    font-weight: 800;
+    font-size: 1.1rem;
+    font-weight: 700;
     color: var(--text-primary);
     width: 100%;
-    margin: 0;
-    padding: 0;
 }
 
 .input-transparent {
-    background: transparent;
-    border: none;
-    outline: none;
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 0.4rem 0.65rem;
     font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input-transparent:hover {
+    border-color: var(--text-tertiary);
 }
 
 .input-transparent:focus {
-    background-color: rgba(var(--primary-color-rgb), 0.05);
-    border-radius: var(--radius-sm);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color) 10%, transparent);
 }
 
 .no-activities-cal {
