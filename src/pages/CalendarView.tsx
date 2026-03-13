@@ -5,16 +5,15 @@ import {
     isSameDay,
     parseISO,
 } from 'date-fns';
-import { AlertTriangle, ChevronLeft, ChevronRight, Info, Plus, Pencil, GripVertical, Loader2 } from 'lucide-react';
+import { AlertTriangle, Info, Plus, Pencil, GripVertical, Loader2 } from 'lucide-react';
 import { useTrips, useActivities, useTransportRoutes } from '../lib/store';
 import { CATEGORY_EMOJIS, CATEGORY_COLORS } from '../lib/types';
 import ActivityForm from '../components/ActivityForm';
 import DraggableList from '../components/DraggableList';
 import Markdown from '../components/Markdown';
-import SwipeableItem from '../components/SwipeableItem';
 import { useToast } from '../components/Toast';
 import { logEvent } from '../lib/amplitude';
-import { generateDayActivityDescriptions, generateDaySummary, generateOptimizedRoute } from '../lib/ai/actions/calendar';
+import { generateDayActivityDescriptions, generateNearbyRecommendations, generateOptimizedRoute } from '../lib/ai/actions/calendar';
 import ScenarioSwitcher from '../components/ScenarioSwitcher';
 import { getTripPlanningConflicts } from '../lib/planning/conflicts';
 import { useSettings } from '../lib/settings';
@@ -81,9 +80,9 @@ const CalendarView: React.FC = () => {
     const [selectedTripId, setSelectedTripId] = useState<string | null>(savedPrefs.selectedTripId);
     const [addingActivityForDate, setAddingActivityForDate] = useState<string | null>(null);
     const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
-    const [tripSummary, setTripSummary] = useState<{ summary: string; highlights: string[] } | null>(null);
-    const [summaryLoading, setSummaryLoading] = useState(false);
-    const [summaryError, setSummaryError] = useState<string | null>(null);
+    const [nearbyRecommendations, setNearbyRecommendations] = useState<{ name: string; location?: string; reason: string; weight: number; crowded?: boolean }[] | null>(null);
+    const [recommendationsLoading, setRecommendationsLoading] = useState(false);
+    const [recommendationsError, setRecommendationsError] = useState<string | null>(null);
     const [optimizationLoading, setOptimizationLoading] = useState(false);
     const [optimizationError, setOptimizationError] = useState<string | null>(null);
     const [optimizedRoute, setOptimizedRoute] = useState<{ recommendation: string; optimizedOrder: string[] } | null>(null);
@@ -168,12 +167,6 @@ const CalendarView: React.FC = () => {
     const getActivitiesForDate = (date: Date) => {
         const dateStr = format(date, 'yyyy-MM-dd');
         return effectiveActivities.filter(a => a.date === dateStr);
-    };
-
-    const navigate = (direction: number) => {
-        if (viewMode === 'day') {
-            setCurrentDate(new Date(currentDate.getTime() + direction * 24 * 60 * 60 * 1000));
-        }
     };
 
     const tripDays = useMemo(() => {
@@ -267,27 +260,26 @@ const CalendarView: React.FC = () => {
         setEditingActivityId(null);
     };
 
-    const handleGenerateSummary = async () => {
+    const handleGenerateRecommendations = async () => {
         if (!selectedTrip || dayViewActivities.length === 0) return;
-        setSummaryLoading(true);
-        setSummaryError(null);
-        setTripSummary(null);
+        setRecommendationsLoading(true);
+        setRecommendationsError(null);
+        setNearbyRecommendations(null);
 
-        logEvent('Trip Summary Requested', { trip_name: selectedTrip.name, activity_count: dayViewActivities.length, date: currentDateStr });
+        logEvent('Nearby Recommendations Requested', { trip_name: selectedTrip.name, activity_count: dayViewActivities.length, date: currentDateStr });
         try {
-            const parsed = await generateDaySummary({
+            const parsed = await generateNearbyRecommendations({
                 trip: effectiveTrip ?? selectedTrip,
-                currentDate,
                 currentDateStr,
                 activities: dayViewActivities,
             });
-            if (!parsed.summary || !Array.isArray(parsed.highlights)) throw new Error('Invalid response format');
-            setTripSummary(parsed);
+            if (!Array.isArray(parsed.recommendations)) throw new Error('Invalid response format');
+            setNearbyRecommendations(parsed.recommendations);
         } catch (e) {
-            const msg = e instanceof Error ? e.message : 'Summary generation failed';
-            setSummaryError(/429|quota|rate/i.test(msg) ? 'API rate limit reached — please wait a minute and try again.' : msg);
+            const msg = e instanceof Error ? e.message : 'Recommendations generation failed';
+            setRecommendationsError(/429|quota|rate/i.test(msg) ? 'API rate limit reached — please wait a minute and try again.' : msg);
         } finally {
-            setSummaryLoading(false);
+            setRecommendationsLoading(false);
         }
     };
 
@@ -474,20 +466,6 @@ const CalendarView: React.FC = () => {
 
                 {selectedTrip && calendarDays.length > 0 && (
                     <div className={styles['day-nav-wrapper']}>
-                        <div className={styles['nav-controls-modern']}>
-                            <button className="btn btn-ghost btn-sm" onClick={() => navigate(-1)}>
-                                <ChevronLeft size={18} />
-                            </button>
-                            <span className={styles['current-label']}>
-                                {format(currentDate, 'EEEE, MMM d, yyyy')}
-                                {(effectiveTrip?.itinerary?.[currentDateStr]?.location || effectiveTrip?.dayLocations?.[currentDateStr]) && (
-                                    <span className={styles['current-label-location']}>📍 {effectiveTrip?.itinerary?.[currentDateStr]?.location || effectiveTrip?.dayLocations?.[currentDateStr]}</span>
-                                )}
-                            </span>
-                            <button className="btn btn-ghost btn-sm" onClick={() => navigate(1)}>
-                                <ChevronRight size={18} />
-                            </button>
-                        </div>
                         {tripDays.length > 0 && (<>
                             <div className={styles['day-pills']}>
                                 {tripDays.map((day, idx) => (
@@ -599,6 +577,20 @@ const CalendarView: React.FC = () => {
             {/* Day Detail View */}
             {viewMode === 'day' && (
                 <div className={styles['day-detail-view']}>
+                    {selectedTrip && (
+                        <>
+                            <ScenarioSwitcher trip={selectedTrip} activities={effectiveActivities} routes={effectiveRoutes} />
+                            {selectedTripId && addingActivityForDate !== currentDateStr && (
+                                <button
+                                    type="button"
+                                    className={`${styles['action-btn']} ${styles['action-btn-sky']} ${styles['add-activity-top']}`}
+                                    onClick={() => setAddingActivityForDate(currentDateStr)}
+                                >
+                                    <Plus size={18} /> Add activity
+                                </button>
+                            )}
+                        </>
+                    )}
                     <div className={styles['planning-action-row']}>
                         <button
                             type="button"
@@ -620,11 +612,11 @@ const CalendarView: React.FC = () => {
                         <button
                             type="button"
                             className={`${styles['action-btn']} ${styles['action-btn-amber']}`}
-                            onClick={handleGenerateSummary}
-                            disabled={summaryLoading || dayViewActivities.length === 0}
+                            onClick={handleGenerateRecommendations}
+                            disabled={recommendationsLoading || dayViewActivities.length === 0}
                         >
-                            <span className={styles['action-btn-icon']}>📝</span>
-                            {summaryLoading ? <><Loader2 size={14} className="spin" /> Generating…</> : 'AI Summary'}
+                            <span className={styles['action-btn-icon']}>📍</span>
+                            {recommendationsLoading ? <><Loader2 size={14} className="spin" /> Generating…</> : 'Nearby Recommendations'}
                         </button>
                         <button
                             type="button"
@@ -750,7 +742,7 @@ const CalendarView: React.FC = () => {
                     {selectedTripId && dayViewActivities.length > 0 && (
                         <div className={styles['day-summary-section']}>
                             {descriptionError && <p className="text-red-500 text-sm mt-2">{descriptionError}</p>}
-                            {summaryError && <p className="text-red-500 text-sm mt-2">{summaryError}</p>}
+                            {recommendationsError && <p className="text-red-500 text-sm mt-2">{recommendationsError}</p>}
                             {optimizationError && <p className="text-red-500 text-sm mt-2">{optimizationError}</p>}
 
                             {pendingDescriptions && (
@@ -806,16 +798,20 @@ const CalendarView: React.FC = () => {
                                 </div>
                             )}
 
-                            {tripSummary && (
+                            {nearbyRecommendations && nearbyRecommendations.length > 0 && (
                                 <div className="trip-summary-card card" style={{ padding: '1rem', marginTop: '0.75rem' }}>
-                                    <h4 className={styles['trip-summary-header']}>AI Trip Summary</h4>
-                                    <p className={styles['trip-summary-text']}>{tripSummary.summary}</p>
-                                    {tripSummary.highlights.length > 0 && (
-                                        <ul className={styles['trip-summary-highlights']}>
-                                            {tripSummary.highlights.map((h, i) => <li key={i}>{h}</li>)}
-                                        </ul>
-                                    )}
-                                    <button type="button" className="btn btn-ghost btn-sm" style={{ marginTop: '0.5rem' }} onClick={() => setTripSummary(null)}>Dismiss</button>
+                                    <h4 className={styles['trip-summary-header']}>Nearby Recommendations</h4>
+                                    <p className={styles['trip-summary-text']}>Weighted by your preferences: UNESCO sites, craft workshops, shopping streets; deprioritizing crowded areas.</p>
+                                    <ul className={styles['trip-summary-highlights']} style={{ listStyle: 'none', paddingLeft: 0 }}>
+                                        {nearbyRecommendations.map((rec, i) => (
+                                            <li key={i} style={{ marginBottom: '0.5rem' }}>
+                                                <strong>{rec.name}</strong> <span style={{ opacity: 0.8 }}>({rec.location})</span> · weight {rec.weight.toFixed(1)}
+                                                {rec.crowded && <span style={{ color: 'var(--muted)' }}> · crowded</span>}
+                                                <br /><span style={{ fontSize: '0.9em' }}>{rec.reason}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    <button type="button" className="btn btn-ghost btn-sm" style={{ marginTop: '0.5rem' }} onClick={() => setNearbyRecommendations(null)}>Dismiss</button>
                                 </div>
                             )}
 
@@ -902,59 +898,32 @@ const CalendarView: React.FC = () => {
                                     }}
                                 />
                             ) : (
-                                <SwipeableItem
-                                    onSwipeRight={() => setEditingActivityId(act.id)}
-                                    onSwipeLeft={() => {
-                                        if (selectedTripId && activeScenario) {
-                                            removeScenarioActivity(selectedTripId, activeScenario.id, act.id);
-                                        } else {
-                                            deleteActivity(act.id);
-                                        }
-                                        logEvent('Activity Deleted', { activity_title: act.title, category: act.category, source: 'calendar_swipe' });
-                                        if (!activeScenario) {
-                                            showToast(`"${act.title}" deleted`, () => {
-                                                restoreActivity(act);
-                                                logEvent('Activity Delete Undone', { activity_title: act.title });
-                                            });
-                                        }
-                                    }}
-                                >
-                                    <div className={`${styles['day-detail-activity']} card`} style={{ borderLeftColor: getActivityColor(act) }}>
-                                        <div className={styles['detail-header']}>
-                                            <span className="drag-handle" {...dragHandleProps}>
-                                                <GripVertical size={16} />
-                                            </span>
-                                            <span className={styles['detail-emoji']}>{CATEGORY_EMOJIS[act.category || 'other']}</span>
-                                            <div>
-                                                <h4>{act.title}</h4>
-                                                {act.time && <span className={styles['detail-time']}>{act.time}</span>}
-                                            </div>
-                                            <div className={styles['detail-actions']}>
-                                                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingActivityId(act.id)} aria-label="Edit"><Pencil size={16} /></button>
-                                            </div>
+                                <div className={`${styles['day-detail-activity']} card`} style={{ borderLeftColor: getActivityColor(act) }}>
+                                    <div className={styles['detail-header']}>
+                                        <span className="drag-handle" {...dragHandleProps}>
+                                            <GripVertical size={16} />
+                                        </span>
+                                        <span className={styles['detail-emoji']}>{CATEGORY_EMOJIS[act.category || 'other']}</span>
+                                        <div>
+                                            <h4>{act.title}</h4>
+                                            {act.time && <span className={styles['detail-time']}>{act.time}</span>}
                                         </div>
-                                        {act.details && <Markdown className={styles['detail-desc']}>{act.details}</Markdown>}
-                                        {act.location && <p className={styles['detail-location']}>📍 {act.location}</p>}
-                                        {act.cost != null && <p className={styles['detail-cost']}>💰 {act.currency || '$'}{act.cost.toFixed(2)}</p>}
-                                        {act.notes && <Markdown className={styles['detail-notes']}>{act.notes}</Markdown>}
+                                        <div className={styles['detail-actions']}>
+                                            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingActivityId(act.id)} aria-label="Edit"><Pencil size={16} /></button>
+                                        </div>
                                     </div>
-                                </SwipeableItem>
+                                    {act.details && <Markdown className={styles['detail-desc']}>{act.details}</Markdown>}
+                                    {act.location && <p className={styles['detail-location']}>📍 {act.location}</p>}
+                                    {act.cost != null && <p className={styles['detail-cost']}>💰 {act.currency || '$'}{act.cost.toFixed(2)}</p>}
+                                    {act.notes && <Markdown className={styles['detail-notes']}>{act.notes}</Markdown>}
+                                </div>
                             )
                         }
                     />
-                    {selectedTripId && addingActivityForDate !== currentDateStr && (
-                        <button
-                            type="button"
-                            className={`${styles['action-btn']} ${styles['action-btn-sky']} ${styles['floating-add-btn']}`}
-                            onClick={() => setAddingActivityForDate(currentDateStr)}
-                        >
-                            <Plus size={18} /> Add activity
-                        </button>
-                    )}
                 </div>
             )}
 
-            {selectedTrip && (
+            {selectedTrip && viewMode === 'trip' && (
                 <ScenarioSwitcher trip={selectedTrip} activities={effectiveActivities} routes={effectiveRoutes} />
             )}
         </div>
