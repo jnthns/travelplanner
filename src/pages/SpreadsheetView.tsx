@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { format, eachDayOfInterval, isSameDay, parseISO } from 'date-fns';
-import { AlertTriangle, Plus, Users, Pencil, Trash2, ChevronLeft, ChevronRight, Info, Sunrise, Sun, Sunset, StickyNote, Clock, MapPin } from 'lucide-react';
+import { AlertTriangle, Plus, Users, Pencil, Trash2, Info, Sunrise, Sun, Sunset, StickyNote, Clock, MapPin } from 'lucide-react';
 import { useTrips, useActivities, useNotes, useTransportRoutes } from '../lib/store';
 import { useAuth } from '../lib/AuthContext';
 import type { Activity, Note, Trip } from '../lib/types';
@@ -122,18 +122,6 @@ const SpreadsheetView: React.FC = () => {
         const inRange = tripDays.some(d => isSameDay(d, today));
         setFocusedDate(inRange ? today : tripDays[0]);
     }, [selectedTripId, tripDays]);
-
-    const navigateDay = useCallback((direction: number) => {
-        setFocusedDate(prev => {
-            const next = new Date(prev.getTime() + direction * 24 * 60 * 60 * 1000);
-            if (tripDays.length === 0) return next;
-            const first = tripDays[0];
-            const last = tripDays[tripDays.length - 1];
-            if (next < first) return first;
-            if (next > last) return last;
-            return next;
-        });
-    }, [tripDays]);
 
     useEffect(() => {
         const wrapper = spreadsheetWrapperRef.current;
@@ -485,6 +473,9 @@ const SpreadsheetView: React.FC = () => {
                 </select>
                 {selectedTripId && (
                     <div className={styles['trip-mobile-actions']}>
+                        {selectedTrip && (
+                            <ScenarioSwitcher trip={selectedTrip} activities={effectiveActivities} routes={effectiveRoutes} />
+                        )}
                         <button className="btn btn-ghost btn-sm" onClick={() => { setEditingTrip(selectedTripId); setShowTripForm(true); }}>
                             <Pencil size={14} />
                         </button>
@@ -498,17 +489,6 @@ const SpreadsheetView: React.FC = () => {
             {selectedTrip && tripDays.length > 0 && (
                 <>
                     <div className={styles['day-nav-wrapper']}>
-                        <div className={styles['nav-controls-modern']}>
-                            <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigateDay(-1)} aria-label="Previous day">
-                                <ChevronLeft size={18} />
-                            </button>
-                            <span className={styles['current-label']}>
-                                {format(focusedDate, 'EEEE, MMM d, yyyy')}
-                            </span>
-                            <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigateDay(1)} aria-label="Next day">
-                                <ChevronRight size={18} />
-                            </button>
-                        </div>
                         <div className={styles['zoom-controls']}>
                             <button
                                 type="button"
@@ -731,7 +711,7 @@ const SpreadsheetView: React.FC = () => {
                                                         draggable
                                                         onDragStart={e => handleDragStart(e, act)}
                                                         onClick={(e) => { e.stopPropagation(); setEditingActivity(act); }}
-                                                        style={{ borderLeftColor: act.color ?? CATEGORY_COLORS[act.category || 'other'] }}
+                                                        style={{ ['--activity-color' as string]: act.color ?? CATEGORY_COLORS[act.category || 'other'] }}
                                                     >
                                                         <span className={styles['sheet-act-emoji']}>{CATEGORY_EMOJIS[act.category || 'other']}</span>
                                                         <div className={styles['sheet-act-info']}>
@@ -748,10 +728,6 @@ const SpreadsheetView: React.FC = () => {
                             ))}
                         </div>
                     </div>
-
-                    {selectedTrip && (
-                        <ScenarioSwitcher trip={selectedTrip} activities={effectiveActivities} routes={effectiveRoutes} />
-                    )}
 
                     {/* Unscheduled activities (focused day) */}
                     {appSettings.showUnscheduledSection && <div className={styles['unscheduled-wrap']}>
@@ -784,7 +760,7 @@ const SpreadsheetView: React.FC = () => {
                                             draggable
                                             onDragStart={e => handleDragStart(e, act)}
                                             onClick={() => setEditingActivity(act)}
-                                            style={{ borderLeftColor: act.color ?? CATEGORY_COLORS[act.category || 'other'] }}
+                                            style={{ ['--activity-color' as string]: act.color ?? CATEGORY_COLORS[act.category || 'other'] }}
                                         >
                                             <span className={styles['sheet-act-emoji']}>{CATEGORY_EMOJIS[act.category || 'other']}</span>
                                             <div className={styles['sheet-act-info']}>

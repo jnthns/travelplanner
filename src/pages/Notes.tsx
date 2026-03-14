@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { Plus, Pencil, Trash2, GripVertical, Copy, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Pencil, Trash2, GripVertical, Copy, Check } from 'lucide-react';
 import { eachDayOfInterval, format, isSameDay, parseISO } from 'date-fns';
-import { useTrips, useNotes } from '../lib/store';
+import { useTrips, useNotes, useActivities, useTransportRoutes } from '../lib/store';
 import type { Note } from '../lib/types';
+import ScenarioSwitcher from '../components/ScenarioSwitcher';
 import { useLocalStorageState } from '../lib/persist';
 import DraggableList from '../components/DraggableList';
 import NoteEditor from '../components/NoteEditor';
@@ -14,6 +15,8 @@ type NotesFilterMode = 'all' | 'general' | 'day';
 
 const Notes: React.FC = () => {
     const { trips } = useTrips();
+    const { activities } = useActivities();
+    const { getRoutesByTrip } = useTransportRoutes();
     const { addNote, updateNote, deleteNote, restoreNote, reorderNotes, getNotesByTrip } = useNotes();
     const { showToast } = useToast();
 
@@ -28,6 +31,8 @@ const Notes: React.FC = () => {
     const [focusedDay, setFocusedDay] = useState<Date>(() => new Date());
 
     const selectedTrip = trips.find(t => t.id === selectedTripId);
+    const notesTripActivities = useMemo(() => selectedTripId ? activities.filter(a => a.tripId === selectedTripId) : [], [selectedTripId, activities]);
+    const notesTripRoutes = useMemo(() => selectedTripId ? getRoutesByTrip(selectedTripId) : [], [selectedTripId, getRoutesByTrip]);
     const tripNotes = useMemo(() => {
         if (!selectedTripId) return [];
         return getNotesByTrip(selectedTripId);
@@ -165,6 +170,9 @@ const Notes: React.FC = () => {
                     {trips.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
                 {selectedTrip && (
+                    <ScenarioSwitcher trip={selectedTrip} activities={notesTripActivities} routes={notesTripRoutes} />
+                )}
+                {selectedTrip && (
                     <button className="btn btn-primary" onClick={() => { setShowNewForm(true); setEditingNoteId(null); }}>
                         <Plus size={18} /> New Note
                     </button>
@@ -197,37 +205,6 @@ const Notes: React.FC = () => {
                         </button>
                     </div>
 
-                    {filterMode === 'day' && tripDays.length > 0 && (
-                        <div className="flex items-center gap-xs">
-                            <button
-                                type="button"
-                                className="btn btn-ghost btn-sm"
-                                onClick={() => {
-                                    const idx = tripDays.findIndex(d => isSameDay(d, focusedDay));
-                                    const next = idx <= 0 ? tripDays[0] : tripDays[idx - 1];
-                                    setFocusedDay(next);
-                                }}
-                                aria-label="Previous day"
-                            >
-                                <ChevronLeft size={16} />
-                            </button>
-                            <span className="text-sm font-medium" style={{ minWidth: 160, textAlign: 'center' }}>
-                                {format(focusedDay, 'EEE, MMM d')}
-                            </span>
-                            <button
-                                type="button"
-                                className="btn btn-ghost btn-sm"
-                                onClick={() => {
-                                    const idx = tripDays.findIndex(d => isSameDay(d, focusedDay));
-                                    const next = idx < 0 || idx >= tripDays.length - 1 ? tripDays[tripDays.length - 1] : tripDays[idx + 1];
-                                    setFocusedDay(next);
-                                }}
-                                aria-label="Next day"
-                            >
-                                <ChevronRight size={16} />
-                            </button>
-                        </div>
-                    )}
                 </div>
             )}
 

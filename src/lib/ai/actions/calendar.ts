@@ -19,19 +19,6 @@ export interface ActivityDescriptionSuggestion {
   tips: string[];
 }
 
-export interface NearbyRecommendation {
-  name: string;
-  type: 'unesco' | 'craft_workshop' | 'shopping_street' | 'major_attraction' | 'other';
-  location: string;
-  weight: number;
-  reason: string;
-  crowded?: boolean;
-}
-
-export interface NearbyRecommendationsResponse {
-  recommendations: NearbyRecommendation[];
-}
-
 const ACTIVITY_DESCRIPTION_CACHE_VERSION = 'v3';
 
 function normalizeActivityDescriptionSuggestion(
@@ -161,104 +148,6 @@ Be specific to the actual destinations and activities. Each highlight should be 
   });
 
   return JSON.parse(raw) as DaySummaryResponse;
-}
-
-export async function generateNearbyRecommendations(args: {
-  trip: Trip;
-  currentDateStr: string;
-  activities: Activity[];
-}): Promise<NearbyRecommendationsResponse> {
-  const { trip, currentDateStr, activities } = args;
-  const dayData = trip.itinerary?.[currentDateStr];
-  const dayLocation = dayData?.location || trip.dayLocations?.[currentDateStr];
-  const dayAccommodation = dayData?.accommodation?.name;
-  const currentDayActs = activities
-    .map((a) => `${a.title}${a.location ? ` (${a.location})` : ''}${a.time ? ` @ ${a.time}` : ''}`)
-    .join('; ');
-  const itineraryLocations = [...new Set(activities.map((a) => a.location).filter(Boolean))].join(', ') || dayLocation || 'Not specified';
-
-  const prompt = `You are a travel recommendation engine for a user traveling through Japan (Kobe, Osaka, Kyoto, Nara) and Taiwan.
-
-Current day context for ${currentDateStr} on trip "${trip.name}":
-- Day location: ${dayLocation || 'Not specified'}
-- Accommodation: ${dayAccommodation || 'Not specified'}
-- Activities today: ${currentDayActs}
-- Nearby areas: ${itineraryLocations}
-
-Generate 4-6 nearby location recommendations for the current day's itinerary using a WEIGHTED system.
-
-User preferences (prioritize in this order):
-1. UNESCO World Heritage sites (weight 0.9-1.0)
-2. Craft workshops and craftsmanship-focused experiences (weight 0.85-0.95)
-3. Shopping streets and major tourist attractions (weight 0.8-0.9)
-4. Heavily crowded areas: apply LOWER weight (deprioritize, weight 0.3-0.5)
-
-Respond with a JSON object matching this exact schema:
-{
-  "recommendations": [
-    {
-      "name": "Place or experience name",
-      "type": "unesco" | "craft_workshop" | "shopping_street" | "major_attraction" | "other",
-      "location": "City or district (e.g. Kyoto, Kobe, Osaka, Nara, Taipei)",
-      "weight": 0.0 to 1.0,
-      "reason": "One sentence why it fits the user's preferences",
-      "crowded": true | false
-    }
-  ]
-}
-
-Rules:
-- Only recommend places in Japan (Kobe, Osaka, Kyoto, Nara) or Taiwan relevant to the day's location.
-- If crowded is true, the weight must be 0.5 or lower.
-- Sort by weight descending (highest first).
-- Do not duplicate activities already in the itinerary.`;
-
-  const raw = await getCachedAiText({
-    namespace: 'calendar-nearby-recommendations',
-    cacheKey: JSON.stringify({
-      tripId: trip.id,
-      currentDateStr,
-      activities: activities.map((a) => ({ id: a.id, title: a.title, location: a.location })),
-      itineraryDay: dayData,
-    }),
-    producer: () =>
-      generateWithGemini(prompt, {
-        systemInstruction: 'You are a weighted recommendation engine for travelers in Japan and Taiwan. Prioritize UNESCO sites, craft workshops, shopping streets; deprioritize crowded areas.',
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: 'object',
-          properties: {
-            recommendations: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  name: { type: 'string' },
-                  type: { type: 'string', enum: ['unesco', 'craft_workshop', 'shopping_street', 'major_attraction', 'other'] },
-                  location: { type: 'string' },
-                  weight: { type: 'number' },
-                  reason: { type: 'string' },
-                  crowded: { type: 'boolean' },
-                },
-                required: ['name', 'type', 'location', 'weight', 'reason'],
-                additionalProperties: true,
-              },
-              minItems: 1,
-              maxItems: 8,
-            },
-          },
-          required: ['recommendations'],
-          additionalProperties: false,
-        },
-      }),
-    ttlMs: 24 * 60 * 60 * 1000,
-  });
-
-  const parsed = JSON.parse(raw) as NearbyRecommendationsResponse;
-  if (!parsed?.recommendations || !Array.isArray(parsed.recommendations)) {
-    throw new Error('Invalid nearby recommendations response format');
-  }
-  return parsed;
 }
 
 export async function generateOptimizedRoute(args: {

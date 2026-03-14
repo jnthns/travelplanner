@@ -1,81 +1,53 @@
-.scenario-tab-bar {
-    position: relative;
-    width: 100%;
-    margin-top: 1rem;
-    border-top: 1px solid var(--border-color);
-    background: var(--surface-color);
-    padding: 0;
-}
-
-.scenario-tab-bar__tabs {
-    display: flex;
-    align-items: stretch;
-    gap: 0;
-    overflow-x: auto;
-    scrollbar-width: thin;
-    -webkit-overflow-scrolling: touch;
-}
-
-.scenario-tab {
-    position: relative;
+.scenario-dropdown-wrap {
     display: inline-flex;
     align-items: center;
-    gap: 0.3rem;
-    padding: 0.5rem 1rem;
-    border: none;
-    border-right: 1px solid var(--border-light);
-    background: transparent;
-    color: var(--text-secondary);
-    font-size: 0.78rem;
-    font-weight: 500;
-    font-family: inherit;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: background 0.15s ease, color 0.15s ease;
+    gap: 0.25rem;
     flex-shrink: 0;
 }
 
-.scenario-tab:hover {
-    background: color-mix(in srgb, var(--primary-color) 6%, transparent);
-    color: var(--text-primary);
+.scenario-dropdown-select {
+    min-width: 100px;
+    max-width: 180px;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.875rem;
 }
 
-.scenario-tab--active {
-    background: color-mix(in srgb, var(--primary-color) 10%, transparent);
-    color: var(--primary-color);
-    font-weight: 700;
-    box-shadow: inset 0 -2px 0 var(--primary-color);
-}
-
-.scenario-tab--add {
-    padding: 0.5rem 0.75rem;
+.scenario-dropdown-add {
+    padding: 0.35rem;
     color: var(--text-tertiary);
-    border-right: none;
 }
 
-.scenario-tab--add:hover {
+.scenario-dropdown-add:hover {
     color: var(--primary-color);
-    background: color-mix(in srgb, var(--primary-color) 8%, transparent);
 }
 
-/* Context menu */
-.scenario-ctx-menu {
-    position: fixed;
-    z-index: 1000;
-    display: flex;
-    flex-direction: column;
+.scenario-dropdown-menu-wrap {
+    position: relative;
+}
+
+.scenario-dropdown-dots {
+    padding: 0.35rem;
+    color: var(--text-secondary);
+}
+
+.scenario-dropdown-dots:hover {
+    color: var(--text-color);
+}
+
+.scenario-dropdown-popover {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 0.2rem;
+    z-index: 100;
     min-width: 120px;
     padding: 0.3rem 0;
     background: var(--surface-color);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-lg);
-    animation: ctxFade 0.1s ease-out;
-}
-
-@keyframes ctxFade {
-    from { opacity: 0; transform: scale(0.96); }
-    to { opacity: 1; transform: scale(1); }
+    display: flex;
+    flex-direction: column;
 }
 
 .scenario-ctx-item {
@@ -84,7 +56,7 @@
     padding: 0.45rem 0.85rem;
     border: none;
     background: transparent;
-    color: var(--text-primary);
+    color: var(--text-color);
     font-size: 0.8rem;
     font-family: inherit;
     text-align: left;
@@ -102,15 +74,4 @@
 
 .scenario-ctx-item--danger:hover {
     background: color-mix(in srgb, var(--error-color) 8%, transparent);
-}
-
-@media (max-width: 768px) {
-    .scenario-tab {
-        padding: 0.4rem 0.7rem;
-        font-size: 0.72rem;
-    }
-
-    .scenario-tab--add {
-        padding: 0.4rem 0.55rem;
-    }
 }

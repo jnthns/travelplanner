@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { Check, Sun, Moon, Trash2, RotateCcw } from 'lucide-react';
 import {
   THEME_PRESETS,
+  isDarkPreset,
   type ThemeConfig,
   loadThemeConfig,
   saveThemeConfig,
@@ -69,13 +70,18 @@ const Settings: React.FC = () => {
 
   useEffect(() => {
     document.body.classList.toggle('compact-layout', settings.compactLayout);
-    document.body.classList.toggle('dark-mode', settings.darkMode);
-    document.documentElement.style.setProperty('color-scheme', settings.darkMode ? 'dark' : 'light');
+    const useDarkPreset = isDarkPreset(themeConfig.presetId);
+    const effectiveDark = settings.darkMode || useDarkPreset;
+    document.body.classList.toggle('dark-mode', effectiveDark);
+    document.body.classList.toggle('theme-dark-preset', useDarkPreset);
+    document.documentElement.style.setProperty('color-scheme', effectiveDark ? 'dark' : 'light');
     document.documentElement.style.setProperty('--text-size', `${settings.textSize}%`);
 
-    const tokens = settings.darkMode
-      ? getDarkTokens(getResolvedTokens(themeConfig))
-      : getResolvedTokens(themeConfig);
+    const tokens = useDarkPreset
+      ? getResolvedTokens(themeConfig)
+      : effectiveDark
+        ? getDarkTokens(getResolvedTokens(themeConfig))
+        : getResolvedTokens(themeConfig);
     applyTheme(tokens);
     saveThemeConfig(themeConfig);
   }, [settings.compactLayout, settings.darkMode, settings.textSize, themeConfig]);
@@ -157,34 +163,63 @@ const Settings: React.FC = () => {
         </div>
       </header>
 
-      {/* Appearance */}
+      {/* Appearance — dark mode toggle hidden for Discord, Neon, Midnight (always dark) */}
       <div className="card p-lg mb-lg" style={{ background: 'linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 5%, var(--surface-color)), color-mix(in srgb, var(--secondary-color) 5%, var(--surface-color)))' }}>
         <div className="flex justify-between items-center gap-md">
           <div>
             <h2 className="text-lg font-bold mb-xs">Appearance</h2>
-            <p className="text-sm text-subtle m-0">{settings.darkMode ? 'Dark mode is on — easy on the eyes.' : 'Light mode is on — bright and clear.'}</p>
+            <p className="text-sm text-subtle m-0">
+              {isDarkPreset(themeConfig.presetId) ? 'This theme is always dark — no toggle.' : settings.darkMode ? 'Dark mode is on — easy on the eyes.' : 'Light mode is on — bright and clear.'}
+            </p>
           </div>
-          <button
-            type="button"
-            className={`dark-mode-toggle ${settings.darkMode ? 'active' : ''}`}
-            onClick={() => {
-              set({ darkMode: !settings.darkMode });
-              logEvent('Dark Mode Toggled', { enabled: !settings.darkMode });
-            }}
-            aria-label={settings.darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-          >
-            <span className="toggle-icon toggle-sun"><Sun size={16} /></span>
-            <span className="toggle-icon toggle-moon"><Moon size={16} /></span>
-            <span className="toggle-thumb" />
-          </button>
+          {!isDarkPreset(themeConfig.presetId) && (
+            <button
+              type="button"
+              className={`dark-mode-toggle ${settings.darkMode ? 'active' : ''}`}
+              onClick={() => {
+                set({ darkMode: !settings.darkMode });
+                logEvent('Dark Mode Toggled', { enabled: !settings.darkMode });
+              }}
+              aria-label={settings.darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              <span className="toggle-icon toggle-sun"><Sun size={16} /></span>
+              <span className="toggle-icon toggle-moon"><Moon size={16} /></span>
+              <span className="toggle-thumb" />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Theme */}
+      {/* Theme — light and dark presets separated */}
       <div className="card p-lg mb-lg">
         <h2 className="text-lg font-bold mb-md">Theme</h2>
+        <p className="settings-section-title m-0 mb-sm">Themes</p>
+        <div className="grid grid-cols-auto-140 gap-md mobile-preset-grid mb-lg">
+          {THEME_PRESETS.filter((p) => !isDarkPreset(p.id)).map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              className={`preset-card ${preset.id === themeConfig.presetId ? 'active' : ''}`}
+              onClick={() => selectPreset(preset.id)}
+              style={{ fontFamily: preset.tokens.fontFamily }}
+            >
+              <div className="flex gap-[4px] mb-[0.25rem]">
+                <span style={{ width: '20px', height: '20px', borderRadius: '50%', border: '1px solid rgba(0, 0, 0, 0.08)', background: preset.preview.bg }} />
+                <span style={{ width: '20px', height: '20px', borderRadius: '50%', border: '1px solid rgba(0, 0, 0, 0.08)', background: preset.preview.primary }} />
+                <span style={{ width: '20px', height: '20px', borderRadius: '50%', border: '1px solid rgba(0, 0, 0, 0.08)', background: preset.preview.secondary }} />
+                <span style={{ width: '20px', height: '20px', borderRadius: '50%', border: '1px solid rgba(0, 0, 0, 0.08)', background: preset.preview.accent }} />
+              </div>
+              <span className="font-semibold text-primary" style={{ fontSize: '0.85rem' }}>{preset.name}</span>
+              <span className="text-tertiary" style={{ fontSize: '0.7rem' }}>{preset.description}</span>
+              {preset.id === themeConfig.presetId && (
+                <span className="absolute flex items-center justify-center bg-primary text-white" style={{ top: '0.5rem', right: '0.5rem', width: '20px', height: '20px', borderRadius: '50%' }}><Check size={14} /></span>
+              )}
+            </button>
+          ))}
+        </div>
+        <p className="settings-section-title m-0 mb-sm">Dark themes</p>
         <div className="grid grid-cols-auto-140 gap-md mobile-preset-grid">
-          {THEME_PRESETS.map((preset) => (
+          {THEME_PRESETS.filter((p) => isDarkPreset(p.id)).map((preset) => (
             <button
               key={preset.id}
               type="button"

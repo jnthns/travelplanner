@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Loader2, Check, AlertCircle, Plus, X, Plane } from 'lucide-react';
 import { useTrips, useActivities, useTransportRoutes, useNotes } from '../lib/store';
 import { useLocalStorageState } from '../hooks/useLocalStorageState';
@@ -7,12 +7,14 @@ import { CATEGORY_EMOJIS } from '../lib/types';
 import type { Activity } from '../lib/types';
 import { useToast } from '../components/Toast';
 import { logEvent } from '../lib/amplitude';
+import { selectTripScenario, replaceScenarioDay, overwriteScenarioActivities } from '../lib/scenarios';
 import { buildTripExportPayload, downloadTextFile, slugifyFilename, toTripCsv } from '../lib/exportTrip';
-import { parseItineraryChunk, type ParsedActivity, type ParsedItinerary } from '../lib/ai/actions/importItinerary';
+import { parseItineraryChunk, type ParseItineraryOptions, type ParsedActivity, type ParsedItinerary } from '../lib/ai/actions/importItinerary';
 
 type Stage = 'input' | 'preview' | 'saving' | 'done';
 type ImportExportMode = 'import' | 'export';
 type ExportFormat = 'json' | 'csv';
+type ImportTarget = 'new_trip' | 'existing_trip';
 
 const CATEGORY_LIST = ['sightseeing', 'food', 'accommodation', 'transport', 'shopping', 'other'] as const;
 const CURRENCY_LIST = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'KRW', 'TWD', 'THB', 'SGD'];
@@ -21,7 +23,7 @@ function splitIntoChunks(text: string, maxChunks: number): string[] {
     const lines = text.split('\n');
     if (lines.length <= 10) return [text];
 
-    const dayPattern = /^(?:\|?\s*)?(?:\d{1,2}\/\d{1,2}|\d{4}-\d{2}-\d{2}|day\s*\d|(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*(?:day)?|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d)/i;
+    const dayPattern = /^(?:\|?\s*)?(?:\d{1,2}\/\d{1,2}(?:\/\d{2,4})?|\d{4}-\d{2}-\d{2}|day\s*\d+|(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*(?:day)?|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d|\t+\d{4}-\d{2}-\d{2})/i;
 
     const dayStarts: number[] = [];
     for (let i = 0; i < lines.length; i++) {
@@ -58,12 +60,14 @@ function splitIntoChunks(text: string, maxChunks: number): string[] {
 
 function mergeResults(results: ParsedItinerary[]): ParsedItinerary {
     const allActivities = results.flatMap(r => r.activities);
+    const allRoutes = results.flatMap(r => r.transportRoutes ?? []);
     const dates = results.flatMap(r => [r.startDate, r.endDate]).sort();
     return {
         tripName: results[0].tripName,
         startDate: dates[0],
         endDate: dates[dates.length - 1],
         activities: allActivities,
+        transportRoutes: allRoutes.length > 0 ? allRoutes : undefined,
     };
 }
 
@@ -84,6 +88,24 @@ function formatDate(dateStr: string): string {
     } catch {
         return dateStr;
     }
+}
+
+function getDateOptionsForTrip(startDate: string, endDate: string): { value: string; label: string }[] {
+    const start = new Date(startDate + 'T00:00:00');
+    const end = new Date(endDate + 'T00:00:00');
+    const options: { value: string; label: string }[] = [];
+    const cursor = new Date(start);
+    let dayIndex = 0;
+    while (cursor <= end) {
+        const dateStr = cursor.toISOString().slice(0, 10);
+        options.push({
+            value: dateStr,
+            label: `Day ${dayIndex + 1}: ${formatDate(dateStr)}`,
+        });
+        cursor.setDate(cursor.getDate() + 1);
+        dayIndex++;
+    }
+    return options;
 }
 
 const LOADING_MESSAGES = [
@@ -118,11 +140,26 @@ const LoadingJokes: React.FC<{ progress: string }> = ({ progress }) => {
     );
 };
 
+function assistantPayloadToParsedActivities(raw: unknown[]): ParsedActivity[] {
+    return raw.map((item: any) => ({
+        date: typeof item.date === 'string' ? item.date : '',
+        title: typeof item.title === 'string' ? item.title : 'Activity',
+        details: typeof item.details === 'string' ? item.details : undefined,
+        time: typeof item.time === 'string' ? item.time : undefined,
+        location: typeof item.location === 'string' ? item.location : undefined,
+        category: ['sightseeing', 'food', 'accommodation', 'transport', 'shopping', 'other'].includes(item.category) ? item.category : 'other',
+        notes: typeof item.notes === 'string' ? item.notes : undefined,
+        cost: typeof item.cost === 'number' ? item.cost : undefined,
+        currency: typeof item.currency === 'string' ? item.currency : undefined,
+    })).filter(a => a.date && a.title);
+}
+
 const ImportItinerary: React.FC = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { trips, addTrip, updateTrip } = useTrips();
-    const { addActivity, getActivitiesByTrip } = useActivities();
-    const { getRoutesByTrip } = useTransportRoutes();
+    const { addActivity, deleteActivity, getActivitiesByTrip } = useActivities();
+    const { getRoutesByTrip, addRoute, deleteRoute } = useTransportRoutes();
     const { getNotesByTrip } = useNotes();
     const { showToast } = useToast();
 
@@ -142,7 +179,61 @@ const ImportItinerary: React.FC = () => {
     const [activeTripName, setActiveTripName] = useState<string | null>(null);
     const [totalImported, setTotalImported] = useState(0);
 
+    const [importTarget, setImportTarget] = useState<ImportTarget>('new_trip');
+    const [selectedTripIdForDay, setSelectedTripIdForDay] = useState<string | null>(null);
+    const [selectedDateForDay, setSelectedDateForDay] = useState<string | null>(null);
+    const [assistantPayload, setAssistantPayload] = useState<ParsedActivity[] | null>(null);
+    const [assistantImportMode, setAssistantImportMode] = useState<'add_to_day' | 'overwrite_trip' | 'replace_existing_day' | null>(null);
+    const [preselectedTripId, setPreselectedTripId] = useState<string | null>(null);
+    const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null);
+    const [activeScenarioName, setActiveScenarioName] = useState<string | null>(null);
+
     const isAppending = activeTripId !== null;
+    const isSingleDayMode = importTarget === 'existing_trip';
+    const isReplaceDayMode = assistantImportMode === 'replace_existing_day';
+    const isOverwriteTripMode = assistantImportMode === 'overwrite_trip';
+    const selectedTripForDay = selectedTripIdForDay ? trips.find(t => t.id === selectedTripIdForDay) ?? null : null;
+    const dateOptionsForSelectedTrip = selectedTripForDay
+        ? getDateOptionsForTrip(selectedTripForDay.startDate, selectedTripForDay.endDate)
+        : [];
+
+    /** Shown so user knows which trip (and Live vs draft) will be changed before confirming. */
+    const editingContextLabel =
+        (assistantPayload != null || assistantImportMode != null) && selectedTripForDay
+            ? activeScenarioName != null
+                ? `${selectedTripForDay.name} → ${activeScenarioName}`
+                : `${selectedTripForDay.name} (Live)`
+            : null;
+
+    const assistantStateConsumed = useRef(false);
+    useEffect(() => {
+        if (assistantStateConsumed.current) return;
+        const state = location.state as {
+            fromAssistant?: boolean;
+            payload?: unknown[];
+            importMode?: 'add_to_day' | 'overwrite_trip' | 'replace_existing_day';
+            preselectedTripId?: string;
+            activeScenarioId?: string;
+            activeScenarioName?: string;
+        } | null;
+        if (state?.fromAssistant && Array.isArray(state?.payload) && state.payload.length > 0) {
+            assistantStateConsumed.current = true;
+            const activities = assistantPayloadToParsedActivities(state.payload);
+            if (activities.length > 0) {
+                setImportTarget('existing_trip');
+                setAssistantPayload(activities);
+                setStage('input');
+                if (state.importMode) setAssistantImportMode(state.importMode);
+                if (state.preselectedTripId) {
+                    setPreselectedTripId(state.preselectedTripId);
+                    setSelectedTripIdForDay(state.preselectedTripId);
+                }
+                if (state.activeScenarioId) setActiveScenarioId(state.activeScenarioId);
+                if (state.activeScenarioName != null) setActiveScenarioName(state.activeScenarioName);
+            }
+            navigate(location.pathname, { replace: true, state: {} });
+        }
+    }, [location.state, location.pathname, navigate]);
 
     const updateParsedField = useCallback((field: keyof ParsedItinerary, value: string) => {
         setParsed((prev: ParsedItinerary | null) => prev ? { ...prev, [field]: value } : prev);
@@ -173,8 +264,10 @@ const ImportItinerary: React.FC = () => {
         logEvent('Import Discarded');
     }, [setParsed, setRawText, setStage]);
 
-    async function parseChunk(text: string): Promise<ParsedItinerary> {
-        return parseItineraryChunk(text);
+    const CHUNK_LIMITS: ParseItineraryOptions = { maxActivitiesPerChunk: 25, maxTransportPerChunk: 12 };
+
+    async function parseChunk(text: string, options?: ParseItineraryOptions): Promise<ParsedItinerary> {
+        return parseItineraryChunk(text, options);
     }
 
     const handleParse = async () => {
@@ -182,7 +275,7 @@ const ImportItinerary: React.FC = () => {
         setLoading(true);
         setError(null);
         setParseProgress('');
-        logEvent('Import Parse Started', { is_append: isAppending });
+        logEvent('Import Parse Started', { is_append: isAppending, single_day: isSingleDayMode });
 
         try {
             setParseProgress('Parsing itinerary...');
@@ -203,7 +296,7 @@ const ImportItinerary: React.FC = () => {
                 for (let i = 0; i < chunks.length; i++) {
                     setParseProgress(`Parsing chunk ${i + 1} of ${chunks.length}...`);
                     try {
-                        const chunkResult = await parseChunk(chunks[i]);
+                        const chunkResult = await parseChunk(chunks[i], CHUNK_LIMITS);
                         results.push(chunkResult);
                     } catch (chunkErr) {
                         const chunkMsg = chunkErr instanceof Error ? chunkErr.message : '';
@@ -211,7 +304,7 @@ const ImportItinerary: React.FC = () => {
                             const subChunks = splitIntoChunks(chunks[i], 2);
                             for (let j = 0; j < subChunks.length; j++) {
                                 setParseProgress(`Parsing chunk ${i + 1}.${j + 1} of ${chunks.length}...`);
-                                results.push(await parseChunk(subChunks[j]));
+                                results.push(await parseChunk(subChunks[j], CHUNK_LIMITS));
                             }
                         } else {
                             throw chunkErr;
@@ -229,9 +322,15 @@ const ImportItinerary: React.FC = () => {
                 throw new Error('No activities were parsed from the input. Try providing more detail.');
             }
 
+            if (isSingleDayMode && selectedDateForDay) {
+                result.activities = result.activities.map((a) => ({ ...a, date: selectedDateForDay }));
+                result.startDate = selectedDateForDay;
+                result.endDate = selectedDateForDay;
+            }
+
             setParsed(result);
             setStage('preview');
-            logEvent('Import Parse Success', { activity_count: result.activities.length, trip_name: result.tripName, is_append: isAppending });
+            logEvent('Import Parse Success', { activity_count: result.activities.length, trip_name: result.tripName, is_append: isAppending, single_day: isSingleDayMode });
         } catch (e) {
             const msg = e instanceof Error ? e.message : 'Parsing failed';
             console.error('Import parse error:', e);
@@ -250,8 +349,15 @@ const ImportItinerary: React.FC = () => {
         try {
             let tripId: string;
             let tripMembers: string[] = [];
+            const targetDate = isSingleDayMode ? selectedDateForDay! : null;
 
-            if (isAppending && activeTripId) {
+            if (isSingleDayMode && selectedTripIdForDay) {
+                tripId = selectedTripIdForDay;
+                const trip = selectedTripForDay ?? trips.find(t => t.id === tripId);
+                tripMembers = (trip?.members?.length ? trip.members : trip ? [trip.userId] : []).filter(Boolean);
+                setActiveTripId(tripId);
+                setActiveTripName(trip?.name ?? null);
+            } else if (isAppending && activeTripId) {
                 tripId = activeTripId;
                 const activeTrip = trips.find(t => t.id === tripId);
                 tripMembers = activeTrip?.members || (activeTrip ? [activeTrip.userId] : []);
@@ -269,41 +375,180 @@ const ImportItinerary: React.FC = () => {
                 setActiveTripName(parsed.tripName);
             }
 
+            if (isOverwriteTripMode && (selectedTripIdForDay || preselectedTripId)) {
+                const overwriteTripId = selectedTripIdForDay ?? preselectedTripId!;
+                const overwriteTrip = trips.find(t => t.id === overwriteTripId);
+                const overwriteMembers = (overwriteTrip?.members?.length ? overwriteTrip!.members : overwriteTrip ? [overwriteTrip.userId] : []).filter(Boolean);
+
+                if (activeScenarioId) {
+                    const scenarioActivities: Omit<Activity, 'id'>[] = parsed.activities.map((act, i) => ({
+                        userId: overwriteTrip?.userId ?? '',
+                        tripId: overwriteTripId,
+                        tripMembers: overwriteMembers,
+                        date: act.date,
+                        title: act.title ?? '',
+                        details: act.details,
+                        time: act.time ?? undefined,
+                        location: act.location,
+                        category: act.category || 'other',
+                        notes: act.notes,
+                        cost: act.cost,
+                        currency: act.currency,
+                        order: i,
+                    }));
+                    overwriteScenarioActivities(overwriteTripId, activeScenarioId, scenarioActivities);
+                    setActiveTripId(overwriteTripId);
+                    setActiveTripName(overwriteTrip?.name ?? null);
+                    selectTripScenario(overwriteTripId, activeScenarioId);
+                    showToast(`Replaced draft with ${scenarioActivities.length} activities. View in Calendar (draft).`);
+                    logEvent('Import Confirmed', { trip_id: overwriteTripId, scenario_id: activeScenarioId, activity_count: scenarioActivities.length, import_mode: 'overwrite_trip_draft' });
+                    setStage('done');
+                    return;
+                }
+
+                const toDelete = getActivitiesByTrip(overwriteTripId);
+                for (const a of toDelete) await deleteActivity(a.id);
+                const groupedOverwrite = groupByDate(parsed.activities);
+                let overwriteCount = 0;
+                for (const [date, acts] of groupedOverwrite) {
+                    for (let i = 0; i < acts.length; i++) {
+                        const act = acts[i];
+                        await addActivity({
+                            tripId: overwriteTripId,
+                            date: String(date),
+                            title: act.title ?? '',
+                            details: act.details || undefined,
+                            time: act.time ?? undefined,
+                            location: act.location || undefined,
+                            category: act.category || 'other',
+                            notes: act.notes || undefined,
+                            cost: act.cost,
+                            currency: act.currency || undefined,
+                            order: i,
+                        } as Omit<Activity, 'id' | 'userId' | 'tripMembers'>, overwriteMembers);
+                        overwriteCount++;
+                    }
+                }
+                const existingRoutes = getRoutesByTrip(overwriteTripId);
+                for (const r of existingRoutes) await deleteRoute(r.id);
+                for (const route of parsed.transportRoutes ?? []) {
+                    await addRoute({
+                        tripId: overwriteTripId,
+                        date: route.date,
+                        type: route.type,
+                        from: route.from,
+                        to: route.to,
+                        departureTime: route.departureTime,
+                        arrivalTime: route.arrivalTime,
+                        bookingRef: route.bookingRef,
+                        notes: route.notes,
+                        cost: route.cost,
+                        currency: route.currency,
+                    }, overwriteMembers);
+                }
+                setActiveTripId(overwriteTripId);
+                setActiveTripName(overwriteTrip?.name ?? null);
+                selectTripScenario(overwriteTripId, null);
+                const routeCount = (parsed.transportRoutes ?? []).length;
+                showToast(`Replaced trip with ${overwriteCount} activities${routeCount > 0 ? ` and ${routeCount} transport` : ''}. View in Calendar or Spreadsheet (Live).`);
+                logEvent('Import Confirmed', { trip_id: overwriteTripId, activity_count: overwriteCount, transport_count: routeCount, import_mode: 'overwrite_trip' });
+                setStage('done');
+                return;
+            }
+
+            if (isReplaceDayMode && selectedDateForDay && activeScenarioId && tripId && tripMembers.length > 0) {
+                const dayActivities: Omit<Activity, 'id'>[] = parsed.activities.map((act, i) => ({
+                    userId: selectedTripForDay?.userId ?? '',
+                    tripId,
+                    tripMembers,
+                    date: selectedDateForDay,
+                    title: act.title ?? '',
+                    details: act.details,
+                    time: act.time ?? undefined,
+                    location: act.location,
+                    category: act.category || 'other',
+                    notes: act.notes,
+                    cost: act.cost,
+                    currency: act.currency,
+                    order: i,
+                }));
+                replaceScenarioDay(tripId, activeScenarioId, selectedDateForDay, dayActivities);
+                setActiveTripId(tripId);
+                setActiveTripName(selectedTripForDay?.name ?? null);
+                selectTripScenario(tripId, activeScenarioId);
+                showToast(`Replaced ${selectedDateForDay} in draft with ${dayActivities.length} activities. View in Calendar (draft).`);
+                logEvent('Import Confirmed', { trip_id: tripId, scenario_id: activeScenarioId, date: selectedDateForDay, activity_count: dayActivities.length, import_mode: 'replace_day_draft' });
+                setStage('done');
+                return;
+            }
+
             const existingActivities = getActivitiesByTrip(tripId);
+            if (isSingleDayMode && isReplaceDayMode && selectedDateForDay) {
+                const toRemove = existingActivities.filter(a => a.date === selectedDateForDay);
+                for (const a of toRemove) await deleteActivity(a.id);
+            }
             const maxOrderByDate = new Map<string, number>();
             for (const a of existingActivities) {
                 const cur = maxOrderByDate.get(a.date) ?? -1;
                 if (a.order > cur) maxOrderByDate.set(a.date, a.order);
             }
+            if (isReplaceDayMode && selectedDateForDay) maxOrderByDate.set(selectedDateForDay, -1);
 
             const grouped = groupByDate(parsed.activities);
             let addedCount = 0;
             for (const [date, acts] of grouped) {
-                const startOrder = (maxOrderByDate.get(date) ?? -1) + 1;
+                const useDate = String(targetDate ?? date);
+                const startOrder = (maxOrderByDate.get(useDate) ?? -1) + 1;
                 for (let i = 0; i < acts.length; i++) {
                     const act = acts[i];
-                    await addActivity({
-                        tripId,
-                        date,
-                        title: act.title,
+                    const payload = {
+                        tripId: String(tripId),
+                        date: useDate,
+                        title: act.title ?? '',
                         details: act.details || undefined,
-                        time: act.time || undefined,
+                        time: act.time ?? undefined,
                         location: act.location || undefined,
                         category: act.category || 'other',
+                        notes: act.notes || undefined,
+                        cost: act.cost,
+                        currency: act.currency || undefined,
                         order: startOrder + i,
-                    } as Omit<Activity, 'id' | 'userId' | 'tripMembers'>, tripMembers);
+                    };
+                    await addActivity(payload as Omit<Activity, 'id' | 'userId' | 'tripMembers'>, tripMembers);
                     addedCount++;
                 }
             }
 
+            for (const route of parsed.transportRoutes ?? []) {
+                await addRoute({
+                    tripId: String(tripId),
+                    date: String(targetDate ?? route.date),
+                    type: route.type,
+                    from: route.from,
+                    to: route.to,
+                    departureTime: route.departureTime,
+                    arrivalTime: route.arrivalTime,
+                    bookingRef: route.bookingRef,
+                    notes: route.notes,
+                    cost: route.cost,
+                    currency: route.currency,
+                }, tripMembers);
+            }
+
             setTotalImported(prev => prev + addedCount);
-            logEvent('Import Confirmed', { trip_id: tripId, trip_name: activeTripName ?? parsed.tripName, activity_count: addedCount, is_append: isAppending });
+            if (isSingleDayMode && selectedDateForDay) {
+                selectTripScenario(tripId, null);
+                const tripName = selectedTripForDay?.name ?? activeTripName ?? parsed.tripName;
+                const verb = isReplaceDayMode ? 'Replaced' : 'Added';
+                showToast(`${verb} ${addedCount} activities ${isReplaceDayMode ? 'for' : 'to'} ${formatDate(selectedDateForDay)} in ${tripName}. View in Calendar or Spreadsheet (Live).`);
+            }
+            logEvent('Import Confirmed', { trip_id: tripId, trip_name: activeTripName ?? parsed.tripName, activity_count: addedCount, is_append: isAppending, single_day: isSingleDayMode });
             setStage('done');
         } catch (e) {
             const msg = e instanceof Error ? e.message : 'Failed to save';
             console.error('Import save error:', e);
             setError(msg);
-            logEvent('Import Save Failed', { error: msg, trip_name: parsed.tripName, activity_count: parsed.activities.length });
+            logEvent('Import Save Failed', { error: msg, trip_name: parsed.tripName, activity_count: parsed.activities.length, single_day: isSingleDayMode });
             setStage('preview');
         }
     };
@@ -337,8 +582,63 @@ const ImportItinerary: React.FC = () => {
         setStage('input');
     };
 
+    const handleImportTargetChange = (target: ImportTarget) => {
+        setImportTarget(target);
+        if (target === 'new_trip') {
+            setSelectedTripIdForDay(null);
+            setSelectedDateForDay(null);
+            setAssistantPayload(null);
+            setActiveTripId(null);
+            setActiveTripName(null);
+            setTotalImported(0);
+        }
+    };
+
+    const handleSelectedTripForDayChange = (tripId: string) => {
+        setSelectedTripIdForDay(tripId || null);
+        if (tripId) {
+            const trip = trips.find(t => t.id === tripId);
+            setSelectedDateForDay(trip ? trip.startDate : null);
+        } else {
+            setSelectedDateForDay(null);
+        }
+    };
+
+    const handleAssistantPayloadContinue = () => {
+        if (!assistantPayload || assistantPayload.length === 0 || !selectedTripIdForDay || !selectedTripForDay) return;
+        if (isOverwriteTripMode) {
+            const dates = assistantPayload.map((a) => a.date).filter(Boolean).sort();
+            const start = dates[0] ?? selectedTripForDay.startDate;
+            const end = dates[dates.length - 1] ?? selectedTripForDay.endDate;
+            setParsed({
+                tripName: selectedTripForDay.name,
+                startDate: start,
+                endDate: end,
+                activities: [...assistantPayload],
+            });
+        } else {
+            if (!selectedDateForDay) return;
+            const normalized = assistantPayload.map((a) => ({ ...a, date: selectedDateForDay }));
+            setParsed({
+                tripName: selectedTripForDay.name,
+                startDate: selectedDateForDay,
+                endDate: selectedDateForDay,
+                activities: normalized,
+            });
+        }
+        setAssistantPayload(null);
+        setStage('preview');
+    };
+
     const grouped = parsed ? groupByDate(parsed.activities) : null;
     let globalIdx = 0;
+
+    const existingActivitiesForSelectedDay =
+        isSingleDayMode && selectedTripIdForDay && selectedDateForDay
+            ? getActivitiesByTrip(selectedTripIdForDay)
+                  .filter((a) => a.date === selectedDateForDay)
+                  .sort((a, b) => a.order - b.order)
+            : [];
 
     const selectedExportTrip = trips.find(t => t.id === exportTripId) || null;
 
@@ -418,6 +718,26 @@ const ImportItinerary: React.FC = () => {
                 </button>
             </div>
 
+            {mode === 'import' && (
+                <div className="flex items-center gap-xs mb-md">
+                    <button
+                        type="button"
+                        className={`btn btn-sm ${importTarget === 'new_trip' ? 'btn-primary' : 'btn-ghost'}`}
+                        onClick={() => handleImportTargetChange('new_trip')}
+                    >
+                        New trip
+                    </button>
+                    <button
+                        type="button"
+                        className={`btn btn-sm ${importTarget === 'existing_trip' ? 'btn-primary' : 'btn-ghost'}`}
+                        onClick={() => handleImportTargetChange('existing_trip')}
+                        disabled={trips.length === 0}
+                    >
+                        Add to existing trip
+                    </button>
+                </div>
+            )}
+
             {mode === 'export' && (
                 <div className="card p-xl flex flex-col gap-md">
                     <div className="flex flex-wrap items-end gap-sm">
@@ -472,14 +792,85 @@ const ImportItinerary: React.FC = () => {
             {/* Input Stage */}
             {mode === 'import' && stage === 'input' && !loading && (
                 <div className="flex flex-col gap-sm">
-                    {isAppending && (
+                    {editingContextLabel && (
+                        <p className="text-sm font-medium" style={{ color: 'var(--text-color)' }}>
+                            Editing: {editingContextLabel}
+                        </p>
+                    )}
+                    {(isSingleDayMode || assistantPayload) && (
+                        <div className="flex flex-wrap items-end gap-sm">
+                            <div className="flex flex-col gap-xs" style={{ minWidth: '240px', flex: '1 1 280px' }}>
+                                <label className="input-label">Select trip</label>
+                                <select
+                                    className="input-field"
+                                    value={selectedTripIdForDay ?? ''}
+                                    onChange={(e) => handleSelectedTripForDayChange(e.target.value)}
+                                >
+                                    <option value="">{trips.length === 0 ? 'No trips yet' : 'Choose a trip...'}</option>
+                                    {trips.map((t) => (
+                                        <option key={t.id} value={t.id}>
+                                            {t.name} ({t.startDate} to {t.endDate})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            {selectedTripForDay && dateOptionsForSelectedTrip.length > 0 && !isOverwriteTripMode && (
+                                <div className="flex flex-col gap-xs" style={{ minWidth: '240px', flex: '1 1 280px' }}>
+                                    <label className="input-label">{isReplaceDayMode ? 'Day to replace' : 'Select day'}</label>
+                                    <select
+                                        className="input-field"
+                                        value={selectedDateForDay ?? ''}
+                                        onChange={(e) => setSelectedDateForDay(e.target.value || null)}
+                                    >
+                                        {dateOptionsForSelectedTrip.map((opt) => (
+                                            <option key={opt.value} value={opt.value}>
+                                                {opt.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    {assistantPayload ? (
+                        <>
+                            <p className="text-sm text-secondary">
+                                {isOverwriteTripMode && (
+                                    <span className="font-medium text-primary">Replace entire trip — </span>
+                                )}
+                                {isReplaceDayMode && !isOverwriteTripMode && (
+                                    <span className="font-medium text-primary">Replace one day — </span>
+                                )}
+                                {assistantPayload.length} activit{assistantPayload.length === 1 ? 'y' : 'ies'} from Assistant.
+                                {isOverwriteTripMode
+                                    ? ' Select trip above, then continue to preview.'
+                                    : ' Select trip and day above, then continue to preview.'}
+                            </p>
+                            <div className="flex items-center gap-sm">
+                                <button
+                                    type="button"
+                                    className="btn btn-primary"
+                                    onClick={handleAssistantPayloadContinue}
+                                    disabled={!selectedTripIdForDay || (!isOverwriteTripMode && !selectedDateForDay)}
+                                >
+                                    Continue to preview
+                                </button>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                    {isAppending && !isSingleDayMode && (
                         <div className="flex items-center gap-sm p-sm rounded-md text-sm text-secondary" style={{ backgroundColor: 'color-mix(in srgb, var(--primary-color) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--primary-color) 20%, transparent)' }}>
                             <Plus size={16} className="text-primary shrink-0" />
                             <span>Adding more days to <strong>{activeTripName}</strong> ({totalImported} activities imported so far)</span>
                         </div>
                     )}
                     <label className="input-label" htmlFor="import-textarea">
-                        {isAppending ? 'Paste the next chunk of your itinerary' : 'Paste your itinerary'}
+                        {isSingleDayMode
+                            ? 'Paste this day\'s itinerary'
+                            : isAppending
+                                ? 'Paste the next chunk of your itinerary'
+                                : 'Paste your itinerary'}
                     </label>
                     <textarea
                         id="import-textarea"
@@ -487,9 +878,11 @@ const ImportItinerary: React.FC = () => {
                         style={{ minHeight: '200px', resize: 'vertical', fontFamily: 'inherit', fontSize: '0.9rem', lineHeight: 1.5 }}
                         value={rawText}
                         onChange={e => setRawText(e.target.value)}
-                        placeholder={isAppending
-                            ? "Paste the next set of days here..."
-                            : "Paste your itinerary here (from Gemini, ChatGPT, Claude, etc.)\n\nSupports tables, bullet lists, or any text format.\nLong itineraries are automatically split into chunks."}
+                        placeholder={isSingleDayMode
+                            ? "Paste this day's activities (no dates needed)..."
+                            : isAppending
+                                ? "Paste the next set of days here..."
+                                : "Paste your itinerary here (from Gemini, ChatGPT, Claude, etc.)\n\nSupports tables, bullet lists, or any text format.\nLong itineraries are automatically split into chunks."}
                         rows={12}
                     />
                     {error && (
@@ -505,7 +898,7 @@ const ImportItinerary: React.FC = () => {
                         }
                     `}</style>
                     <div className="flex items-center gap-sm mobile-column-reverse">
-                        {isAppending && (
+                        {isAppending && !isSingleDayMode && (
                             <button className="btn btn-ghost" onClick={handleStartFresh}>
                                 Start New Trip
                             </button>
@@ -514,11 +907,16 @@ const ImportItinerary: React.FC = () => {
                             className="btn btn-primary"
                             style={{ marginLeft: 'auto' }}
                             onClick={handleParse}
-                            disabled={!rawText.trim()}
+                            disabled={
+                                !rawText.trim() ||
+                                (isSingleDayMode && (!selectedTripIdForDay || !selectedDateForDay))
+                            }
                         >
                             Parse with AI
                         </button>
                     </div>
+                        </>
+                    )}
                 </div>
             )}
 
@@ -550,15 +948,28 @@ const ImportItinerary: React.FC = () => {
                             <button
                                 className="btn btn-primary"
                                 onClick={handleConfirm}
-                                disabled={parsed.activities.length === 0 || !parsed.tripName.trim()}
+                                disabled={parsed.activities.length === 0 || (!isSingleDayMode && !parsed.tripName.trim())}
                             >
-                                {isAppending ? 'Add Activities' : 'Create Trip'}
+                                {isOverwriteTripMode ? 'Replace Trip' : isReplaceDayMode ? 'Replace Day' : isSingleDayMode || isAppending ? 'Add Activities' : 'Create Trip'}
                             </button>
                         </div>
                     </div>
 
                     <div className="card p-xl flex flex-col gap-sm" style={{ background: 'linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 6%, transparent), color-mix(in srgb, var(--secondary-color) 6%, transparent))' }}>
-                        {isAppending ? (
+                        {isSingleDayMode ? (
+                            <>
+                                <p className="text-xs text-tertiary uppercase font-semibold mb-0" style={{ letterSpacing: '0.05em' }}>
+                                    {isOverwriteTripMode ? 'Replacing trip' : isReplaceDayMode ? 'Replacing day' : 'Adding to'}
+                                </p>
+                                <h2 className="text-xl mb-xs">{selectedTripForDay?.name ?? 'Trip'}</h2>
+                                {selectedDateForDay && !isOverwriteTripMode && (
+                                    <p className="text-sm text-tertiary mt-xs">Date: {formatDate(selectedDateForDay)}</p>
+                                )}
+                                {isOverwriteTripMode && (
+                                    <p className="text-sm text-tertiary mt-xs">All existing activities will be removed and replaced.</p>
+                                )}
+                            </>
+                        ) : isAppending ? (
                             <>
                                 <p className="text-xs text-tertiary uppercase font-semibold mb-0" style={{ letterSpacing: '0.05em' }}>Adding to</p>
                                 <h2 className="text-xl mb-xs">{activeTripName}</h2>
@@ -581,41 +992,158 @@ const ImportItinerary: React.FC = () => {
                                 </div>
                             </div>
                         )}
-                        <div className="flex items-end gap-sm mobile-edit-row" style={{ flexDirection: 'row' }}>
-                            <div className="flex flex-col gap-xs flex-1" style={{ minWidth: 0 }}>
-                                <label className="text-xs text-tertiary uppercase font-semibold" style={{ letterSpacing: '0.04em' }}>Start</label>
-                                <input
-                                    type="date"
-                                    className="input-field"
-                                    value={parsed.startDate}
-                                    onChange={e => updateParsedField('startDate', e.target.value)}
-                                />
+                        {!isSingleDayMode && (
+                            <div className="flex items-end gap-sm mobile-edit-row" style={{ flexDirection: 'row' }}>
+                                <div className="flex flex-col gap-xs flex-1" style={{ minWidth: 0 }}>
+                                    <label className="text-xs text-tertiary uppercase font-semibold" style={{ letterSpacing: '0.04em' }}>Start</label>
+                                    <input
+                                        type="date"
+                                        className="input-field"
+                                        value={parsed.startDate}
+                                        onChange={e => updateParsedField('startDate', e.target.value)}
+                                    />
+                                </div>
+                                <div className="flex flex-col gap-xs flex-1" style={{ minWidth: 0 }}>
+                                    <label className="text-xs text-tertiary uppercase font-semibold" style={{ letterSpacing: '0.04em' }}>End</label>
+                                    <input
+                                        type="date"
+                                        className="input-field"
+                                        value={parsed.endDate}
+                                        onChange={e => updateParsedField('endDate', e.target.value)}
+                                    />
+                                </div>
                             </div>
-                            <div className="flex flex-col gap-xs flex-1" style={{ minWidth: 0 }}>
-                                <label className="text-xs text-tertiary uppercase font-semibold" style={{ letterSpacing: '0.04em' }}>End</label>
-                                <input
-                                    type="date"
-                                    className="input-field"
-                                    value={parsed.endDate}
-                                    onChange={e => updateParsedField('endDate', e.target.value)}
-                                />
-                            </div>
-                        </div>
+                        )}
                         <p className="text-sm text-tertiary mt-xs">
                             {parsed.activities.length} activit{parsed.activities.length === 1 ? 'y' : 'ies'} across {grouped.size} day{grouped.size === 1 ? '' : 's'}
                             {isAppending && <> &middot; {totalImported} already imported</>}
                         </p>
                     </div>
 
+                    {isSingleDayMode && selectedDateForDay ? (
+                        <div
+                            className="flex gap-md"
+                            style={{
+                                alignItems: 'stretch',
+                                flexDirection: 'row',
+                                minHeight: 0,
+                                overflowX: 'auto',
+                                paddingBottom: '0.5rem',
+                            }}
+                        >
+                            <div
+                                className="rounded-lg border border-solid shrink-0"
+                                style={{
+                                    borderColor: 'var(--border-color)',
+                                    backgroundColor: 'color-mix(in srgb, var(--primary-color) 6%, var(--surface-color))',
+                                    flex: '1 1 0',
+                                    minWidth: 'min(280px, 45vw)',
+                                    maxWidth: '50%',
+                                    padding: '0.75rem',
+                                }}
+                            >
+                                <h3 className="font-bold text-primary pb-xs mb-xs" style={{ fontSize: '0.875rem', borderBottom: '2px solid color-mix(in srgb, var(--primary-color) 20%, transparent)' }}>
+                                    Importing — {formatDate(selectedDateForDay)}
+                                </h3>
+                                <p className="text-xs text-tertiary mb-sm">Will be added to this day.</p>
+                                <div className="flex flex-col gap-xs">
+                                    {parsed.activities.map((act) => {
+                                        const idx = globalIdx++;
+                                        return (
+                                            <div key={idx} className="flex items-start gap-xs p-xs bg-surface rounded-md border border-solid relative" style={{ padding: '0.4rem 0.5rem', borderColor: 'var(--border-color)' }}>
+                                                <span className="shrink-0" style={{ fontSize: '0.95rem', marginTop: '0.2rem' }}>
+                                                    {CATEGORY_EMOJIS[act.category || 'other']}
+                                                </span>
+                                                <div className="flex flex-col flex-1 min-w-0" style={{ gap: '0.15rem' }}>
+                                                    <input
+                                                        className="input-ghost font-semibold w-full"
+                                                        style={{ fontSize: '0.8125rem' }}
+                                                        value={act.title}
+                                                        onChange={e => updateActivity(idx, 'title', e.target.value)}
+                                                    />
+                                                    <div className="flex items-center gap-xs flex-wrap">
+                                                        <input
+                                                            type="time"
+                                                            className="input-ghost text-xs text-tertiary"
+                                                            style={{ width: 'auto', maxWidth: '90px' }}
+                                                            value={act.time || ''}
+                                                            onChange={e => updateActivity(idx, 'time', e.target.value)}
+                                                        />
+                                                        <select
+                                                            className="input-ghost text-xs text-secondary cursor-pointer"
+                                                            style={{ padding: '0.1rem 0.2rem', fontSize: '0.7rem' }}
+                                                            value={act.category || 'other'}
+                                                            onChange={e => updateActivity(idx, 'category', e.target.value)}
+                                                        >
+                                                            {CATEGORY_LIST.map(c => (
+                                                                <option key={c} value={c}>{CATEGORY_EMOJIS[c]} {c}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    {act.location && <span className="text-xs text-secondary truncate block" style={{ maxWidth: '100%' }} title={act.location}>{act.location}</span>}
+                                                    {act.details && <p className="text-xs text-secondary mt-0 px-0 truncate" style={{ lineHeight: 1.3, WebkitLineClamp: 2, display: '-webkit-box', WebkitBoxOrient: 'vertical', overflow: 'hidden' }} title={act.details}>{act.details}</p>}
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-ghost btn-icon shrink-0 opacity-50 hover:opacity-100 hover:text-danger hover:bg-danger/10"
+                                                    style={{ padding: '0.2rem' }}
+                                                    onClick={() => removeActivity(idx)}
+                                                    aria-label="Remove activity"
+                                                >
+                                                    <X size={12} />
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                            <div
+                                className="rounded-lg border border-solid shrink-0"
+                                style={{
+                                    borderColor: 'var(--border-color)',
+                                    backgroundColor: 'var(--surface-color)',
+                                    flex: '1 1 0',
+                                    minWidth: 'min(280px, 45vw)',
+                                    maxWidth: '50%',
+                                    padding: '0.75rem',
+                                }}
+                            >
+                                <h3 className="font-bold text-secondary pb-xs mb-xs" style={{ fontSize: '0.875rem', borderBottom: '2px solid var(--border-color)' }}>
+                                    Existing on this day
+                                </h3>
+                                <p className="text-xs text-tertiary mb-sm">Already on this day. New ones add below.</p>
+                                <div className="flex flex-col gap-xs">
+                                    {existingActivitiesForSelectedDay.length === 0 ? (
+                                        <p className="text-xs text-tertiary italic">No activities yet.</p>
+                                    ) : (
+                                        existingActivitiesForSelectedDay.map((a) => (
+                                            <div key={a.id} className="flex items-start gap-xs p-xs rounded-md border border-solid" style={{ padding: '0.4rem 0.5rem', borderColor: 'var(--border-color)', backgroundColor: 'color-mix(in srgb, var(--text-tertiary) 8%, var(--surface-color))' }}>
+                                                <span className="shrink-0" style={{ fontSize: '0.95rem', marginTop: '0.2rem' }}>
+                                                    {CATEGORY_EMOJIS[a.category || 'other']}
+                                                </span>
+                                                <div className="flex flex-col flex-1 min-w-0" style={{ gap: '0.15rem' }}>
+                                                    <span className="font-semibold text-xs truncate block" title={a.title}>{a.title}</span>
+                                                    {(a.time || a.category) && (
+                                                        <span className="text-xs text-tertiary">{[a.time, a.category].filter(Boolean).join(' · ')}</span>
+                                                    )}
+                                                    {a.location && <span className="text-xs text-secondary truncate block" title={a.location}>{a.location}</span>}
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
                     <div className="flex flex-col gap-xl">
-                        {[...grouped.entries()].map(([date, acts]) => (
+                        {[...grouped!.entries()].map(([date, acts]) => (
                             <div key={date}>
                                 <h3 className="font-bold text-primary pb-xs mb-sm" style={{ fontSize: '0.95rem', borderBottom: '2px solid color-mix(in srgb, var(--primary-color) 15%, transparent)' }}>{formatDate(date)}</h3>
                                 <div className="flex flex-col gap-sm">
                                     {acts.map((act) => {
                                         const idx = globalIdx++;
                                         return (
-                                            <div key={idx} className="flex items-start gap-sm p-sm bg-surface rounded-md border relative" style={{ padding: '0.65rem 0.85rem' }}>
+                                            <div key={idx} className="flex items-start gap-sm p-sm bg-surface rounded-md border border-solid relative" style={{ padding: '0.65rem 0.85rem', borderColor: 'var(--border-color)' }}>
                                                 <span className="shrink-0" style={{ fontSize: '1.1rem', marginTop: '0.35rem' }}>
                                                     {CATEGORY_EMOJIS[act.category || 'other']}
                                                 </span>
@@ -663,6 +1191,7 @@ const ImportItinerary: React.FC = () => {
                             </div>
                         ))}
                     </div>
+                    )}
 
                     {parsed.activities.length === 0 && (
                         <div className="flex items-start gap-sm p-sm rounded-md text-sm mt-md" style={{ backgroundColor: 'color-mix(in srgb, var(--error-color) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--error-color) 25%, transparent)', color: 'var(--error-color)', lineHeight: 1.4 }}>
@@ -684,7 +1213,7 @@ const ImportItinerary: React.FC = () => {
             {mode === 'import' && stage === 'saving' && (
                 <div className="flex flex-col items-center gap-sm text-tertiary" style={{ padding: '3rem 0' }}>
                     <Loader2 size={32} className="spin" />
-                    <p>{isAppending ? 'Adding activities...' : 'Creating trip and activities...'}</p>
+                    <p>{isSingleDayMode || isAppending ? 'Adding activities...' : 'Creating trip and activities...'}</p>
                 </div>
             )}
 

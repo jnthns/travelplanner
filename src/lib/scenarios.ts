@@ -228,6 +228,46 @@ export function reorderScenarioActivities(
     });
 }
 
+/** Get the current scenario by trip and scenario id (for use outside React, e.g. Import page). */
+export function getScenario(tripId: string, scenarioId: string): TripScenario | null {
+    const store = getSnapshot();
+    const scenarios = store.byTripId[tripId] ?? [];
+    return scenarios.find((s) => s.id === scenarioId) ?? null;
+}
+
+/** Replace all activities for one day in a scenario with a new list. New items get generated ids. */
+export function replaceScenarioDay(
+    tripId: string,
+    scenarioId: string,
+    date: string,
+    newActivities: Omit<Activity, 'id'>[],
+) {
+    updateTripScenario(tripId, scenarioId, (scenario) => {
+        const kept = scenario.activitiesSnapshot.filter((a) => a.date !== date);
+        const added = newActivities.map((base, i) =>
+            createScenarioActivity({ ...base, tripId, date, order: i }),
+        );
+        const nextActivities = [...kept, ...added].sort(
+            (a, b) => a.date.localeCompare(b.date) || a.order - b.order,
+        );
+        return touchScenario(scenario, { activitiesSnapshot: nextActivities });
+    });
+}
+
+/** Replace all activities in a scenario with a new list. New items get generated ids. */
+export function overwriteScenarioActivities(
+    tripId: string,
+    scenarioId: string,
+    activities: Omit<Activity, 'id'>[],
+) {
+    updateTripScenario(tripId, scenarioId, (scenario) => {
+        const nextActivities = activities.map((base, i) =>
+            createScenarioActivity({ ...base, tripId, order: i }),
+        );
+        return touchScenario(scenario, { activitiesSnapshot: nextActivities });
+    });
+}
+
 export function useTripScenarios(tripId: string | null) {
     const store = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
     const scenarios = tripId ? store.byTripId[tripId] ?? [] : [];

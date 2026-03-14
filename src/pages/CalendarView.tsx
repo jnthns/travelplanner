@@ -5,7 +5,7 @@ import {
     isSameDay,
     parseISO,
 } from 'date-fns';
-import { AlertTriangle, Info, Plus, Pencil, GripVertical, Loader2 } from 'lucide-react';
+import { AlertTriangle, Info, Plus, Pencil, Trash2, GripVertical, Loader2 } from 'lucide-react';
 import { useTrips, useActivities, useTransportRoutes } from '../lib/store';
 import { CATEGORY_EMOJIS, CATEGORY_COLORS } from '../lib/types';
 import ActivityForm from '../components/ActivityForm';
@@ -13,7 +13,7 @@ import DraggableList from '../components/DraggableList';
 import Markdown from '../components/Markdown';
 import { useToast } from '../components/Toast';
 import { logEvent } from '../lib/amplitude';
-import { generateDayActivityDescriptions, generateNearbyRecommendations, generateOptimizedRoute } from '../lib/ai/actions/calendar';
+import { generateDayActivityDescriptions, generateDaySummary, generateOptimizedRoute } from '../lib/ai/actions/calendar';
 import ScenarioSwitcher from '../components/ScenarioSwitcher';
 import { getTripPlanningConflicts } from '../lib/planning/conflicts';
 import { useSettings } from '../lib/settings';
@@ -80,9 +80,9 @@ const CalendarView: React.FC = () => {
     const [selectedTripId, setSelectedTripId] = useState<string | null>(savedPrefs.selectedTripId);
     const [addingActivityForDate, setAddingActivityForDate] = useState<string | null>(null);
     const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
-    const [nearbyRecommendations, setNearbyRecommendations] = useState<{ name: string; location?: string; reason: string; weight: number; crowded?: boolean }[] | null>(null);
-    const [recommendationsLoading, setRecommendationsLoading] = useState(false);
-    const [recommendationsError, setRecommendationsError] = useState<string | null>(null);
+    const [tripSummary, setTripSummary] = useState<{ summary: string; highlights: string[] } | null>(null);
+    const [summaryLoading, setSummaryLoading] = useState(false);
+    const [summaryError, setSummaryError] = useState<string | null>(null);
     const [optimizationLoading, setOptimizationLoading] = useState(false);
     const [optimizationError, setOptimizationError] = useState<string | null>(null);
     const [optimizedRoute, setOptimizedRoute] = useState<{ recommendation: string; optimizedOrder: string[] } | null>(null);
@@ -146,6 +146,13 @@ const CalendarView: React.FC = () => {
             }
         }
     };
+
+    const hasDaySummaryContent =
+        !!descriptionError ||
+        !!summaryError ||
+        !!optimizationError ||
+        !!pendingDescriptions ||
+        !!optimizedRoute;
 
     const calendarDays = useMemo(() => {
         if (viewMode === 'trip' && selectedTrip) {
@@ -260,26 +267,27 @@ const CalendarView: React.FC = () => {
         setEditingActivityId(null);
     };
 
-    const handleGenerateRecommendations = async () => {
+    const handleGenerateSummary = async () => {
         if (!selectedTrip || dayViewActivities.length === 0) return;
-        setRecommendationsLoading(true);
-        setRecommendationsError(null);
-        setNearbyRecommendations(null);
+        setSummaryLoading(true);
+        setSummaryError(null);
+        setTripSummary(null);
 
-        logEvent('Nearby Recommendations Requested', { trip_name: selectedTrip.name, activity_count: dayViewActivities.length, date: currentDateStr });
+        logEvent('Trip Summary Requested', { trip_name: selectedTrip.name, activity_count: dayViewActivities.length, date: currentDateStr });
         try {
-            const parsed = await generateNearbyRecommendations({
+            const parsed = await generateDaySummary({
                 trip: effectiveTrip ?? selectedTrip,
+                currentDate,
                 currentDateStr,
                 activities: dayViewActivities,
             });
-            if (!Array.isArray(parsed.recommendations)) throw new Error('Invalid response format');
-            setNearbyRecommendations(parsed.recommendations);
+            if (!parsed.summary || !Array.isArray(parsed.highlights)) throw new Error('Invalid response format');
+            setTripSummary(parsed);
         } catch (e) {
-            const msg = e instanceof Error ? e.message : 'Recommendations generation failed';
-            setRecommendationsError(/429|quota|rate/i.test(msg) ? 'API rate limit reached — please wait a minute and try again.' : msg);
+            const msg = e instanceof Error ? e.message : 'Summary generation failed';
+            setSummaryError(/429|quota|rate/i.test(msg) ? 'API rate limit reached — please wait a minute and try again.' : msg);
         } finally {
-            setRecommendationsLoading(false);
+            setSummaryLoading(false);
         }
     };
 
@@ -464,6 +472,10 @@ const CalendarView: React.FC = () => {
                     ))}
                 </select>
 
+                {selectedTrip && (
+                    <ScenarioSwitcher trip={selectedTrip} activities={effectiveActivities} routes={effectiveRoutes} />
+                )}
+
                 {selectedTrip && calendarDays.length > 0 && (
                     <div className={styles['day-nav-wrapper']}>
                         {tripDays.length > 0 && (<>
@@ -557,7 +569,7 @@ const CalendarView: React.FC = () => {
                                     {dayActs.length > 0 ? (
                                         <div className={styles['cal-day-activities']}>
                                             {dayActs.map(act => (
-                                                <div key={act.id} className={styles['cal-activity-chip']} style={{ borderLeftColor: getActivityColor(act) }}>
+                                                <div key={act.id} className={styles['cal-activity-chip']} style={{ ['--activity-color' as string]: getActivityColor(act) }}>
                                                     <span>{CATEGORY_EMOJIS[act.category || 'other']}</span>
                                                     <span className={styles['cal-activity-title']}>{act.title}</span>
                                                     {act.time && <span className={styles['cal-activity-time']}>{act.time}</span>}
@@ -577,56 +589,53 @@ const CalendarView: React.FC = () => {
             {/* Day Detail View */}
             {viewMode === 'day' && (
                 <div className={styles['day-detail-view']}>
-                    {selectedTrip && (
-                        <>
-                            <ScenarioSwitcher trip={selectedTrip} activities={effectiveActivities} routes={effectiveRoutes} />
-                            {selectedTripId && addingActivityForDate !== currentDateStr && (
-                                <button
-                                    type="button"
-                                    className={`${styles['action-btn']} ${styles['action-btn-sky']} ${styles['add-activity-top']}`}
-                                    onClick={() => setAddingActivityForDate(currentDateStr)}
-                                >
-                                    <Plus size={18} /> Add activity
-                                </button>
-                            )}
-                        </>
-                    )}
                     <div className={styles['planning-action-row']}>
-                        <button
-                            type="button"
-                            className={`${styles['action-btn']} ${styles['action-btn-sky']} ${styles['planner-action-btn']} ${!showAccommodationPanel ? styles['planner-toggle-inactive'] : ''}`}
-                            onClick={() => setShowAccommodationPanel((prev) => !prev)}
-                        >
-                            <span className={styles['action-btn-icon']}>🏠</span>
-                            Accommodation
-                        </button>
-                        <button
-                            type="button"
-                            className={`${styles['action-btn']} ${styles['action-btn-violet']}`}
-                            onClick={handleGenerateDescriptions}
-                            disabled={descriptionLoading || dayViewActivities.length === 0}
-                        >
-                            <span className={styles['action-btn-icon']}>✨</span>
-                            {descriptionLoading ? <><Loader2 size={14} className="spin" /> Describing…</> : 'Describe Day'}
-                        </button>
-                        <button
-                            type="button"
-                            className={`${styles['action-btn']} ${styles['action-btn-amber']}`}
-                            onClick={handleGenerateRecommendations}
-                            disabled={recommendationsLoading || dayViewActivities.length === 0}
-                        >
-                            <span className={styles['action-btn-icon']}>📍</span>
-                            {recommendationsLoading ? <><Loader2 size={14} className="spin" /> Generating…</> : 'Nearby Recommendations'}
-                        </button>
-                        <button
-                            type="button"
-                            className={`${styles['action-btn']} ${styles['action-btn-mint']}`}
-                            onClick={handleOptimizeRoute}
-                            disabled={optimizationLoading || dayViewActivities.length <= 1}
-                        >
-                            <span className={styles['action-btn-icon']}>🗺️</span>
-                            {optimizationLoading ? <><Loader2 size={14} className="spin" /> Optimizing…</> : 'Optimize Route'}
-                        </button>
+                        <div className={styles['planning-action-row__left']}>
+                            <button
+                                type="button"
+                                className={`${styles['action-btn']} ${styles['action-btn-sky']} ${styles['planner-action-btn']} ${!showAccommodationPanel ? styles['planner-toggle-inactive'] : ''}`}
+                                onClick={() => setShowAccommodationPanel((prev) => !prev)}
+                            >
+                                <span className={styles['action-btn-icon']}>🏠</span>
+                                Accommodation
+                            </button>
+                            <button
+                                type="button"
+                                className={`${styles['action-btn']} ${styles['action-btn-violet']}`}
+                                onClick={handleGenerateDescriptions}
+                                disabled={descriptionLoading || dayViewActivities.length === 0}
+                            >
+                                <span className={styles['action-btn-icon']}>✨</span>
+                                {descriptionLoading ? <><Loader2 size={14} className="spin" /> Describing…</> : 'Describe Day'}
+                            </button>
+                            <button
+                                type="button"
+                                className={`${styles['action-btn']} ${styles['action-btn-amber']}`}
+                                onClick={handleGenerateSummary}
+                                disabled={summaryLoading || dayViewActivities.length === 0}
+                            >
+                                <span className={styles['action-btn-icon']}>📝</span>
+                                {summaryLoading ? <><Loader2 size={14} className="spin" /> Generating…</> : 'AI Summary'}
+                            </button>
+                            <button
+                                type="button"
+                                className={`${styles['action-btn']} ${styles['action-btn-mint']}`}
+                                onClick={handleOptimizeRoute}
+                                disabled={optimizationLoading || dayViewActivities.length <= 1}
+                            >
+                                <span className={styles['action-btn-icon']}>🗺️</span>
+                                {optimizationLoading ? <><Loader2 size={14} className="spin" /> Optimizing…</> : 'Optimize Route'}
+                            </button>
+                        </div>
+                        {selectedTripId && addingActivityForDate !== currentDateStr && (
+                            <button
+                                type="button"
+                                className={`${styles['action-btn']} ${styles['action-btn-sky']}`}
+                                onClick={() => setAddingActivityForDate(currentDateStr)}
+                            >
+                                <Plus size={18} /> Add activity
+                            </button>
+                        )}
                     </div>
 
                     {showAccommodationPanel && (
@@ -739,10 +748,10 @@ const CalendarView: React.FC = () => {
                             </div>
                         </div>
                     )}
-                    {selectedTripId && dayViewActivities.length > 0 && (
+                    {selectedTripId && dayViewActivities.length > 0 && hasDaySummaryContent && (
                         <div className={styles['day-summary-section']}>
                             {descriptionError && <p className="text-red-500 text-sm mt-2">{descriptionError}</p>}
-                            {recommendationsError && <p className="text-red-500 text-sm mt-2">{recommendationsError}</p>}
+                            {summaryError && <p className="text-red-500 text-sm mt-2">{summaryError}</p>}
                             {optimizationError && <p className="text-red-500 text-sm mt-2">{optimizationError}</p>}
 
                             {pendingDescriptions && (
@@ -798,25 +807,21 @@ const CalendarView: React.FC = () => {
                                 </div>
                             )}
 
-                            {nearbyRecommendations && nearbyRecommendations.length > 0 && (
+                            {tripSummary && (
                                 <div className="trip-summary-card card" style={{ padding: '1rem', marginTop: '0.75rem' }}>
-                                    <h4 className={styles['trip-summary-header']}>Nearby Recommendations</h4>
-                                    <p className={styles['trip-summary-text']}>Weighted by your preferences: UNESCO sites, craft workshops, shopping streets; deprioritizing crowded areas.</p>
-                                    <ul className={styles['trip-summary-highlights']} style={{ listStyle: 'none', paddingLeft: 0 }}>
-                                        {nearbyRecommendations.map((rec, i) => (
-                                            <li key={i} style={{ marginBottom: '0.5rem' }}>
-                                                <strong>{rec.name}</strong> <span style={{ opacity: 0.8 }}>({rec.location})</span> · weight {rec.weight.toFixed(1)}
-                                                {rec.crowded && <span style={{ color: 'var(--muted)' }}> · crowded</span>}
-                                                <br /><span style={{ fontSize: '0.9em' }}>{rec.reason}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                    <button type="button" className="btn btn-ghost btn-sm" style={{ marginTop: '0.5rem' }} onClick={() => setNearbyRecommendations(null)}>Dismiss</button>
+                                    <h4 className={styles['trip-summary-header']}>AI Trip Summary</h4>
+                                    <p className={styles['trip-summary-text']}>{tripSummary.summary}</p>
+                                    {tripSummary.highlights.length > 0 && (
+                                        <ul className={styles['trip-summary-highlights']}>
+                                            {tripSummary.highlights.map((h, i) => <li key={i}>{h}</li>)}
+                                        </ul>
+                                    )}
+                                    <button type="button" className="btn btn-ghost btn-sm" style={{ marginTop: '0.5rem' }} onClick={() => setTripSummary(null)}>Dismiss</button>
                                 </div>
                             )}
 
                             {optimizedRoute && (
-                                <div className="trip-summary-card card" style={{ padding: '1rem', marginTop: '0.75rem', borderLeft: '3px solid var(--primary-color)' }}>
+                                <div className="trip-summary-card card" style={{ padding: '1rem', marginTop: '0.75rem', border: '2px solid var(--primary-color)', background: 'color-mix(in srgb, var(--primary-color) 12%, var(--surface-color))', borderRadius: 'var(--radius-md)' }}>
                                     <h4 className={styles['trip-summary-header']}>AI Route Suggestion</h4>
                                     <p className={styles['trip-summary-text']}>{optimizedRoute.recommendation}</p>
                                     <ul className={styles['trip-summary-highlights']} style={{ marginTop: '0.5rem' }}>
@@ -898,7 +903,7 @@ const CalendarView: React.FC = () => {
                                     }}
                                 />
                             ) : (
-                                <div className={`${styles['day-detail-activity']} card`} style={{ borderLeftColor: getActivityColor(act) }}>
+                                <div className={`${styles['day-detail-activity']} card`} style={{ ['--activity-color' as string]: getActivityColor(act) }}>
                                     <div className={styles['detail-header']}>
                                         <span className="drag-handle" {...dragHandleProps}>
                                             <GripVertical size={16} />
@@ -910,6 +915,27 @@ const CalendarView: React.FC = () => {
                                         </div>
                                         <div className={styles['detail-actions']}>
                                             <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingActivityId(act.id)} aria-label="Edit"><Pencil size={16} /></button>
+                                            <button
+                                                type="button"
+                                                className="btn btn-ghost btn-sm"
+                                                onClick={() => {
+                                                    if (selectedTripId && activeScenario) {
+                                                        removeScenarioActivity(selectedTripId, activeScenario.id, act.id);
+                                                    } else {
+                                                        deleteActivity(act.id);
+                                                    }
+                                                    logEvent('Activity Deleted', { activity_title: act.title, category: act.category, source: 'calendar_card' });
+                                                    if (!activeScenario) {
+                                                        showToast(`"${act.title}" deleted`, () => {
+                                                            restoreActivity(act);
+                                                            logEvent('Activity Delete Undone', { activity_title: act.title });
+                                                        });
+                                                    }
+                                                }}
+                                                aria-label="Delete"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
                                         </div>
                                     </div>
                                     {act.details && <Markdown className={styles['detail-desc']}>{act.details}</Markdown>}
@@ -921,10 +947,6 @@ const CalendarView: React.FC = () => {
                         }
                     />
                 </div>
-            )}
-
-            {selectedTrip && viewMode === 'trip' && (
-                <ScenarioSwitcher trip={selectedTrip} activities={effectiveActivities} routes={effectiveRoutes} />
             )}
         </div>
     );

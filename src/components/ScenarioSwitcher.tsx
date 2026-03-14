@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, MoreVertical } from 'lucide-react';
 import type { Activity, TransportRoute, Trip } from '../lib/types';
 import {
     createTripScenario,
@@ -10,38 +10,30 @@ import {
 } from '../lib/scenarios';
 import './ScenarioSwitcher.css';
 
-interface ScenarioTabBarProps {
+interface ScenarioSwitcherProps {
     trip: Trip | null | undefined;
     activities: Activity[];
     routes: TransportRoute[];
 }
 
-interface ContextMenuState {
-    scenarioId: string;
-    x: number;
-    y: number;
-}
-
-const ScenarioTabBar: React.FC<ScenarioTabBarProps> = ({ trip, activities, routes }) => {
+const ScenarioSwitcher: React.FC<ScenarioSwitcherProps> = ({ trip, activities, routes }) => {
     const { scenarios, activeScenarioId } = useTripScenarios(trip?.id ?? null);
-    const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+    const [menuOpen, setMenuOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
-    const closeMenu = useCallback(() => setContextMenu(null), []);
-
     useEffect(() => {
-        if (!contextMenu) return;
+        if (!menuOpen) return;
         const handleClick = (e: MouseEvent) => {
-            if (menuRef.current && !menuRef.current.contains(e.target as Node)) closeMenu();
+            if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
         };
-        const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closeMenu(); };
+        const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuOpen(false); };
         document.addEventListener('mousedown', handleClick);
         document.addEventListener('keydown', handleKey);
         return () => {
             document.removeEventListener('mousedown', handleClick);
             document.removeEventListener('keydown', handleKey);
         };
-    }, [contextMenu, closeMenu]);
+    }, [menuOpen]);
 
     if (!trip) return null;
 
@@ -52,79 +44,88 @@ const ScenarioTabBar: React.FC<ScenarioTabBarProps> = ({ trip, activities, route
         createTripScenario({ trip, activities, routes, name });
     };
 
-    const handleContextMenu = (e: React.MouseEvent, scenarioId: string) => {
+    const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const value = e.target.value;
+        selectTripScenario(trip.id, value || null);
+    };
+
+    const handleMenuClick = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        setContextMenu({ scenarioId, x: e.clientX, y: e.clientY });
+        setMenuOpen((prev) => !prev);
     };
 
     const handleRename = () => {
-        if (!contextMenu) return;
-        const scenario = scenarios.find(s => s.id === contextMenu.scenarioId);
+        if (!activeScenarioId) return;
+        const scenario = scenarios.find((s) => s.id === activeScenarioId);
         if (!scenario) return;
         const name = window.prompt('Rename draft', scenario.name);
-        if (name == null) { closeMenu(); return; }
+        if (name == null) { setMenuOpen(false); return; }
         renameTripScenario(trip.id, scenario.id, name);
-        closeMenu();
+        setMenuOpen(false);
     };
 
     const handleDelete = () => {
-        if (!contextMenu) return;
-        const scenario = scenarios.find(s => s.id === contextMenu.scenarioId);
-        if (!scenario) { closeMenu(); return; }
+        if (!activeScenarioId) return;
+        const scenario = scenarios.find((s) => s.id === activeScenarioId);
+        if (!scenario) { setMenuOpen(false); return; }
         const confirmed = window.confirm(`Delete "${scenario.name}"? This only removes the local draft snapshot.`);
         if (confirmed) deleteTripScenario(trip.id, scenario.id);
-        closeMenu();
+        setMenuOpen(false);
     };
 
-    return (
-        <div className="scenario-tab-bar">
-            <div className="scenario-tab-bar__tabs">
-                <button
-                    type="button"
-                    className={`scenario-tab ${!activeScenarioId ? 'scenario-tab--active' : ''}`}
-                    onClick={() => selectTripScenario(trip.id, null)}
-                >
-                    Live Trip
-                </button>
-                {scenarios.map(s => (
-                    <button
-                        key={s.id}
-                        type="button"
-                        className={`scenario-tab ${activeScenarioId === s.id ? 'scenario-tab--active' : ''}`}
-                        onClick={() => selectTripScenario(trip.id, s.id)}
-                        onContextMenu={(e) => handleContextMenu(e, s.id)}
-                    >
-                        {s.name}
-                    </button>
-                ))}
-                <button
-                    type="button"
-                    className="scenario-tab scenario-tab--add"
-                    onClick={handleCreate}
-                    aria-label="New draft"
-                    title="New draft"
-                >
-                    <Plus size={14} />
-                </button>
-            </div>
+    const activeScenario = scenarios.find((s) => s.id === activeScenarioId);
+    const showDraftActions = Boolean(activeScenarioId && activeScenario);
 
-            {contextMenu && (
-                <div
-                    ref={menuRef}
-                    className="scenario-ctx-menu"
-                    style={{ top: contextMenu.y, left: contextMenu.x }}
-                >
-                    <button type="button" className="scenario-ctx-item" onClick={handleRename}>
-                        Rename
+    return (
+        <div className="scenario-dropdown-wrap">
+            <select
+                className="scenario-dropdown-select input-field"
+                value={activeScenarioId ?? ''}
+                onChange={handleSelectChange}
+                aria-label="Draft or live trip"
+            >
+                <option value="">Live</option>
+                {scenarios.map((s) => (
+                    <option key={s.id} value={s.id}>
+                        {s.name}
+                    </option>
+                ))}
+            </select>
+            <button
+                type="button"
+                className="btn btn-ghost btn-sm scenario-dropdown-add"
+                onClick={handleCreate}
+                aria-label="New draft"
+                title="New draft"
+            >
+                <Plus size={16} />
+            </button>
+            {showDraftActions && (
+                <div className="scenario-dropdown-menu-wrap" ref={menuRef}>
+                    <button
+                        type="button"
+                        className="btn btn-ghost btn-sm scenario-dropdown-dots"
+                        onClick={handleMenuClick}
+                        aria-label="Draft options"
+                        aria-expanded={menuOpen}
+                    >
+                        <MoreVertical size={16} />
                     </button>
-                    <button type="button" className="scenario-ctx-item scenario-ctx-item--danger" onClick={handleDelete}>
-                        Delete
-                    </button>
+                    {menuOpen && (
+                        <div className="scenario-dropdown-popover">
+                            <button type="button" className="scenario-ctx-item" onClick={handleRename}>
+                                Rename
+                            </button>
+                            <button type="button" className="scenario-ctx-item scenario-ctx-item--danger" onClick={handleDelete}>
+                                Delete
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
     );
 };
 
-export default ScenarioTabBar;
+export default ScenarioSwitcher;

@@ -1,12 +1,17 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { useTrips, useActivities, useNotes, useChatHistory } from '../lib/store';
-import { Send, Bot, User, Loader2, CalendarPlus, StickyNote, Check } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useTrips, useActivities, useNotes, useChatHistory, useTransportRoutes } from '../lib/store';
+import { useTripScenarios } from '../lib/scenarios';
+import ScenarioSwitcher from '../components/ScenarioSwitcher';
+import { Send, Bot, User, Loader2, CalendarPlus, StickyNote, Check, ChevronDown } from 'lucide-react';
 import Markdown from '../components/Markdown';
 import { generateAssistantResponse } from '../lib/ai/actions/assistant';
 
 const Assistant: React.FC = () => {
+    const navigate = useNavigate();
     const { trips } = useTrips();
-    const { activities, addActivity } = useActivities();
+    const { activities } = useActivities();
+    const { getRoutesByTrip } = useTransportRoutes();
     const { addNote } = useNotes();
 
     // Load last selected trip from local storage to match timeline preferences
@@ -30,10 +35,22 @@ const Assistant: React.FC = () => {
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [savedNotes, setSavedNotes] = useState<Record<string, boolean>>({});
-    const [importedPayloads, setImportedPayloads] = useState<Record<string, boolean>>({});
+    const [importedPayloads] = useState<Record<string, boolean>>({});
+    const [importMenuOpenFor, setImportMenuOpenFor] = useState<string | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const selectedTrip = trips.find(t => t.id === selectedTripId);
+    const { activeScenarioId, activeScenario } = useTripScenarios(selectedTripId);
+
+    /** Shown so user knows which trip (and Live vs draft) Import will edit. */
+    const editingContextLabel = useMemo(() => {
+        if (!selectedTrip) return null;
+        if (!activeScenarioId || !activeScenario) return `${selectedTrip.name} (Live)`;
+        return `${selectedTrip.name} → ${activeScenario.name}`;
+    }, [selectedTrip, activeScenarioId, activeScenario]);
+
+    const assistantTripActivities = useMemo(() => selectedTripId ? activities.filter(a => a.tripId === selectedTripId) : [], [selectedTripId, activities]);
+    const assistantTripRoutes = useMemo(() => selectedTripId ? getRoutesByTrip(selectedTripId) : [], [selectedTripId, getRoutesByTrip]);
 
     const tripContext = useMemo(() => {
         if (!selectedTrip) return "No trip selected.";
@@ -79,28 +96,6 @@ ${tripActs || "None planned yet."}`;
             setSavedNotes(prev => ({ ...prev, [msgId]: true }));
         } catch (e) {
             console.error('Failed to save note', e);
-        }
-    };
-
-    const handleImportPayload = async (msgId: string, payloadData: any[]) => {
-        if (!selectedTripId || importedPayloads[msgId]) return;
-        try {
-            for (let i = 0; i < payloadData.length; i++) {
-                const act = payloadData[i];
-                await addActivity({
-                    tripId: selectedTripId,
-                    date: act.date,
-                    title: act.title,
-                    details: act.details || '',
-                    time: act.time || null,
-                    location: act.location || '',
-                    category: act.category || 'other',
-                    order: i * 10
-                } as Omit<import('../lib/types').Activity, 'id' | 'userId' | 'tripMembers'>, selectedTrip?.members || [selectedTrip?.userId].filter(Boolean) as string[]);
-            }
-            setImportedPayloads(prev => ({ ...prev, [msgId]: true }));
-        } catch (e) {
-            console.error('Failed to import activities', e);
         }
     };
 
@@ -168,7 +163,14 @@ ${tripActs || "None planned yet."}`;
     };
 
     return (
-        <div className="page-container flex flex-col h-full overflow-hidden animate-fade-in" style={{ maxHeight: 'calc(100vh - 100px)' }}>
+        <div className="page-container flex flex-col h-full overflow-hidden animate-fade-in assistant-page" style={{ maxHeight: 'calc(100vh - 100px)' }}>
+            <style>{`
+                @media (max-width: 768px) {
+                    .assistant-page .assistant-message-row { max-width: 95% !important; }
+                    .assistant-page .assistant-loading-row { max-width: 95% !important; }
+                    .assistant-page .assistant-form .input-field { min-width: 0; flex: 1 1 100%; }
+                }
+            `}</style>
             <header className="page-header mb-md">
                 <div>
                     <h1>Travel Assistant</h1>
@@ -177,29 +179,39 @@ ${tripActs || "None planned yet."}`;
             </header>
 
             <div className="card p-md mb-md">
-                <select
-                    className="input-field w-full"
-                    value={selectedTripId || ''}
-                    onChange={e => {
-                        const id = e.target.value || null;
-                        setSelectedTripId(id);
-                        if (id) {
-                            try {
-                                const raw = localStorage.getItem('travelplanner_calendar_view') || '{}';
-                                const parsed = JSON.parse(raw);
-                                localStorage.setItem('travelplanner_calendar_view', JSON.stringify({ ...parsed, selectedTripId: id }));
-                            } catch { /* ignore */ }
-                        }
-                    }}
-                >
-                    <option value="">Select a trip for context...</option>
-                    {trips.map(t => (
-                        <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
-                </select>
+                <div className="flex flex-wrap items-center gap-2">
+                    <select
+                        className="input-field"
+                        style={{ flex: '1 1 200px', minWidth: 0, maxWidth: '100%' }}
+                        value={selectedTripId || ''}
+                        onChange={e => {
+                            const id = e.target.value || null;
+                            setSelectedTripId(id);
+                            if (id) {
+                                try {
+                                    const raw = localStorage.getItem('travelplanner_calendar_view') || '{}';
+                                    const parsed = JSON.parse(raw);
+                                    localStorage.setItem('travelplanner_calendar_view', JSON.stringify({ ...parsed, selectedTripId: id }));
+                                } catch { /* ignore */ }
+                            }
+                        }}
+                    >
+                        <option value="">Select a trip for context...</option>
+                        {trips.map(t => (
+                            <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                    </select>
+                    {selectedTrip && (
+                        <ScenarioSwitcher trip={selectedTrip} activities={assistantTripActivities} routes={assistantTripRoutes} />
+                    )}
+                </div>
                 {selectedTripId && (
-                    <div className="mt-2 text-xs opacity-50 flex justify-between">
-                        <span>Active Context Partition: {selectedTripId.slice(0, 8)}...</span>
+                    <div className="mt-2 text-xs flex justify-between items-center flex-wrap gap-1" style={{ color: 'var(--text-secondary)' }}>
+                        {editingContextLabel && (
+                            <span className="font-medium" style={{ color: 'var(--text-color)' }}>
+                                Editing: {editingContextLabel}
+                            </span>
+                        )}
                         <span>{messages.length} messages loaded</span>
                     </div>
                 )}
@@ -232,7 +244,7 @@ ${tripActs || "None planned yet."}`;
 
                         return (
                             <div key={msg.id} className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'} mb-4`}>
-                                <div className={`flex gap-md items-start ${msg.role === 'user' ? 'flex-row-reverse' : ''}`} style={{ maxWidth: '85%' }}>
+                                <div className={`flex gap-md items-start assistant-message-row ${msg.role === 'user' ? 'flex-row-reverse' : ''}`} style={{ maxWidth: '85%' }}>
                                     <div className="flex items-center justify-center shrink-0 rounded-full bg-surface-1"
                                         style={{
                                             width: '36px', height: '36px', border: '1px solid var(--border-color)', color: 'var(--text-secondary)',
@@ -251,27 +263,116 @@ ${tripActs || "None planned yet."}`;
                                         <Markdown>{textContent}</Markdown>
 
                                         {isModel && msg.id !== 'welcome' && (
-                                            <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t" style={{ borderColor: 'var(--border-color)' }}>
+                                            <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t" style={{ borderColor: 'var(--border-color)' }}>
                                                 <button
-                                                    className="btn btn-outline"
-                                                    style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem' }}
+                                                    type="button"
+                                                    className="btn btn-outline shrink-0"
+                                                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
                                                     onClick={() => handleSaveNote(msg.id, textContent)}
                                                     disabled={savedNotes[msg.id]}
                                                 >
                                                     {savedNotes[msg.id] ? <Check size={14} /> : <StickyNote size={14} />}
-                                                    {savedNotes[msg.id] ? 'Saved' : 'Save as Note'}
+                                                    <span>{savedNotes[msg.id] ? 'Saved' : 'Save as Note'}</span>
                                                 </button>
 
-                                                {payloadData && Array.isArray(payloadData) && selectedTripId && (
-                                                    <button
-                                                        className="btn btn-primary"
-                                                        style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem' }}
-                                                        onClick={() => handleImportPayload(msg.id, payloadData)}
-                                                        disabled={importedPayloads[msg.id]}
-                                                    >
-                                                        {importedPayloads[msg.id] ? <Check size={14} /> : <CalendarPlus size={14} />}
-                                                        {importedPayloads[msg.id] ? 'Imported' : 'Import Activities'}
-                                                    </button>
+                                                {payloadData && Array.isArray(payloadData) && (
+                                                    <div className="relative shrink-0">
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-primary"
+                                                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                                                            onClick={() => setImportMenuOpenFor(importMenuOpenFor === msg.id ? null : msg.id)}
+                                                            disabled={importedPayloads[msg.id]}
+                                                        >
+                                                            {importedPayloads[msg.id] ? <Check size={14} /> : <CalendarPlus size={14} />}
+                                                            <span>{importedPayloads[msg.id] ? 'Imported' : 'Import Activities'}</span>
+                                                            {!importedPayloads[msg.id] && <ChevronDown size={14} />}
+                                                        </button>
+                                                        {importMenuOpenFor === msg.id && (
+                                                            <>
+                                                                <div
+                                                                    className="fixed inset-0 z-10"
+                                                                    aria-hidden
+                                                                    onClick={() => setImportMenuOpenFor(null)}
+                                                                />
+                                                                <div
+                                                                    className="absolute left-0 mt-1 z-20 rounded-lg border shadow-lg overflow-hidden flex flex-col"
+                                                                    style={{
+                                                                        borderColor: 'var(--border-color)',
+                                                                        backgroundColor: 'var(--surface-color)',
+                                                                        minWidth: 'clamp(200px, 90vw, 280px)',
+                                                                    }}
+                                                                >
+                                                                    <button
+                                                                        type="button"
+                                                                        className="btn btn-outline rounded-none border-b border-t-0 border-l-0 border-r-0 w-full justify-start text-left"
+                                                                        style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', gap: '0.35rem' }}
+                                                                        onClick={() => {
+                                                                            setImportMenuOpenFor(null);
+                                                                            if (selectedTripId) {
+                                                                                navigate('/import', {
+                                                                                    state: {
+                                                                                        fromAssistant: true,
+                                                                                        payload: payloadData,
+                                                                                        importMode: 'overwrite_trip',
+                                                                                        preselectedTripId: selectedTripId,
+                                                                                        activeScenarioId: activeScenarioId ?? undefined,
+                                                                                        activeScenarioName: activeScenario?.name,
+                                                                                    },
+                                                                                });
+                                                                            }
+                                                                        }}
+                                                                        disabled={!selectedTripId}
+                                                                    >
+                                                                        <CalendarPlus size={14} className="shrink-0" />
+                                                                        <span>Overwrite existing trip</span>
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        className="btn btn-outline rounded-none border-b border-t-0 border-l-0 border-r-0 w-full justify-start text-left"
+                                                                        style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', gap: '0.35rem' }}
+                                                                        onClick={() => {
+                                                                            setImportMenuOpenFor(null);
+                                                                            navigate('/import', {
+                                                                                state: {
+                                                                                    fromAssistant: true,
+                                                                                    payload: payloadData,
+                                                                                    importMode: 'add_to_day',
+                                                                                    preselectedTripId: selectedTripId ?? undefined,
+                                                                                    activeScenarioId: activeScenarioId ?? undefined,
+                                                                                    activeScenarioName: activeScenario?.name,
+                                                                                },
+                                                                            });
+                                                                        }}
+                                                                    >
+                                                                        <CalendarPlus size={14} className="shrink-0" />
+                                                                        <span>Add to existing trip (pick day)</span>
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        className="btn btn-outline rounded-none border-t-0 border-l-0 border-r-0 w-full justify-start text-left"
+                                                                        style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', gap: '0.35rem' }}
+                                                                        onClick={() => {
+                                                                            setImportMenuOpenFor(null);
+                                                                            navigate('/import', {
+                                                                                state: {
+                                                                                    fromAssistant: true,
+                                                                                    payload: payloadData,
+                                                                                    importMode: 'replace_existing_day',
+                                                                                    preselectedTripId: selectedTripId ?? undefined,
+                                                                                    activeScenarioId: activeScenarioId ?? undefined,
+                                                                                    activeScenarioName: activeScenario?.name,
+                                                                                },
+                                                                            });
+                                                                        }}
+                                                                    >
+                                                                        <CalendarPlus size={14} className="shrink-0" />
+                                                                        <span>Replace existing day</span>
+                                                                    </button>
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                    </div>
                                                 )}
                                             </div>
                                         )}
@@ -282,7 +383,7 @@ ${tripActs || "None planned yet."}`;
                     })}
                     {isLoading && (
                         <div className="flex w-full justify-start mb-4">
-                            <div className="flex gap-md items-start" style={{ maxWidth: '85%' }}>
+                            <div className="flex gap-md items-start assistant-loading-row" style={{ maxWidth: '85%' }}>
                                 <div className="flex items-center justify-center shrink-0 rounded-full bg-surface-1" style={{ width: '36px', height: '36px', border: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
                                     <Bot size={20} />
                                 </div>
@@ -295,9 +396,9 @@ ${tripActs || "None planned yet."}`;
                     <div ref={messagesEndRef} />
                 </div>
 
-                <form className="flex gap-md p-md bg-surface-1 border-t" style={{ borderBottomLeftRadius: 'var(--radius-lg)', borderBottomRightRadius: 'var(--radius-lg)' }} onSubmit={handleSubmit}>
+                <form className="assistant-form flex gap-md p-md bg-surface-1 border-t" style={{ borderBottomLeftRadius: 'var(--radius-lg)', borderBottomRightRadius: 'var(--radius-lg)' }} onSubmit={handleSubmit}>
                     <textarea
-                        className="input-field flex-1 mb-0"
+                        className="input-field flex-1 mb-0 min-w-0"
                         placeholder="Ask about your itinerary..."
                         value={input}
                         onChange={(e) => {

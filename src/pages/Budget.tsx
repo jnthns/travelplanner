@@ -551,6 +551,9 @@ const Budget: React.FC = () => {
                     <option value="">Select a trip...</option>
                     {trips.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
+                {selectedTrip && (
+                    <ScenarioSwitcher trip={selectedTrip} activities={effectiveActivities} routes={effectiveRoutes} />
+                )}
                 {uniqueLocations.length > 0 && selectedTrip && (
                     <select className="input-field" style={{ maxWidth: '200px' }} value={locationFilter} onChange={e => setLocationFilter(e.target.value)}>
                         <option value="">All locations</option>
@@ -883,9 +886,6 @@ const Budget: React.FC = () => {
                 </>
             )}
 
-            {selectedTrip && (
-                <ScenarioSwitcher trip={selectedTrip} activities={effectiveActivities} routes={effectiveRoutes} />
-            )}
         </div>
     );
 };

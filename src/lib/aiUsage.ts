@@ -11,6 +11,13 @@ export interface AiUsageSnapshot {
 
 const STORAGE_KEY = 'travelplanner_ai_usage_v1';
 const PST_OFFSET_MS = 8 * 60 * 60 * 1000;
+
+/** Gemini API daily rate limits (requests per day, PST rollover). Used for header display. */
+export const GEMINI_RATE_LIMITS = {
+  free: 250,
+  tier1: 1500,
+  tier2: 4000,
+} as const;
 const RESET_CHECK_INTERVAL_MS = 60 * 1000;
 
 const listeners = new Set<() => void>();

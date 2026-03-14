@@ -147,7 +147,13 @@ export function useActivities() {
     const addActivity = useCallback(async (activity: Omit<Activity, 'id' | 'userId' | 'tripMembers'>, tripMembers: string[]) => {
         if (!user) throw new Error('Not authenticated');
         const finalMembers = Array.from(new Set([...tripMembers, user.uid])).filter(Boolean);
-        const docRef = await addDoc(collection(db, 'activities'), stripUndefined({ ...activity, userId: user.uid, tripMembers: finalMembers }));
+        const doc = stripUndefined({ ...activity, userId: user.uid, tripMembers: finalMembers });
+        if (import.meta.env.DEV) {
+            if (!doc.tripId || !doc.date) {
+                console.warn('[activities] addActivity missing tripId or date', { tripId: doc.tripId, date: doc.date });
+            }
+        }
+        const docRef = await addDoc(collection(db, 'activities'), doc);
         return { ...activity, id: docRef.id, userId: user.uid, tripMembers: finalMembers } as Activity;
     }, [user]);
 

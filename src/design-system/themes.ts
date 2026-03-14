@@ -138,8 +138,8 @@ const midnight: ThemePreset = {
     accentHover: '#0ea5e9',
     errorColor: '#fb7185',
     errorBg: '#3f0520',
-    borderColor: '#2e2654',
-    borderLight: '#1c1836',
+    borderColor: '#3d3666',
+    borderLight: '#2e2654',
     glassBg: 'rgba(22, 19, 42, 0.8)',
     glassBorder: 'rgba(99, 102, 241, 0.2)',
     shadowSm: '0 1px 3px rgb(0 0 0 / 0.4)',
@@ -174,8 +174,8 @@ const neon: ThemePreset = {
     accentHover: '#ccbb00',
     errorColor: '#ff4444',
     errorBg: '#330000',
-    borderColor: '#2a2a2a',
-    borderLight: '#1a1a1a',
+    borderColor: '#333333',
+    borderLight: '#262626',
     glassBg: 'rgba(20, 20, 20, 0.85)',
     glassBorder: 'rgba(0, 255, 135, 0.15)',
     shadowSm: '0 1px 3px rgb(0 0 0 / 0.5)',
@@ -335,39 +335,38 @@ const aurora: ThemePreset = {
   },
 };
 
-const sakura: ThemePreset = {
-  id: 'sakura',
-  name: 'Sakura',
-  description: 'Soft cherry-blossom pinks and greens',
-  preview: { primary: '#db2777', secondary: '#059669', accent: '#d946ef', bg: '#fdf2f8' },
+const discord: ThemePreset = {
+  id: 'discord',
+  name: 'Discord',
+  description: 'Discord-style dark — not too dark, blurple accents',
+  preview: { primary: '#5865F2', secondary: '#57F287', accent: '#faa61a', bg: '#36393f' },
   tokens: {
-    bgColor: '#fdf2f8',
-    surfaceColor: '#ffffff',
-    textPrimary: '#500724',
-    textSecondary: '#9d174d',
-    textTertiary: '#c084ad',
-    primaryColor: '#db2777',
-    primaryHover: '#be185d',
-    secondaryColor: '#059669',
-    secondaryHover: '#047857',
-    accentColor: '#d946ef',
-    accentHover: '#c026d3',
-    errorColor: '#e11d48',
-    errorBg: '#ffe4e6',
-    borderColor: '#fce7f3',
-    borderLight: '#fdf2f8',
-    glassBg: 'rgba(253, 242, 248, 0.75)',
-    glassBorder: 'rgba(252, 231, 243, 0.4)',
-    shadowSm: '0 1px 3px rgb(219 39 119 / 0.06)',
-    shadowMd: '0 4px 8px rgb(219 39 119 / 0.08), 0 2px 4px rgb(5 150 105 / 0.04)',
-    shadowLg: '0 10px 20px rgb(219 39 119 / 0.1), 0 4px 8px rgb(5 150 105 / 0.06)',
-    radiusSm: '0.5rem',
-    radiusMd: '0.75rem',
-    radiusLg: '1.25rem',
-    radiusXl: '2rem',
+    bgColor: '#36393f',
+    surfaceColor: '#2f3136',
+    textPrimary: '#ffffff',
+    textSecondary: '#b9bbbe',
+    textTertiary: '#72767d',
+    primaryColor: '#5865F2',
+    primaryHover: '#4752C4',
+    secondaryColor: '#57F287',
+    secondaryHover: '#3ba55d',
+    accentColor: '#faa61a',
+    accentHover: '#e89120',
+    errorColor: '#ed4245',
+    errorBg: 'rgba(237, 66, 69, 0.15)',
+    borderColor: '#40444b',
+    borderLight: '#4f545c',
+    glassBg: 'rgba(47, 49, 54, 0.85)',
+    glassBorder: 'rgba(114, 118, 125, 0.2)',
+    shadowSm: '0 1px 2px rgb(0 0 0 / 0.2)',
+    shadowMd: '0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.2)',
+    shadowLg: '0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.3)',
+    radiusSm: '0.375rem',
+    radiusMd: '0.5rem',
+    radiusLg: '0.75rem',
+    radiusXl: '1rem',
     radiusFull: '9999px',
-    fontFamily: "'Varela Round', 'Quicksand', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-    fontUrl: 'https://fonts.googleapis.com/css2?family=Varela+Round&display=swap',
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
   },
 };
 
@@ -443,11 +442,18 @@ const tropics: ThemePreset = {
   },
 };
 
+/** Presets that are dark by default; dark mode toggle is hidden and these are shown in a separate "Dark themes" section. */
+export const DARK_PRESET_IDS = ['discord', 'neon', 'midnight'] as const;
+
+export function isDarkPreset(presetId: string): boolean {
+  return (DARK_PRESET_IDS as readonly string[]).includes(presetId);
+}
+
 export const THEME_PRESETS: ThemePreset[] = [
   modern, sunset, ocean,
-  aurora, sakura, tropics,
-  midnight, neon,
+  aurora, tropics,
   terracotta, slate,
+  discord, midnight, neon,
 ];
 
 const THEME_CONFIG_KEY = 'travelplanner_theme_config';
@@ -456,7 +462,11 @@ const LEGACY_THEME_KEY = 'travelplanner_theme';
 export function loadThemeConfig(): ThemeConfig {
   try {
     const raw = localStorage.getItem(THEME_CONFIG_KEY);
-    if (raw) return JSON.parse(raw) as ThemeConfig;
+    if (raw) {
+      const config = JSON.parse(raw) as ThemeConfig;
+      if (config.presetId === 'sakura') config.presetId = 'discord';
+      return config;
+    }
 
     const legacy = localStorage.getItem(LEGACY_THEME_KEY);
     if (legacy) {
@@ -471,7 +481,7 @@ export function loadThemeConfig(): ThemeConfig {
       };
     }
   } catch { /* ignore corrupt storage */ }
-  return { presetId: 'modern', colorOverrides: {} };
+  return { presetId: 'discord', colorOverrides: {} };
 }
 
 export function saveThemeConfig(config: ThemeConfig): void {

@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
 import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
-import { useTrips, useTransportRoutes } from '../lib/store';
+import { useTrips, useTransportRoutes, useActivities } from '../lib/store';
 import type { TransportRoute } from '../lib/types';
+import ScenarioSwitcher from '../components/ScenarioSwitcher';
 import { TRANSPORT_EMOJIS } from '../lib/types';
 import { useLocalStorageState } from '../lib/persist';
 import Markdown from '../components/Markdown';
@@ -16,6 +17,7 @@ const transportTypes = ['flight', 'train', 'bus', 'car', 'ferry', 'taxi', 'walk'
 
 const Transportation: React.FC = () => {
     const { trips } = useTrips();
+    const { activities } = useActivities();
     const { routes, addRoute, updateRoute, deleteRoute, restoreRoute, getRoutesByTrip } = useTransportRoutes();
     const { showToast } = useToast();
 
@@ -60,6 +62,7 @@ const Transportation: React.FC = () => {
     }, [tripRoutes]);
 
     const selectedTrip = trips.find((t) => t.id === selectedTripId);
+    const transportTripActivities = useMemo(() => selectedTripId ? activities.filter(a => a.tripId === selectedTripId) : [], [selectedTripId, activities]);
 
     const planningConflicts = useMemo(() => {
         if (!selectedTrip) return [];
@@ -205,6 +208,9 @@ const Transportation: React.FC = () => {
                         <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
                 </select>
+                {selectedTrip && (
+                    <ScenarioSwitcher trip={selectedTrip} activities={transportTripActivities} routes={tripRoutes} />
+                )}
                 <button className="btn btn-primary" onClick={openAddForm}>
                     <Plus size={18} /> Add Route
                 </button>

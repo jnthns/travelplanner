@@ -388,9 +388,9 @@
     gap: 0.4rem;
     padding: 0.35rem 0.5rem;
     font-size: 0.8rem;
-    background-color: var(--border-light);
     border-radius: var(--radius-sm);
-    border-left: 3px solid;
+    border: 2px solid var(--activity-color, var(--primary-color));
+    background: color-mix(in srgb, var(--activity-color, var(--primary-color)) 14%, var(--surface-color));
     overflow: hidden;
 }
 
@@ -419,9 +419,17 @@
 .planning-action-row {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 0.5rem;
     flex-wrap: wrap;
     padding-bottom: 0.25rem;
+}
+
+.planning-action-row__left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
 }
 
 .planner-action-btn {
@@ -489,6 +497,20 @@
     border-color: color-mix(in srgb, #34d399 35%, var(--border-light));
 }
 
+/* Discord / Neon / Midnight: white text on tinted action buttons */
+.theme-dark-preset .action-btn-sky,
+.theme-dark-preset .action-btn-violet,
+.theme-dark-preset .action-btn-amber,
+.theme-dark-preset .action-btn-mint {
+    color: #fff;
+}
+.theme-dark-preset .action-btn-sky .action-btn-icon,
+.theme-dark-preset .action-btn-violet .action-btn-icon,
+.theme-dark-preset .action-btn-amber .action-btn-icon,
+.theme-dark-preset .action-btn-mint .action-btn-icon {
+    color: inherit;
+}
+
 .planner-toggle-inactive {
     opacity: 0.7;
 }
@@ -499,9 +521,9 @@
 
 .day-accommodation-card {
     padding: 1.25rem;
-    border-left: 4px solid var(--primary-color);
+    border: 2px solid var(--primary-color);
     border-radius: var(--radius-xl);
-    background: linear-gradient(to right, color-mix(in srgb, var(--primary-color) 5%, var(--surface-color)), var(--surface-color));
+    background: color-mix(in srgb, var(--primary-color) 10%, var(--surface-color));
 }
 
 .acc-card-header {
@@ -597,20 +619,10 @@
 
 .day-detail-activity {
     padding: 1.5rem;
-    border-left: 4px solid;
+    border: 2px solid var(--activity-color, var(--primary-color));
     border-radius: var(--radius-lg);
-    background: var(--surface-color);
+    background: color-mix(in srgb, var(--activity-color, var(--primary-color)) 12%, var(--surface-color));
     box-shadow: var(--shadow-sm);
-}
-
-.day-detail-view .add-activity-btn {
-    width: 100%;
-    margin-bottom: 0.5rem;
-}
-
-.add-activity-top {
-    width: 100%;
-    margin-bottom: 0.75rem;
 }
 
 .floating-add-btn {
@@ -686,10 +698,10 @@
     align-items: flex-start;
     gap: 0.5rem;
     padding: 0.5rem;
-    border-left: 3px solid;
+    border: 2px solid var(--activity-color, var(--primary-color));
     margin-bottom: 0.5rem;
-    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-    background-color: var(--border-light);
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--activity-color, var(--primary-color)) 12%, var(--surface-color));
 }
 
 .panel-time {
@@ -825,7 +837,9 @@
 .description-suggestion-card {
     padding: 1rem;
     margin-top: 0.75rem;
-    border-left: 3px solid #8b5cf6;
+    border: 2px solid #8b5cf6;
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, #8b5cf6 12%, var(--surface-color));
 }
 
 .description-suggestion-header {
@@ -930,8 +944,8 @@
     font-size: 0.82rem;
     color: var(--text-primary);
     padding: 0.4rem 0.6rem;
-    background: var(--bg-highlight, color-mix(in srgb, var(--primary-color) 8%, transparent));
+    background: color-mix(in srgb, var(--primary-color) 12%, var(--surface-color));
     border-radius: var(--radius-sm);
-    border-left: 3px solid var(--primary-color);
+    border: 2px solid var(--primary-color);
     line-height: 1.4;
 }
