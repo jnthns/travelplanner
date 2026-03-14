@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Plus, MoreVertical } from 'lucide-react';
 import type { Activity, TransportRoute, Trip } from '../lib/types';
 import {
