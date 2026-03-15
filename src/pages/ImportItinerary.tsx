@@ -9,6 +9,7 @@ import { useToast } from '../components/Toast';
 import { logEvent } from '../lib/amplitude';
 import { selectTripScenario, replaceScenarioDay, overwriteScenarioActivities } from '../lib/scenarios';
 import { buildTripExportPayload, downloadTextFile, slugifyFilename, toTripCsv } from '../lib/exportTrip';
+import { compareActivitiesByTimeThenOrder } from '../lib/itinerary';
 import { parseItineraryChunk, type ParseItineraryOptions, type ParsedActivity, type ParsedItinerary } from '../lib/ai/actions/importItinerary';
 
 type Stage = 'input' | 'preview' | 'saving' | 'done';
@@ -637,7 +638,7 @@ const ImportItinerary: React.FC = () => {
         isSingleDayMode && selectedTripIdForDay && selectedDateForDay
             ? getActivitiesByTrip(selectedTripIdForDay)
                   .filter((a) => a.date === selectedDateForDay)
-                  .sort((a, b) => a.order - b.order)
+                  .sort(compareActivitiesByTimeThenOrder)
             : [];
 
     const selectedExportTrip = trips.find(t => t.id === exportTripId) || null;

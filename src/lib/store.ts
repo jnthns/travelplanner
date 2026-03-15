@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { useAuth } from './AuthContext';
+import { compareActivitiesByTimeThenOrder } from './itinerary';
 import type { Trip, Activity, TransportRoute, Note, ChatMessage } from './types';
 
 function stripUndefined<T extends Record<string, any>>(obj: T): T {
@@ -180,7 +181,7 @@ export function useActivities() {
     }, []);
 
     const getActivitiesByDate = useCallback(
-        (date: string) => activities.filter((a) => a.date === date).sort((a, b) => a.order - b.order),
+        (date: string) => activities.filter((a) => a.date === date).sort(compareActivitiesByTimeThenOrder),
         [activities]
     );
 
@@ -190,7 +191,7 @@ export function useActivities() {
                 .filter((a) => a.tripId === tripId)
                 .sort((a, b) => {
                     if (a.date !== b.date) return a.date.localeCompare(b.date);
-                    return a.order - b.order;
+                    return compareActivitiesByTimeThenOrder(a, b);
                 }),
         [activities]
     );

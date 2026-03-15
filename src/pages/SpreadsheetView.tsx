@@ -19,7 +19,7 @@ import NearbyRestaurants from '../components/NearbyRestaurants';
 import ActivityReviews from '../components/ActivityReviews';
 import { useToast } from '../components/Toast';
 import { useWeatherForTrip } from '../lib/weather';
-import { getEffectiveDayLocations } from '../lib/itinerary';
+import { compareActivitiesByTimeThenOrder, getEffectiveDayLocations } from '../lib/itinerary';
 import { logEvent } from '../lib/amplitude';
 import { getTripEmoji } from '../lib/tripEmoji';
 import { getTripPlanningConflicts } from '../lib/planning/conflicts';
@@ -101,7 +101,7 @@ const SpreadsheetView: React.FC = () => {
     const [quickNoteContent, setQuickNoteContent] = useState('');
     const [editingNote, setEditingNote] = useState<Note | null>(null);
     const [conflictsExpandedDate, setConflictsExpandedDate] = useState<string | null>(null);
-    const [showNearbyRestaurantsForDate, setShowNearbyRestaurantsForDate] = useState<string | null>(null);
+    const [showNearbyRestaurantsInModal, setShowNearbyRestaurantsInModal] = useState(false);
     const [showReviewsInModal, setShowReviewsInModal] = useState(false);
 
     const clampZoom = useCallback((value: number) => Math.min(140, Math.max(70, Math.round(value))), []);
@@ -168,7 +168,7 @@ const SpreadsheetView: React.FC = () => {
     const getCell = useCallback((dateStr: string, slot: Exclude<ActivitySlot, 'unscheduled'>): Activity[] => {
         return effectiveActivities
             .filter(a => a.date === dateStr && getTimeSlot(a.time) === slot)
-            .sort((a, b) => a.order - b.order);
+            .sort(compareActivitiesByTimeThenOrder);
     }, [effectiveActivities]);
 
     const tripNotes = useMemo(() => {
@@ -187,7 +187,7 @@ const SpreadsheetView: React.FC = () => {
         const dateStr = format(focusedDate, 'yyyy-MM-dd');
         return effectiveActivities
             .filter(a => a.date === dateStr && getTimeSlot(a.time) === 'unscheduled')
-            .sort((a, b) => a.order - b.order);
+            .sort(compareActivitiesByTimeThenOrder);
     }, [effectiveActivities, focusedDate]);
 
     const planningConflicts = useMemo(() => {
@@ -606,24 +606,6 @@ const SpreadsheetView: React.FC = () => {
                                                 compact={true}
                                             />
                                         </div>
-                                        {dayLocationDisplay && (
-                                            <button
-                                                type="button"
-                                                className="btn btn-ghost btn-sm"
-                                                style={{ fontSize: '0.7rem', marginTop: '2px' }}
-                                                onClick={() => setShowNearbyRestaurantsForDate(dateStr)}
-                                            >
-                                                🍽 Find restaurants
-                                            </button>
-                                        )}
-                                        {showNearbyRestaurantsForDate === dateStr && (
-                                            <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 10, marginTop: '4px' }}>
-                                                <NearbyRestaurants
-                                                    location={dayLocations[0] ?? ''}
-                                                    onClose={() => setShowNearbyRestaurantsForDate(null)}
-                                                />
-                                            </div>
-                                        )}
                                         <div className={styles['sheet-header-inputs']}>
                                             <div className={styles['sheet-day-location']}>
                                                 <MapPin size={10} />
@@ -838,10 +820,10 @@ const SpreadsheetView: React.FC = () => {
 
             {/* Modal for editing an existing activity */}
             {editingActivity && selectedTripId && createPortal(
-                <div className={styles['sheet-modal-overlay']} onClick={() => { setEditingActivity(null); setShowReviewsInModal(false); }}>
+                <div className={styles['sheet-modal-overlay']} onClick={() => { setEditingActivity(null); setShowReviewsInModal(false); setShowNearbyRestaurantsInModal(false); }}>
                     <div className={styles['sheet-modal']} onClick={e => e.stopPropagation()}>
-                        {editingActivity.location && (
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.35rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+                            {editingActivity.location && (
                                 <button
                                     type="button"
                                     className="btn btn-ghost btn-sm"
@@ -849,13 +831,27 @@ const SpreadsheetView: React.FC = () => {
                                 >
                                     📋 Reviews
                                 </button>
-                            </div>
-                        )}
+                            )}
+                            {editingActivity.category === 'food' && (editingActivity.location || (getEffectiveDayLocations(effectiveTrip?.itinerary?.[editingActivity.date], effectiveTrip?.dayLocations?.[editingActivity.date])[0])) && (
+                                <button
+                                    type="button"
+                                    className="btn btn-ghost btn-sm"
+                                    onClick={() => setShowNearbyRestaurantsInModal(true)}
+                                >
+                                    🍽 Find restaurants
+                                </button>
+                            )}
+                        </div>
                         {showReviewsInModal && editingActivity.location ? (
                             <ActivityReviews
                                 activityTitle={editingActivity.title}
                                 activityLocation={editingActivity.location}
                                 onClose={() => setShowReviewsInModal(false)}
+                            />
+                        ) : showNearbyRestaurantsInModal ? (
+                            <NearbyRestaurants
+                                location={editingActivity.location || getEffectiveDayLocations(effectiveTrip?.itinerary?.[editingActivity.date], effectiveTrip?.dayLocations?.[editingActivity.date])[0] ?? ''}
+                                onClose={() => setShowNearbyRestaurantsInModal(false)}
                             />
                         ) : (
                             <ActivityForm

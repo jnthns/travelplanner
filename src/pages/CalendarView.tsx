@@ -21,7 +21,7 @@ import ActivityReviews from '../components/ActivityReviews';
 import { getTripPlanningConflicts } from '../lib/planning/conflicts';
 import { useSettings } from '../lib/settings';
 import { useWeatherForTrip } from '../lib/weather';
-import { getEffectiveDayLocations } from '../lib/itinerary';
+import { compareActivitiesByTimeThenOrder, getEffectiveDayLocations } from '../lib/itinerary';
 import {
     createScenarioActivity,
     removeScenarioActivity,
@@ -95,7 +95,7 @@ const CalendarView: React.FC = () => {
     const [descriptionError, setDescriptionError] = useState<string | null>(null);
     const [pendingDescriptions, setPendingDescriptions] = useState<PendingActivityDescription[] | null>(null);
     const [showAccommodationPanel, setShowAccommodationPanel] = useState(false);
-    const [showNearbyRestaurants, setShowNearbyRestaurants] = useState(false);
+    const [showNearbyRestaurantsForActivityId, setShowNearbyRestaurantsForActivityId] = useState<string | null>(null);
     const [reviewsActivityId, setReviewsActivityId] = useState<string | null>(null);
     const [conflictsExpandedDate, setConflictsExpandedDate] = useState<string | null>(null);
     const latestDescriptionContextRef = useRef({
@@ -225,7 +225,7 @@ const CalendarView: React.FC = () => {
 
     const dayViewActivities = effectiveActivities
         .filter(a => a.date === currentDateStr)
-        .sort((a, b) => a.order - b.order);
+        .sort(compareActivitiesByTimeThenOrder);
 
     const planningConflicts = useMemo(() => {
         if (!effectiveTrip) return [];
@@ -624,15 +624,6 @@ const CalendarView: React.FC = () => {
                                 tempUnit={appSettings.temperatureUnit}
                                 compact={false}
                             />
-                            {currentDayLocations.length >= 1 && (
-                                <button
-                                    type="button"
-                                    className="btn btn-ghost btn-sm"
-                                    onClick={() => setShowNearbyRestaurants(true)}
-                                >
-                                    🍽 Find restaurants
-                                </button>
-                            )}
                         </div>
                     </div>
                     <div style={{ marginBottom: '0.75rem' }}>
@@ -671,14 +662,6 @@ const CalendarView: React.FC = () => {
                             style={{ width: '100%', maxWidth: '320px' }}
                         />
                     </div>
-                    {showNearbyRestaurants && currentDayLocations.length >= 1 && (
-                        <div style={{ marginBottom: '0.75rem' }}>
-                            <NearbyRestaurants
-                                location={currentDayLocations[0]}
-                                onClose={() => setShowNearbyRestaurants(false)}
-                            />
-                        </div>
-                    )}
                     <div className={styles['planning-action-row']}>
                         <div className={styles['planning-action-row__left']}>
                             <button
@@ -1007,6 +990,9 @@ const CalendarView: React.FC = () => {
                                             {act.location && (
                                                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => setReviewsActivityId(act.id)} aria-label="Reviews">📋 Reviews</button>
                                             )}
+                                            {act.category === 'food' && (act.location || currentDayLocations.length >= 1) && (
+                                                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowNearbyRestaurantsForActivityId(act.id)} aria-label="Find restaurants">🍽 Find restaurants</button>
+                                            )}
                                             <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingActivityId(act.id)} aria-label="Edit"><Pencil size={16} /></button>
                                             <button
                                                 type="button"
@@ -1041,6 +1027,14 @@ const CalendarView: React.FC = () => {
                                                 activityTitle={act.title}
                                                 activityLocation={act.location}
                                                 onClose={() => setReviewsActivityId(null)}
+                                            />
+                                        </div>
+                                    )}
+                                    {showNearbyRestaurantsForActivityId === act.id && (
+                                        <div style={{ marginTop: '0.75rem' }}>
+                                            <NearbyRestaurants
+                                                location={act.location || currentDayLocations[0] ?? ''}
+                                                onClose={() => setShowNearbyRestaurantsForActivityId(null)}
                                             />
                                         </div>
                                     )}

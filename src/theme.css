@@ -32,10 +32,11 @@
   --radius-full: 9999px;
 
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-size-base: 12px;
 }
 
 html {
-  font-size: var(--text-size, 80%);
+  font-size: var(--text-size, var(--font-size-base));
 }
 
 * {

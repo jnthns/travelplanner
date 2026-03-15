@@ -4,7 +4,22 @@
  * are handled in one place.
  */
 
-import type { ItineraryDay, Trip } from './types';
+import type { Activity, ItineraryDay, Trip } from './types';
+
+/** Parse HH:mm or H:mm to minutes since midnight. No time = end of day (24*60) so unscheduled sort last. */
+export function timeToMinutes(time?: string): number {
+  if (!time?.trim()) return 24 * 60;
+  const [h, m] = time.trim().split(':').map(Number);
+  return ((h ?? 0) * 60 + (m ?? 0)) % (24 * 60);
+}
+
+/** Compare activities by time then order. Use for any list that should show activities in chronological order. */
+export function compareActivitiesByTimeThenOrder(a: Pick<Activity, 'time' | 'order'>, b: Pick<Activity, 'time' | 'order'>): number {
+  const ta = timeToMinutes(a.time);
+  const tb = timeToMinutes(b.time);
+  if (ta !== tb) return ta - tb;
+  return (a.order ?? 0) - (b.order ?? 0);
+}
 
 /**
  * Returns the list of location strings for a day (cities). Prefers itinerary.locations,

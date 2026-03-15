@@ -1,7 +1,7 @@
 import { eachDayOfInterval, format, parseISO } from 'date-fns';
 import type { Activity, TransportRoute, Trip } from '../types';
 import type { PlanningConflict } from './conflictTypes';
-import { getEffectiveDayLocations } from '../itinerary';
+import { compareActivitiesByTimeThenOrder, getEffectiveDayLocations } from '../itinerary';
 
 function parseTimeToMinutes(time?: string): number | null {
   if (!time || !/^\d{2}:\d{2}$/.test(time)) return null;
@@ -55,7 +55,7 @@ export function getTripPlanningConflicts(args: {
   }
 
   for (const date of tripDates) {
-    const dayActivities = (activitiesByDate.get(date) ?? []).slice().sort((a, b) => a.order - b.order);
+    const dayActivities = (activitiesByDate.get(date) ?? []).slice().sort(compareActivitiesByTimeThenOrder);
     const dayRoutes = routesByDate.get(date) ?? [];
 
     const unscheduledCount = dayActivities.filter((activity) => !activity.time).length;

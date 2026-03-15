@@ -6,7 +6,7 @@ import ScenarioSwitcher from '../components/ScenarioSwitcher';
 import { Send, Bot, User, Loader2, CalendarPlus, StickyNote, Check, ChevronDown } from 'lucide-react';
 import Markdown from '../components/Markdown';
 import { generateAssistantResponse } from '../lib/ai/actions/assistant';
-import { getEffectiveDayLocations } from '../lib/itinerary';
+import { compareActivitiesByTimeThenOrder, getEffectiveDayLocations } from '../lib/itinerary';
 
 const Assistant: React.FC = () => {
     const navigate = useNavigate();
@@ -57,7 +57,7 @@ const Assistant: React.FC = () => {
         if (!selectedTrip) return "No trip selected.";
         const tripActs = activities
             .filter(a => a.tripId === selectedTripId)
-            .sort((a, b) => a.date.localeCompare(b.date) || a.order - b.order)
+            .sort((a, b) => a.date.localeCompare(b.date) || compareActivitiesByTimeThenOrder(a, b))
             .map(a => `Date: ${a.date} | Time: ${a.time || 'TBD'} | Activity: ${a.title} | Location: ${a.location || 'none'} | Cost: ${a.cost || 'none'}`)
             .join('\n');
 
