@@ -14,7 +14,12 @@ import Markdown from '../components/Markdown';
 import NoteCard from '../components/NoteCard';
 import NoteEditor from '../components/NoteEditor';
 import ScenarioSwitcher from '../components/ScenarioSwitcher';
+import WeatherBadge from '../components/WeatherBadge';
+import NearbyRestaurants from '../components/NearbyRestaurants';
+import ActivityReviews from '../components/ActivityReviews';
 import { useToast } from '../components/Toast';
+import { useWeatherForTrip } from '../lib/weather';
+import { getEffectiveDayLocations } from '../lib/itinerary';
 import { logEvent } from '../lib/amplitude';
 import { getTripEmoji } from '../lib/tripEmoji';
 import { getTripPlanningConflicts } from '../lib/planning/conflicts';
@@ -96,13 +101,22 @@ const SpreadsheetView: React.FC = () => {
     const [quickNoteContent, setQuickNoteContent] = useState('');
     const [editingNote, setEditingNote] = useState<Note | null>(null);
     const [conflictsExpandedDate, setConflictsExpandedDate] = useState<string | null>(null);
+    const [showNearbyRestaurantsForDate, setShowNearbyRestaurantsForDate] = useState<string | null>(null);
+    const [showReviewsInModal, setShowReviewsInModal] = useState(false);
 
     const clampZoom = useCallback((value: number) => Math.min(140, Math.max(70, Math.round(value))), []);
     const zoomScale = clampZoom(sheetZoom) / 100;
 
     const selectedTrip = trips.find(t => t.id === selectedTripId);
+    const { weatherByDate, loading: weatherLoading } = useWeatherForTrip(selectedTrip ?? undefined);
     const { activeScenario } = useTripScenarios(selectedTripId);
     const effectiveTrip = activeScenario?.tripSnapshot ?? selectedTrip;
+    const hasLocationForDate = useCallback((dateStr: string) =>
+        getEffectiveDayLocations(
+            effectiveTrip?.itinerary?.[dateStr],
+            effectiveTrip?.dayLocations?.[dateStr]
+        ).length >= 1,
+    [effectiveTrip]);
 
     const tripStartDate = effectiveTrip?.startDate;
     const tripEndDate = effectiveTrip?.endDate;
@@ -575,27 +589,64 @@ const SpreadsheetView: React.FC = () => {
                                 const isFocused = isSameDay(day, focusedDate);
                                 const dateStr = format(day, 'yyyy-MM-dd');
                                 const dayData = effectiveTrip?.itinerary?.[dateStr];
-                                const dayLocation = dayData?.location ?? effectiveTrip?.dayLocations?.[dateStr] ?? '';
+                                const dayLocations = getEffectiveDayLocations(dayData, effectiveTrip?.dayLocations?.[dateStr]);
+                                const dayLocationDisplay = dayLocations.join(', ');
                                 const dayAccommodation = dayData?.accommodation;
 
                                 return (
-                                    <div key={idx} className={`${styles['sheet-header-cell']} ${isFocused ? styles['focused'] : ''}`}>
+                                    <div key={idx} className={`${styles['sheet-header-cell']} ${isFocused ? styles['focused'] : ''}`} style={{ position: 'relative' }}>
                                         <span className={styles['sheet-day-label']}>Day {idx + 1}</span>
                                         <span className={styles['sheet-day-date']}>{format(day, 'EEE, MMM d')}</span>
-
+                                        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '2px' }}>
+                                            <WeatherBadge
+                                                day={weatherByDate.get(dateStr)?.[0]}
+                                                hasLocation={hasLocationForDate(dateStr)}
+                                                loading={weatherLoading}
+                                                tempUnit={appSettings.temperatureUnit}
+                                                compact={true}
+                                            />
+                                        </div>
+                                        {dayLocationDisplay && (
+                                            <button
+                                                type="button"
+                                                className="btn btn-ghost btn-sm"
+                                                style={{ fontSize: '0.7rem', marginTop: '2px' }}
+                                                onClick={() => setShowNearbyRestaurantsForDate(dateStr)}
+                                            >
+                                                🍽 Find restaurants
+                                            </button>
+                                        )}
+                                        {showNearbyRestaurantsForDate === dateStr && (
+                                            <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 10, marginTop: '4px' }}>
+                                                <NearbyRestaurants
+                                                    location={dayLocations[0] ?? ''}
+                                                    onClose={() => setShowNearbyRestaurantsForDate(null)}
+                                                />
+                                            </div>
+                                        )}
                                         <div className={styles['sheet-header-inputs']}>
                                             <div className={styles['sheet-day-location']}>
                                                 <MapPin size={10} />
                                                 <input
                                                     type="text"
                                                     className={styles['day-location-input']}
-                                                    placeholder="Accommodation"
-                                                    defaultValue={dayAccommodation?.name ?? ''}
-                                                    key={`acc-name-${selectedTripId}-${activeScenario?.id ?? 'live'}-${dateStr}`}
+                                                    placeholder="City (e.g. Tokyo or Tokyo, Kyoto)"
+                                                    defaultValue={dayLocationDisplay}
+                                                    key={`loc-${selectedTripId}-${activeScenario?.id ?? 'live'}-${dateStr}`}
                                                     onBlur={e => {
-                                                        const val = e.target.value.trim();
-                                                        if (val !== (dayAccommodation?.name ?? '')) {
-                                                            handleUpdateItineraryDay(dateStr, { accommodation: { ...dayAccommodation, name: val } });
+                                                        const raw = e.target.value;
+                                                        const parsed = raw.split(',').map(s => s.trim()).filter(Boolean);
+                                                        const prev = getEffectiveDayLocations(dayData, effectiveTrip?.dayLocations?.[dateStr]);
+                                                        const prevStr = prev.join(', ');
+                                                        if (parsed.length === 0) {
+                                                            if (prev.length > 0) handleUpdateItineraryDay(dateStr, { location: '', locations: [] });
+                                                            return;
+                                                        }
+                                                        if (parsed.join(', ') === prevStr) return;
+                                                        if (parsed.length === 1) {
+                                                            handleUpdateItineraryDay(dateStr, { location: parsed[0], locations: [parsed[0]] });
+                                                        } else {
+                                                            handleUpdateItineraryDay(dateStr, { location: parsed[0], locations: parsed });
                                                         }
                                                     }}
                                                     onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
@@ -606,12 +657,14 @@ const SpreadsheetView: React.FC = () => {
                                                 <input
                                                     type="text"
                                                     className={styles['day-accommodation-input']}
-                                                    placeholder="City"
-                                                    defaultValue={dayLocation}
-                                                    key={`loc-${selectedTripId}-${activeScenario?.id ?? 'live'}-${dateStr}`}
+                                                    placeholder="Accommodation"
+                                                    defaultValue={dayAccommodation?.name ?? ''}
+                                                    key={`acc-name-${selectedTripId}-${activeScenario?.id ?? 'live'}-${dateStr}`}
                                                     onBlur={e => {
                                                         const val = e.target.value.trim();
-                                                        if (val !== dayLocation) handleUpdateItineraryDay(dateStr, { location: val });
+                                                        if (val !== (dayAccommodation?.name ?? '')) {
+                                                            handleUpdateItineraryDay(dateStr, { accommodation: { ...dayAccommodation, name: val } });
+                                                        }
                                                     }}
                                                     onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                                                 />
@@ -785,18 +838,37 @@ const SpreadsheetView: React.FC = () => {
 
             {/* Modal for editing an existing activity */}
             {editingActivity && selectedTripId && createPortal(
-                <div className={styles['sheet-modal-overlay']} onClick={() => setEditingActivity(null)}>
+                <div className={styles['sheet-modal-overlay']} onClick={() => { setEditingActivity(null); setShowReviewsInModal(false); }}>
                     <div className={styles['sheet-modal']} onClick={e => e.stopPropagation()}>
-                        <ActivityForm
-                            tripId={selectedTripId}
-                            date={editingActivity.date}
-                            existingActivity={editingActivity}
-                            nextOrder={editingActivity.order}
-                            defaultCurrency={effectiveTrip?.defaultCurrency}
-                            onSave={handleSaveActivity}
-                            onCancel={() => setEditingActivity(null)}
-                            onDelete={() => handleDeleteFromModal(editingActivity.id)}
-                        />
+                        {editingActivity.location && (
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.5rem' }}>
+                                <button
+                                    type="button"
+                                    className="btn btn-ghost btn-sm"
+                                    onClick={() => setShowReviewsInModal(true)}
+                                >
+                                    📋 Reviews
+                                </button>
+                            </div>
+                        )}
+                        {showReviewsInModal && editingActivity.location ? (
+                            <ActivityReviews
+                                activityTitle={editingActivity.title}
+                                activityLocation={editingActivity.location}
+                                onClose={() => setShowReviewsInModal(false)}
+                            />
+                        ) : (
+                            <ActivityForm
+                                tripId={selectedTripId}
+                                date={editingActivity.date}
+                                existingActivity={editingActivity}
+                                nextOrder={editingActivity.order}
+                                defaultCurrency={effectiveTrip?.defaultCurrency}
+                                onSave={handleSaveActivity}
+                                onCancel={() => setEditingActivity(null)}
+                                onDelete={() => handleDeleteFromModal(editingActivity.id)}
+                            />
+                        )}
                     </div>
                 </div>,
                 document.body,

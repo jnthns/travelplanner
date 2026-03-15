@@ -6,6 +6,7 @@ import ScenarioSwitcher from '../components/ScenarioSwitcher';
 import { Send, Bot, User, Loader2, CalendarPlus, StickyNote, Check, ChevronDown } from 'lucide-react';
 import Markdown from '../components/Markdown';
 import { generateAssistantResponse } from '../lib/ai/actions/assistant';
+import { getEffectiveDayLocations } from '../lib/itinerary';
 
 const Assistant: React.FC = () => {
     const navigate = useNavigate();
@@ -63,7 +64,20 @@ const Assistant: React.FC = () => {
         return `ACTIVE TRIP CONTEXT:
 Name: ${selectedTrip.name}
 Dates: ${selectedTrip.startDate} to ${selectedTrip.endDate}
-Destinations: ${Object.values(selectedTrip.dayLocations || {}).join(', ')}
+Destinations: ${(() => {
+          const dates: string[] = [];
+          try {
+            const start = new Date(selectedTrip.startDate + 'T12:00:00Z');
+            const end = new Date(selectedTrip.endDate + 'T12:00:00Z');
+            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+              dates.push(d.toISOString().slice(0, 10));
+            }
+          } catch { /* ignore */ }
+          const all = dates.flatMap((date) =>
+            getEffectiveDayLocations(selectedTrip.itinerary?.[date], selectedTrip.dayLocations?.[date])
+          );
+          return [...new Set(all)].filter(Boolean).join(', ') || 'Not set';
+        })()}
 
 ACTIVITIES:
 ${tripActs || "None planned yet."}`;

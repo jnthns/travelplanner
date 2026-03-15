@@ -15,8 +15,13 @@ import { useToast } from '../components/Toast';
 import { logEvent } from '../lib/amplitude';
 import { generateDayActivityDescriptions, generateDaySummary, generateOptimizedRoute } from '../lib/ai/actions/calendar';
 import ScenarioSwitcher from '../components/ScenarioSwitcher';
+import WeatherBadge from '../components/WeatherBadge';
+import NearbyRestaurants from '../components/NearbyRestaurants';
+import ActivityReviews from '../components/ActivityReviews';
 import { getTripPlanningConflicts } from '../lib/planning/conflicts';
 import { useSettings } from '../lib/settings';
+import { useWeatherForTrip } from '../lib/weather';
+import { getEffectiveDayLocations } from '../lib/itinerary';
 import {
     createScenarioActivity,
     removeScenarioActivity,
@@ -90,6 +95,8 @@ const CalendarView: React.FC = () => {
     const [descriptionError, setDescriptionError] = useState<string | null>(null);
     const [pendingDescriptions, setPendingDescriptions] = useState<PendingActivityDescription[] | null>(null);
     const [showAccommodationPanel, setShowAccommodationPanel] = useState(false);
+    const [showNearbyRestaurants, setShowNearbyRestaurants] = useState(false);
+    const [reviewsActivityId, setReviewsActivityId] = useState<string | null>(null);
     const [conflictsExpandedDate, setConflictsExpandedDate] = useState<string | null>(null);
     const latestDescriptionContextRef = useRef({
         currentDateStr: '',
@@ -98,8 +105,15 @@ const CalendarView: React.FC = () => {
     });
 
     const selectedTrip = trips.find(t => t.id === selectedTripId);
+    const { weatherByDate, loading: weatherLoading } = useWeatherForTrip(selectedTrip ?? undefined);
     const { activeScenario } = useTripScenarios(selectedTripId);
     const effectiveTrip = activeScenario?.tripSnapshot ?? selectedTrip;
+    const hasLocationForDate = useCallback((dateStr: string) =>
+        getEffectiveDayLocations(
+            effectiveTrip?.itinerary?.[dateStr],
+            effectiveTrip?.dayLocations?.[dateStr]
+        ).length >= 1,
+    [effectiveTrip]);
     const tripRoutes = useMemo(() => selectedTripId ? getRoutesByTrip(selectedTripId) : [], [selectedTripId, getRoutesByTrip]);
     const effectiveRoutes = activeScenario?.transportRoutesSnapshot ?? tripRoutes;
     const tripActivities = useMemo(
@@ -108,6 +122,10 @@ const CalendarView: React.FC = () => {
     );
     const effectiveActivities = activeScenario?.activitiesSnapshot ?? tripActivities;
     const currentDateStr = format(currentDate, 'yyyy-MM-dd');
+    const currentDayLocations = getEffectiveDayLocations(
+        effectiveTrip?.itinerary?.[currentDateStr],
+        effectiveTrip?.dayLocations?.[currentDateStr]
+    );
 
     useEffect(() => {
         saveCalendarPrefs(viewMode, selectedTripId, format(currentDate, 'yyyy-MM-dd'));
@@ -536,7 +554,7 @@ const CalendarView: React.FC = () => {
                             const dayActs = getActivitiesForDate(day);
                             const isToday = isSameDay(day, new Date());
                             const dayData = effectiveTrip?.itinerary?.[dateStr];
-                            const dayLocation = dayData?.location || effectiveTrip?.dayLocations?.[dateStr];
+                            const dayLocationDisplay = getEffectiveDayLocations(dayData, effectiveTrip?.dayLocations?.[dateStr]).join(', ');
 
                             return (
                                 <div
@@ -548,10 +566,17 @@ const CalendarView: React.FC = () => {
                                         <span className={styles['cal-day-number']}>{format(day, 'd')}</span>
                                         <div className={styles['cal-day-info']}>
                                             <span className={styles['cal-day-label']}>{format(day, 'EEE')}</span>
-                                            {dayLocation && <span className={styles['cal-day-location']}>📍 {dayLocation}</span>}
+                                            {dayLocationDisplay && <span className={styles['cal-day-location']}>📍 {dayLocationDisplay}</span>}
                                             {appSettings.showPlanningChecks && (conflictCountsByDate[dateStr] || 0) > 0 && (
                                                 <span className={styles['issue-badge-inline']}>{conflictCountsByDate[dateStr]}</span>
                                             )}
+                                            <WeatherBadge
+                                                day={weatherByDate.get(dateStr)?.[0]}
+                                                hasLocation={hasLocationForDate(dateStr)}
+                                                loading={weatherLoading}
+                                                tempUnit={appSettings.temperatureUnit}
+                                                compact={false}
+                                            />
                                         </div>
                                     </div>
                                     {appSettings.showAccommodationOnTripCards && (dayData?.accommodation ? (
@@ -589,6 +614,71 @@ const CalendarView: React.FC = () => {
             {/* Day Detail View */}
             {viewMode === 'day' && (
                 <div className={styles['day-detail-view']}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{format(currentDate, 'EEEE, MMM d')}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <WeatherBadge
+                                day={weatherByDate.get(currentDateStr)?.[0]}
+                                hasLocation={hasLocationForDate(currentDateStr)}
+                                loading={weatherLoading}
+                                tempUnit={appSettings.temperatureUnit}
+                                compact={false}
+                            />
+                            {currentDayLocations.length >= 1 && (
+                                <button
+                                    type="button"
+                                    className="btn btn-ghost btn-sm"
+                                    onClick={() => setShowNearbyRestaurants(true)}
+                                >
+                                    🍽 Find restaurants
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                    <div style={{ marginBottom: '0.75rem' }}>
+                        <label htmlFor="day-location-input" style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>City</label>
+                        <input
+                            id="day-location-input"
+                            type="text"
+                            className="input-field"
+                            placeholder="e.g. Tokyo or Tokyo, Kyoto"
+                            defaultValue={currentDayLocations.join(', ')}
+                            key={`day-loc-${selectedTripId}-${activeScenario?.id ?? 'live'}-${currentDateStr}`}
+                            onBlur={e => {
+                                const raw = e.target.value;
+                                const parsed = raw.split(',').map(s => s.trim()).filter(Boolean);
+                                const prev = getEffectiveDayLocations(effectiveTrip?.itinerary?.[currentDateStr], effectiveTrip?.dayLocations?.[currentDateStr]);
+                                if (parsed.join(', ') === prev.join(', ')) return;
+                                if (!selectedTripId) return;
+                                const updates = parsed.length === 0
+                                    ? { location: '', locations: [] as string[] }
+                                    : parsed.length === 1
+                                        ? { location: parsed[0], locations: [parsed[0]] }
+                                        : { location: parsed[0], locations: parsed };
+                                if (activeScenario) {
+                                    updateScenarioTripSnapshot(selectedTripId, activeScenario.id, (trip) => ({
+                                        ...trip,
+                                        itinerary: {
+                                            ...(trip.itinerary || {}),
+                                            [currentDateStr]: { ...(trip.itinerary?.[currentDateStr] || {}), ...updates },
+                                        },
+                                    }));
+                                } else {
+                                    updateItineraryDay(selectedTripId, currentDateStr, updates);
+                                }
+                            }}
+                            onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                            style={{ width: '100%', maxWidth: '320px' }}
+                        />
+                    </div>
+                    {showNearbyRestaurants && currentDayLocations.length >= 1 && (
+                        <div style={{ marginBottom: '0.75rem' }}>
+                            <NearbyRestaurants
+                                location={currentDayLocations[0]}
+                                onClose={() => setShowNearbyRestaurants(false)}
+                            />
+                        </div>
+                    )}
                     <div className={styles['planning-action-row']}>
                         <div className={styles['planning-action-row__left']}>
                             <button
@@ -914,6 +1004,9 @@ const CalendarView: React.FC = () => {
                                             {act.time && <span className={styles['detail-time']}>{act.time}</span>}
                                         </div>
                                         <div className={styles['detail-actions']}>
+                                            {act.location && (
+                                                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setReviewsActivityId(act.id)} aria-label="Reviews">📋 Reviews</button>
+                                            )}
                                             <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingActivityId(act.id)} aria-label="Edit"><Pencil size={16} /></button>
                                             <button
                                                 type="button"
@@ -942,6 +1035,15 @@ const CalendarView: React.FC = () => {
                                     {act.location && <p className={styles['detail-location']}>📍 {act.location}</p>}
                                     {act.cost != null && <p className={styles['detail-cost']}>💰 {act.currency || '$'}{act.cost.toFixed(2)}</p>}
                                     {act.notes && <Markdown className={styles['detail-notes']}>{act.notes}</Markdown>}
+                                    {reviewsActivityId === act.id && (
+                                        <div style={{ marginTop: '0.75rem' }}>
+                                            <ActivityReviews
+                                                activityTitle={act.title}
+                                                activityLocation={act.location}
+                                                onClose={() => setReviewsActivityId(null)}
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             )
                         }

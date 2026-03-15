@@ -22,6 +22,13 @@ export interface AppSettings {
   // Planning
   showPlanningChecks: boolean;
   showBudgetWarnings: boolean;
+
+  // Weather
+  temperatureUnit: 'C' | 'F';
+  /** Start hour for hourly forecast (0–23). Default 9 = 9am. */
+  hourlyForecastStartHour: number;
+  /** End hour for hourly forecast (0–23). Default 21 = 9pm. */
+  hourlyForecastEndHour: number;
 }
 
 const DEFAULTS: AppSettings = {
@@ -40,6 +47,10 @@ const DEFAULTS: AppSettings = {
 
   showPlanningChecks: true,
   showBudgetWarnings: true,
+
+  temperatureUnit: 'C',
+  hourlyForecastStartHour: 9,
+  hourlyForecastEndHour: 21,
 };
 
 const STORAGE_KEY = 'travelplanner_settings_v2';

@@ -1,6 +1,7 @@
 import { eachDayOfInterval, format, parseISO } from 'date-fns';
 import type { Activity, TransportRoute, Trip } from '../types';
 import type { PlanningConflict } from './conflictTypes';
+import { getEffectiveDayLocations } from '../itinerary';
 
 function parseTimeToMinutes(time?: string): number | null {
   if (!time || !/^\d{2}:\d{2}$/.test(time)) return null;
@@ -21,7 +22,8 @@ function getTripDates(trip: Trip): string[] {
 }
 
 function getTripLocation(trip: Trip, date: string): string {
-  return trip.itinerary?.[date]?.location || trip.dayLocations?.[date] || '';
+  const locs = getEffectiveDayLocations(trip.itinerary?.[date], trip.dayLocations?.[date]);
+  return locs[0] ?? '';
 }
 
 function buildConflictId(parts: Array<string | undefined>) {

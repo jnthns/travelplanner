@@ -13,6 +13,7 @@ import './theme.css';
 
 const Login = lazy(() => import('./pages/Login'));
 const CalendarView = lazy(() => import('./pages/CalendarView'));
+const Weather = lazy(() => import('./pages/Weather'));
 const Transportation = lazy(() => import('./pages/Transportation'));
 const SpreadsheetView = lazy(() => import('./pages/SpreadsheetView'));
 const Budget = lazy(() => import('./pages/Budget'));
@@ -75,6 +76,7 @@ const App: React.FC = () => {
                   <Routes>
                     <Route path="/" element={<Navigate to="/spreadsheet" replace />} />
                     <Route path="/calendar" element={<CalendarView />} />
+                    <Route path="/weather" element={<Weather />} />
                     <Route path="/transportation" element={<Transportation />} />
                     <Route path="/spreadsheet" element={<SpreadsheetView />} />
                     <Route path="/budget" element={<Budget />} />

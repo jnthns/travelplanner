@@ -92,6 +92,7 @@ export function useTrips() {
     const updateItineraryDay = useCallback(async (tripId: string, date: string, updates: Partial<import('./types').ItineraryDay>) => {
         const firestoreUpdates: Record<string, any> = {};
         if (updates.location !== undefined) firestoreUpdates[`itinerary.${date}.location`] = updates.location;
+        if (updates.locations !== undefined) firestoreUpdates[`itinerary.${date}.locations`] = updates.locations;
         if (updates.accommodation) {
             if (updates.accommodation.name !== undefined) firestoreUpdates[`itinerary.${date}.accommodation.name`] = updates.accommodation.name;
             if (updates.accommodation.checkInTime !== undefined) firestoreUpdates[`itinerary.${date}.accommodation.checkInTime`] = updates.accommodation.checkInTime;

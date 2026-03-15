@@ -7,6 +7,7 @@ import { logEvent } from '../lib/amplitude';
 import ConflictList from '../components/ConflictList';
 import ScenarioSwitcher from '../components/ScenarioSwitcher';
 import { getBudgetConflicts } from '../lib/planning/conflicts';
+import { getEffectiveDayLocations } from '../lib/itinerary';
 import { useSettings } from '../lib/settings';
 import { useTripScenarios } from '../lib/scenarios';
 
@@ -177,12 +178,21 @@ const Budget: React.FC = () => {
     const effectiveRoutes = activeScenario?.transportRoutesSnapshot ?? tripRoutes;
 
     const locationsByDate = useMemo(() => {
-        const locs: Record<string, string> = { ...(effectiveTrip?.dayLocations || {}) };
-        if (effectiveTrip?.itinerary) {
-            Object.entries(effectiveTrip.itinerary).forEach(([date, day]) => {
-                if (day.location) locs[date] = day.location;
+        const locs: Record<string, string> = {};
+        if (!effectiveTrip?.startDate || !effectiveTrip?.endDate) return locs;
+        try {
+            const start = parseISO(effectiveTrip.startDate);
+            const end = parseISO(effectiveTrip.endDate);
+            const dates = eachDayOfInterval({ start, end }).map((d) => format(d, 'yyyy-MM-dd'));
+            dates.forEach((date) => {
+                const arr = getEffectiveDayLocations(
+                    effectiveTrip?.itinerary?.[date],
+                    effectiveTrip?.dayLocations?.[date]
+                );
+                const first = arr[0];
+                if (first) locs[date] = first;
             });
-        }
+        } catch { /* ignore */ }
         return locs;
     }, [effectiveTrip]);
 

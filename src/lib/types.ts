@@ -12,6 +12,8 @@ export interface Accommodation {
 
 export interface ItineraryDay {
     location?: string;
+    /** Optional array of city names for the day (e.g. transit). Use getEffectiveDayLocations() to read. */
+    locations?: string[];
     accommodation?: Accommodation;
 }
 

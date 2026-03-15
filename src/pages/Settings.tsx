@@ -309,6 +309,57 @@ const Settings: React.FC = () => {
         </div>
       </div>
 
+      {/* Weather */}
+      <div className="card p-lg mb-lg">
+        <h2 className="text-lg font-bold mb-md">Weather</h2>
+        <div className="flex flex-col gap-md">
+          <div className="flex flex-col gap-xs">
+            <label className="text-sm font-medium text-primary">Temperature unit</label>
+            <div className="flex gap-0" style={{ borderRadius: 'var(--radius-full)', border: '1px solid var(--border-color)', width: 'fit-content', overflow: 'hidden' }}>
+              {(['C', 'F'] as const).map((unit) => (
+                <button
+                  key={unit}
+                  type="button"
+                  className={`text-size-btn ${settings.temperatureUnit === unit ? 'active' : ''}`}
+                  style={{ borderRadius: 0, margin: 0 }}
+                  onClick={() => { set({ temperatureUnit: unit }); logEvent('Temperature Unit Changed', { unit }); }}
+                >
+                  °{unit}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-col gap-xs">
+            <label className="text-sm font-medium text-primary">Hourly forecast time range</label>
+            <p className="text-sm text-subtle m-0">Show only these hours on the Weather page (e.g. 9am–9pm).</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <label className="text-sm text-subtle">From</label>
+              <select
+                value={settings.hourlyForecastStartHour ?? 9}
+                onChange={(e) => { set({ hourlyForecastStartHour: Number(e.target.value) }); logEvent('Setting Changed', { key: 'hourlyForecastStartHour', value: e.target.value }); }}
+                className="input-field"
+                style={{ width: '5rem' }}
+              >
+                {Array.from({ length: 24 }, (_, i) => (
+                  <option key={i} value={i}>{i === 0 ? '12am' : i < 12 ? `${i}am` : i === 12 ? '12pm' : `${i - 12}pm`}</option>
+                ))}
+              </select>
+              <span className="text-sm text-subtle">to</span>
+              <select
+                value={settings.hourlyForecastEndHour ?? 21}
+                onChange={(e) => { set({ hourlyForecastEndHour: Number(e.target.value) }); logEvent('Setting Changed', { key: 'hourlyForecastEndHour', value: e.target.value }); }}
+                className="input-field"
+                style={{ width: '5rem' }}
+              >
+                {Array.from({ length: 24 }, (_, i) => (
+                  <option key={i} value={i}>{i === 0 ? '12am' : i < 12 ? `${i}am` : i === 12 ? '12pm' : `${i - 12}pm`}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Spreadsheet */}
       <div className="card p-lg mb-lg">
         <h2 className="text-lg font-bold mb-md">Spreadsheet</h2>

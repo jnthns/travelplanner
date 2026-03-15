@@ -1,5 +1,6 @@
 import { eachDayOfInterval, format, parseISO } from 'date-fns';
 import type { Activity, Note, TransportRoute, Trip } from './types';
+import { getEffectiveDayLocations } from './itinerary';
 
 export interface TripExportPayload {
     version: '1.0.0';
@@ -112,7 +113,7 @@ export function toTripCsv(data: {
     const tripDays = getTripDays(trip);
     for (const day of tripDays) {
         const dayData = trip.itinerary?.[day];
-        const dayLocation = dayData?.location || trip.dayLocations?.[day] || '';
+        const dayLocation = getEffectiveDayLocations(dayData, trip.dayLocations?.[day]).join(', ') || '';
         rows.push({
             tripId: trip.id,
             tripName: trip.name,

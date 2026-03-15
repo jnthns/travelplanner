@@ -1,6 +1,7 @@
 import { format } from 'date-fns';
 import { getCachedAiText } from '../cache';
 import { generateWithGemini } from '../../gemini';
+import { getEffectiveDayLocations } from '../../itinerary';
 import type { Activity, Trip } from '../../types';
 
 export interface DaySummaryResponse {
@@ -87,7 +88,8 @@ export async function generateDaySummary(args: {
 }): Promise<DaySummaryResponse> {
   const { trip, currentDate, currentDateStr, activities } = args;
   const dayData = trip.itinerary?.[currentDateStr];
-  const dayLocation = dayData?.location || trip.dayLocations?.[currentDateStr];
+  const dayLocations = getEffectiveDayLocations(dayData, trip.dayLocations?.[currentDateStr]);
+  const dayLocation = dayLocations[0] ?? '';
   const dayAccommodation = dayData?.accommodation?.name;
   const dayItinerary = activities
     .map((activity) => `${activity.time || 'TBD'} - ${activity.title}${activity.location ? ` (${activity.location})` : ''}`)
@@ -204,7 +206,8 @@ export async function generateDayActivityDescriptions(args: {
 }): Promise<ActivityDescriptionSuggestion[]> {
   const { trip, currentDateStr, activities } = args;
   const dayData = trip.itinerary?.[currentDateStr];
-  const dayLocation = dayData?.location || trip.dayLocations?.[currentDateStr];
+  const dayLocations = getEffectiveDayLocations(dayData, trip.dayLocations?.[currentDateStr]);
+  const dayLocation = dayLocations[0] ?? '';
   const dayAccommodation = dayData?.accommodation?.name;
   const currentDayActs = activities
     .map((activity) =>

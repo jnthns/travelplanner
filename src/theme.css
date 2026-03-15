@@ -307,6 +307,16 @@ p {
   animation: spin 1s linear infinite;
 }
 
+@keyframes weather-shimmer {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
 .trip-color-picker {
   display: flex;
   flex-wrap: wrap;

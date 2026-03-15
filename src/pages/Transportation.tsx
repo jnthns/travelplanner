@@ -12,6 +12,7 @@ import { logEvent } from '../lib/amplitude';
 import { suggestTransportOptions } from '../lib/ai/actions/transport';
 import ConflictList from '../components/ConflictList';
 import { getTripPlanningConflicts } from '../lib/planning/conflicts';
+import { getEffectiveDayLocations } from '../lib/itinerary';
 
 const transportTypes = ['flight', 'train', 'bus', 'car', 'ferry', 'taxi', 'walk', 'other'] as const;
 
@@ -319,9 +320,14 @@ const Transportation: React.FC = () => {
                                 onChange={e => setFormData(p => ({ ...p, date: e.target.value }))}
                                 required
                             />
-                            {selectedTrip?.dayLocations?.[formData.date] && (
-                                <span className="block text-xs text-subtle mt-xs">📍 {selectedTrip.dayLocations[formData.date]}</span>
-                            )}
+                            {(() => {
+                                const locs = getEffectiveDayLocations(
+                                    selectedTrip?.itinerary?.[formData.date],
+                                    selectedTrip?.dayLocations?.[formData.date]
+                                );
+                                const locDisplay = locs[0];
+                                return locDisplay ? <span className="block text-xs text-subtle mt-xs">📍 {locDisplay}</span> : null;
+                            })()}
                         </div>
                         <div className="flex flex-col gap-xs" style={{ flex: '0 0 auto', minWidth: '120px' }}>
                             <label className="text-sm font-medium">Departure</label>
