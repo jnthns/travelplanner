@@ -2,6 +2,7 @@ import { GoogleGenAI } from '@google/genai';
 
 interface Env {
     GEMINI_API_KEYS: string; // Comma-separated list of keys
+    GOOGLE_PLACES_API_KEY: string;
 }
 
 interface RequestBody {
@@ -27,6 +28,117 @@ function json(data: unknown, status = 200): Response {
     });
 }
 
+const PLACES_BASE = 'https://places.googleapis.com/v1';
+
+async function handlePlacesNearby(request: Request, env: Env): Promise<Response> {
+    const key = env.GOOGLE_PLACES_API_KEY;
+    if (!key?.trim()) return json({ error: 'GOOGLE_PLACES_API_KEY not configured' }, 500);
+
+    let body: { location?: string; maxResults?: number };
+    try {
+        body = await request.json() as { location?: string; maxResults?: number };
+    } catch {
+        return json({ error: 'Invalid JSON body' }, 400);
+    }
+    const location = typeof body.location === 'string' ? body.location.trim() : '';
+    if (!location) return json({ error: 'location is required' }, 400);
+
+    const maxResults = typeof body.maxResults === 'number' && body.maxResults > 0 ? Math.min(body.maxResults, 20) : 5;
+
+    const payload = {
+        textQuery: `top restaurants and cafes near ${location}`,
+        maxResultCount: maxResults,
+        rankPreference: 'RELEVANCE',
+        includedType: 'restaurant',
+    };
+
+    const fieldMask = 'places.id,places.displayName,places.primaryTypeDisplayName,places.priceLevel,places.rating,places.userRatingCount,places.formattedAddress,places.currentOpeningHours';
+
+    try {
+        const res = await fetch(`${PLACES_BASE}/places:searchText`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Goog-Api-Key': key,
+                'X-Goog-FieldMask': fieldMask,
+            },
+            body: JSON.stringify(payload),
+        });
+        const data = await res.json() as Record<string, unknown>;
+        if (!res.ok) {
+            const errMsg = (data as { error?: { message?: string } }).error?.message ?? `Google returned ${res.status}`;
+            return json({ error: errMsg }, res.status >= 500 ? 502 : res.status);
+        }
+        return json(data);
+    } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        return json({ error: msg }, 502);
+    }
+}
+
+async function handlePlacesDetails(request: Request, env: Env): Promise<Response> {
+    const key = env.GOOGLE_PLACES_API_KEY;
+    if (!key?.trim()) return json({ error: 'GOOGLE_PLACES_API_KEY not configured' }, 500);
+
+    let body: { query?: string; placeId?: string; mode: 'resolve' | 'details' };
+    try {
+        body = await request.json() as { query?: string; placeId?: string; mode: 'resolve' | 'details' };
+    } catch {
+        return json({ error: 'Invalid JSON body' }, 400);
+    }
+
+    const mode = body.mode;
+    if (mode === 'resolve') {
+        const query = typeof body.query === 'string' ? body.query.trim() : '';
+        if (!query) return json({ error: 'query is required for resolve mode' }, 400);
+        try {
+            const res = await fetch(`${PLACES_BASE}/places:searchText`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Goog-Api-Key': key,
+                    'X-Goog-FieldMask': 'places.id,places.displayName',
+                },
+                body: JSON.stringify({ textQuery: query, maxResultCount: 1 }),
+            });
+            const data = await res.json() as { places?: Array<{ id?: string }> };
+            if (!res.ok) return json({ error: 'Place resolution failed' }, res.status >= 500 ? 502 : res.status);
+            const placeId = data.places?.[0]?.id ?? null;
+            return json({ placeId });
+        } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            return json({ error: msg }, 502);
+        }
+    }
+
+    if (mode === 'details') {
+        const rawId = typeof body.placeId === 'string' ? body.placeId.trim() : '';
+        if (!rawId) return json({ error: 'placeId is required for details mode' }, 400);
+        const pathId = rawId.startsWith('places/') ? rawId.slice(7) : rawId;
+        const fieldMask = 'displayName,rating,userRatingCount,reviews,reviewSummary,reviewSummary.reviewsUri,reviewSummary.disclosureText';
+        try {
+            const res = await fetch(`${PLACES_BASE}/places/${encodeURIComponent(pathId)}`, {
+                method: 'GET',
+                headers: {
+                    'X-Goog-Api-Key': key,
+                    'X-Goog-FieldMask': fieldMask,
+                },
+            });
+            const data = await res.json() as Record<string, unknown>;
+            if (!res.ok) {
+                const errMsg = (data as { error?: { message?: string } }).error?.message ?? `Google returned ${res.status}`;
+                return json({ error: errMsg }, res.status >= 500 ? 502 : res.status);
+            }
+            return json(data);
+        } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            return json({ error: msg }, 502);
+        }
+    }
+
+    return json({ error: 'mode must be resolve or details' }, 400);
+}
+
 export default {
     async fetch(request: Request, env: Env): Promise<Response> {
         if (request.method === 'OPTIONS') {
@@ -38,6 +150,14 @@ export default {
         }
 
         const url = new URL(request.url);
+
+        if (url.pathname === '/places/nearby') {
+            return handlePlacesNearby(request, env);
+        }
+        if (url.pathname === '/places/details') {
+            return handlePlacesDetails(request, env);
+        }
+
         if (url.pathname !== '/generate') {
             return json({ error: 'Not found' }, 404);
         }

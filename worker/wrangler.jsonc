@@ -2,5 +2,8 @@
     // Cloudflare Worker config for TravelPlanner AI proxy
     "name": "travelplanner-ai",
     "main": "src/index.ts",
-    "compatibility_date": "2025-01-01"
+    "compatibility_date": "2025-01-01",
+    "vars": {
+        "GOOGLE_PLACES_API_KEY": ""
+    }
 }
