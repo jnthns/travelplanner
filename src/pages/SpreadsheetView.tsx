@@ -575,7 +575,7 @@ const SpreadsheetView: React.FC = () => {
                     </div>
                     <div className={styles['spreadsheet-wrapper']} ref={spreadsheetWrapperRef}>
                         <div
-                            className={`${styles['spreadsheet-grid']} ${appSettings.headerRowColor !== 'default' ? styles[`header-${appSettings.headerRowColor}`] ?? '' : ''}`}
+                            className={`${styles['spreadsheet-grid']} ${appSettings.headerRowColor !== 'default' ? (styles[`header-${appSettings.headerRowColor}`] ?? '') : ''}`}
                             style={{
                                 gridTemplateColumns: `var(--sheet-label-width) repeat(${tripDays.length}, minmax(140px, 1fr))`,
                                 zoom: zoomScale,
@@ -730,7 +730,7 @@ const SpreadsheetView: React.FC = () => {
                                         return (
                                             <div
                                                 key={ck}
-                                                className={`${styles['sheet-cell']} ${isDragOver ? styles['drag-over'] : ''} ${isFocused ? styles['focused'] : ''} ${appSettings.colorCodedTimeRows ? styles[`cell-${slotKey}`] ?? '' : ''}`}
+                                                className={`${styles['sheet-cell']} ${isDragOver ? styles['drag-over'] : ''} ${isFocused ? styles['focused'] : ''} ${appSettings.colorCodedTimeRows ? (styles[`cell-${slotKey}`] ?? '') : ''}`}
                                                 onDragOver={e => handleDragOver(e, ck)}
                                                 onDragLeave={handleDragLeave}
                                                 onDrop={e => handleDrop(e, dateStr, slotKey)}
@@ -850,7 +850,7 @@ const SpreadsheetView: React.FC = () => {
                             />
                         ) : showNearbyRestaurantsInModal ? (
                             <NearbyRestaurants
-                                location={editingActivity.location || getEffectiveDayLocations(effectiveTrip?.itinerary?.[editingActivity.date], effectiveTrip?.dayLocations?.[editingActivity.date])[0] ?? ''}
+                                location={(editingActivity.location || getEffectiveDayLocations(effectiveTrip?.itinerary?.[editingActivity.date], effectiveTrip?.dayLocations?.[editingActivity.date])[0]) ?? ''}
                                 onClose={() => setShowNearbyRestaurantsInModal(false)}
                             />
                         ) : (

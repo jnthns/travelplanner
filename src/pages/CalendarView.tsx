@@ -1033,7 +1033,7 @@ const CalendarView: React.FC = () => {
                                     {showNearbyRestaurantsForActivityId === act.id && (
                                         <div style={{ marginTop: '0.75rem' }}>
                                             <NearbyRestaurants
-                                                location={act.location || currentDayLocations[0] ?? ''}
+                                                location={(act.location || currentDayLocations[0]) ?? ''}
                                                 onClose={() => setShowNearbyRestaurantsForActivityId(null)}
                                             />
                                         </div>
