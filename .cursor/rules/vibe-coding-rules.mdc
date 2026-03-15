@@ -1,0 +1,121 @@
+---
+description: >
+  Full-stack TypeScript standards for TravelPlanner — React, Vite, Firestore,
+  DaisyUI/Tailwind, and date-fns. Enforces type safety, performance, and
+  project-specific patterns. Optimised for vibe-coding with Cursor.
+globs: ["**/*.ts", "**/*.tsx"]
+alwaysApply: false
+---
+
+# Cursor Vibe-Coding Rules — TravelPlanner
+
+## ⚡ Vibe-Coding Contract
+> These rules exist so Cursor can move fast without asking. If something is
+> ambiguous, **make the most reasonable choice and leave a `// TODO:` comment**
+> rather than stopping to ask. Produce working code on the first pass.
+
+- Prefer **complete, runnable output** over partial scaffolds.
+- Never omit logic with `// ... rest of implementation` — write it out.
+- One file per response unless the task explicitly spans multiple files.
+- When refactoring, show the **full updated file**, not a diff.
+- Add a one-line comment at the top of every new file describing its purpose.
+
+---
+
+## TypeScript
+
+- All code is TypeScript — no `.js` files.
+- Explicit return types on **exported** functions.
+- Avoid `any`; use `unknown` + narrowing, or add a `// reason:` comment.
+- Optional chaining (`?.`) and nullish coalescing (`??`) over manual null checks.
+- Prefer `interface` over `type` for object shapes (extendable, mergeable).
+- Avoid `enum`; use `const` maps or union string literals instead.
+- Use descriptive boolean names: `isLoading`, `hasError`, `canSubmit`.
+
+<example type="valid">
+export function formatDate(iso: string): string {
+  return format(parseISO(iso), 'MMM d, yyyy');
+}
+</example>
+
+<example type="invalid">
+function formatDate(iso: string) {        // ❌ missing return type
+  return format(parseISO(iso), 'MMM d, yyyy');
+}
+</example>
+
+---
+
+## React
+
+- Functional components + hooks only — no classes.
+- `React.lazy` for all route-level components (see `App.tsx` pattern).
+- Wrap async/lazy components in `<Suspense fallback={…}>`.
+- Theme via CSS custom properties only — **never hardcode hex/rgb**:
+  `var(--primary-color)`, `var(--border-color)`, `var(--text-secondary)`.
+- Style with **DaisyUI components + Tailwind utilities** — mobile-first.
+- Optimise images: WebP, explicit `width`/`height`, `loading="lazy"`.
+
+---
+
+## Imports & File Structure
+
+- Import from the defining file directly — no barrel `index.ts` re-exports.
+- Use `useLocalStorageState` from `src/lib/persist.ts` **only**.
+- One concern per file: component, helpers, types, or static content — not mixed.
+- Directory names: `lowercase-with-dashes` (e.g. `components/auth-wizard`).
+- Named exports for functions; default exports for page/route components only.
+
+---
+
+## Firestore
+
+Always follow this write sequence — no exceptions:
+
+```
+1. Build the payload object.
+2. Pass through stripUndefined() — removes all keys with value `undefined`.
+3. Call setDoc / updateDoc / addDoc / batch.update.
+```
+
+- Types live in `src/lib/types.ts`: `Trip`, `Activity`, `TransportRoute`,
+  `Note`, `ChatMessage`.
+- When mutating trip membership, batch-update across:
+  `tripMembers`, `activities`, `notes`, `transportRoutes`, `chat_history`.
+
+---
+
+## Dates
+
+- Store and pass all dates as ISO strings: `YYYY-MM-DD`.
+- Use `date-fns` for all parsing, formatting, and arithmetic
+  (`parseISO`, `format`, `isWithinInterval`, etc.).
+
+---
+
+## Analytics
+
+- Log meaningful user actions via `logEvent(eventName, props)` from
+  `src/lib/amplitude.ts`.
+- Event names in Title Case: `"Activity Created"`, `"Collaborator Added"`.
+
+---
+
+## Performance
+
+- Dynamic import non-critical components (`React.lazy` / Vite `import()`).
+- Vite build: configure manual `chunks` in `rollupOptions` for code splitting.
+- Audit Web Vitals (LCP, CLS, FID) with Lighthouse before marking work done.
+
+---
+
+## Code Quality Checklist
+> Cursor: silently verify these before finalising any output.
+
+- [ ] No `any` without a `// reason:` comment
+- [ ] No hardcoded colours — CSS vars only
+- [ ] No `undefined` passed to Firestore — `stripUndefined()` called
+- [ ] Exported functions have return types
+- [ ] Dates are ISO strings, manipulated via `date-fns`
+- [ ] New user actions emit an Amplitude event
+- [ ] Lazy-loaded components wrapped in `<Suspense>`

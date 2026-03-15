@@ -1,0 +1,81 @@
+---
+description: TravelPlanner (sabb) project context — tech stack, Gemini/AI rules, data models, Firestore, env vars, and critical conventions.
+alwaysApply: true
+---
+
+# Project Context — TravelPlanner
+
+Personal travel itinerary planner. Users create trips, plan day-by-day activities, track transport, manage budgets, take notes, and receive AI-powered suggestions. Supports real-time collaboration via trip sharing.
+
+## Tech Stack
+
+| Layer | Technology | Notes |
+|-------|------------|-------|
+| Frontend | React 19 + TypeScript + Vite | Strict TS, `verbatimModuleSyntax`, `noUnusedLocals` |
+| Routing | react-router-dom v7 | Base path: `/travelplanner/` |
+| Database | Firebase Firestore | Real-time `onSnapshot`; persistent multi-tab cache |
+| Auth | Firebase Auth | Google OAuth + anonymous sign-in |
+| Storage | Firebase Storage | Images only, max 5MB, `notes/{userId}/{tripId}/...` |
+| AI | Google Gemini via Cloudflare Worker proxy | Never call Gemini directly from frontend |
+| Analytics | Amplitude | `logEvent()` from `src/lib/amplitude.ts` |
+| Icons | lucide-react | |
+| Dates | date-fns | All date strings ISO `YYYY-MM-DD` |
+| Markdown | marked | `Markdown.tsx` component |
+| Deploy | GitHub Pages (frontend) + Cloudflare Workers (AI proxy) | |
+
+## Gemini / AI — Critical Rules
+
+- **SDK**: Use `@google/genai` (JS/TS). Do NOT use deprecated `@google/generative-ai`.
+- **Models**: `gemini-3-flash-preview` (default), `gemini-3.1-pro-preview` (complex), `gemini-3-pro-image-preview` (images). Never reference `gemini-2.5-*`, `gemini-2.0-*`, or `gemini-1.5-*`.
+- **All AI calls** go through `generateWithGemini()` in `src/lib/gemini.ts`, which POSTs to the Cloudflare Worker proxy at `VITE_AI_PROXY_URL`. Never call Gemini APIs directly from the frontend.
+- Proxy body: `{ prompt, systemInstruction?, responseMimeType?, responseSchema? }`. For structured output use `responseMimeType: 'application/json'` and `responseSchema`.
+- `generateWithGemini` handles deduplication, 1200ms call spacing, 429 retry with exponential backoff (max 3).
+
+## Data Models (summary)
+
+- **Trip**: `id`, `userId`, `members`, `sharedWithEmails`, `name`, `startDate`, `endDate`, `defaultCurrency?`, `color?`, `_pendingWrite?`.
+- **Activity**: `id`, `tripId`, `userId`, `tripMembers`, `date` (YYYY-MM-DD), `title`, `details?`, `time?`, `location?`, `category`, `cost?`, `currency?`, `order`, `_pendingWrite?`.
+- **TransportRoute**: `id`, `tripId`, `userId`, `tripMembers`, `date`, `type`, `from`, `to`, `departureTime?`, `arrivalTime?`, `bookingRef?`, `cost?`, `currency?`, `notes?`.
+- **Note**: `id`, `tripId`, `userId`, `tripMembers`, `content`, `format`, `order`, `date?`, `images?`, `createdAt`, `updatedAt`.
+- **ChatMessage**: `id`, `tripId`, `userId`, `tripMembers`, `role`, `content`, `createdAt`.
+
+`tripMembers` is denormalized on child docs for Firestore security rules. When adding/removing collaborators (ShareModal), batch-update `tripMembers` on activities, notes, transportRoutes, chat_history.
+
+## Firestore Collections
+
+| Collection | Access |
+|------------|--------|
+| `trips` | `members` array-contains OR `userId == uid` |
+| `activities`, `transportRoutes`, `notes`, `chat_history` | `tripMembers` array-contains OR `userId == uid` |
+| `users` | Read: authenticated; Write: own doc only |
+
+## Conventions (critical)
+
+1. Use TypeScript strict mode; handle null/undefined; no implicit any.
+2. Never call Gemini directly — use `generateWithGemini()` from `src/lib/gemini.ts`.
+3. Call `stripUndefined()` before writing to Firestore.
+4. Use date-fns; all date strings ISO `YYYY-MM-DD`.
+5. Use CSS custom properties from `theme.css` (e.g. `var(--primary-color)`).
+6. Use `logEvent(eventName, props)` for meaningful user interactions; event names Title Case.
+7. Import from `src/lib/persist.ts` for `useLocalStorageState` — not `src/hooks/useLocalStorageState.ts`.
+8. No barrel `index.ts` imports; import directly from the file.
+9. Vite base path is `/travelplanner/` — use for any URL construction.
+10. Avoid `const enum` and non-erasable TypeScript syntax (`erasableSyntaxOnly`).
+
+## Environment Variables
+
+- **App**: `VITE_FIREBASE_*`, `VITE_AI_PROXY_URL`, `VITE_AMPLITUDE_API_KEY` (optional).
+- **Worker** (Cloudflare): `GEMINI_API_KEY` or `GEMINI_API_KEYS`, `GOOGLE_PLACES_API_KEY` (set via `wrangler secret put GOOGLE_PLACES_API_KEY` — never committed).
+
+## New APIs (Phase: Weather + Places)
+
+- **Open-Meteo**: No key required. Call directly from `src/lib/weather.ts`. Geocode + weather caches are module-level (session).
+- **Google Places API (New)**: All calls proxied via Cloudflare Worker routes `/places/nearby` and `/places/details`. Never call `places.googleapis.com` from the frontend.
+- **Places field mask discipline**: Only request the fields you actually render to control SKU cost.
+- **Google attribution**: `reviewSummary.disclosureText` MUST be displayed wherever Google's AI summary is shown.
+
+## Common Pitfalls
+
+- Do not write Firestore docs with `undefined` values — always `stripUndefined()` first.
+- Do not use deprecated Gemini model IDs.
+- Do not call Gemini API directly from frontend.
