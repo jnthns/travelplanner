@@ -5,7 +5,7 @@ import {
     isSameDay,
     parseISO,
 } from 'date-fns';
-import { AlertTriangle, Info, Plus, Pencil, Trash2, GripVertical, Loader2 } from 'lucide-react';
+import { AlertTriangle, Info, Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { useTrips, useActivities, useTransportRoutes } from '../lib/store';
 import { CATEGORY_EMOJIS, CATEGORY_COLORS } from '../lib/types';
 import ActivityForm from '../components/ActivityForm';
@@ -17,6 +17,7 @@ import { generateDayActivityDescriptions, generateDaySummary, generateOptimizedR
 import ScenarioSwitcher from '../components/ScenarioSwitcher';
 import WeatherBadge from '../components/WeatherBadge';
 import NearbyRestaurants from '../components/NearbyRestaurants';
+import { getNearbyPlacesLabel } from '../lib/places';
 import ActivityReviews from '../components/ActivityReviews';
 import { getTripPlanningConflicts } from '../lib/planning/conflicts';
 import { useSettings } from '../lib/settings';
@@ -978,9 +979,6 @@ const CalendarView: React.FC = () => {
                             ) : (
                                 <div className={`${styles['day-detail-activity']} card`} style={{ ['--activity-color' as string]: getActivityColor(act) }}>
                                     <div className={styles['detail-header']}>
-                                        <span className="drag-handle" {...dragHandleProps}>
-                                            <GripVertical size={16} />
-                                        </span>
                                         <span className={styles['detail-emoji']}>{CATEGORY_EMOJIS[act.category || 'other']}</span>
                                         <div>
                                             <h4>{act.title}</h4>
@@ -990,8 +988,10 @@ const CalendarView: React.FC = () => {
                                             {act.location && (
                                                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => setReviewsActivityId(act.id)} aria-label="Reviews">📋 Reviews</button>
                                             )}
-                                            {act.category === 'food' && (act.location || currentDayLocations.length >= 1) && (
-                                                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowNearbyRestaurantsForActivityId(act.id)} aria-label="Find restaurants">🍽 Find restaurants</button>
+                                            {(act.location || currentDayLocations[0]) && (
+                                                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowNearbyRestaurantsForActivityId(act.id)} aria-label={getNearbyPlacesLabel(act.category).button}>
+                                                    {getNearbyPlacesLabel(act.category).button}
+                                                </button>
                                             )}
                                             <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingActivityId(act.id)} aria-label="Edit"><Pencil size={16} /></button>
                                             <button
@@ -1034,7 +1034,16 @@ const CalendarView: React.FC = () => {
                                         <div style={{ marginTop: '0.75rem' }}>
                                             <NearbyRestaurants
                                                 location={(act.location || currentDayLocations[0]) ?? ''}
+                                                category={act.category}
+                                                title={act.title}
+                                                label={getNearbyPlacesLabel(act.category).panel}
                                                 onClose={() => setShowNearbyRestaurantsForActivityId(null)}
+                                                onAddToNote={(text) => {
+                                                    const newNotes = act.notes ? act.notes.trimEnd() + '\n\n' + text : text;
+                                                    updateActivity(act.id, { notes: newNotes });
+                                                    setShowNearbyRestaurantsForActivityId(null);
+                                                    showToast('Added to activity note');
+                                                }}
                                             />
                                         </div>
                                     )}

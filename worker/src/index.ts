@@ -30,13 +30,38 @@ function json(data: unknown, status = 200): Response {
 
 const PLACES_BASE = 'https://places.googleapis.com/v1';
 
+const GENERIC_TITLES = new Set(['breakfast', 'lunch', 'dinner', 'meal', 'eat', 'food', 'coffee', 'snack', 'stay', 'sleep', 'shop', 'sightsee', 'see', 'activity']);
+
+function buildNearbyQuery(location: string, category?: string, title?: string): { textQuery: string; includedType?: string } {
+    const rawTitle = typeof title === 'string' ? title.trim() : '';
+    const isUsableTitle = rawTitle.length >= 3 && !GENERIC_TITLES.has(rawTitle.toLowerCase());
+    if (isUsableTitle) {
+        return { textQuery: `${rawTitle} near ${location}` };
+    }
+    const cat = typeof category === 'string' ? category.toLowerCase() : '';
+    switch (cat) {
+        case 'food':
+            return { textQuery: `restaurants and cafes near ${location}`, includedType: 'restaurant' };
+        case 'accommodation':
+            return { textQuery: `hotels and lodgings near ${location}` };
+        case 'shopping':
+            return { textQuery: `shops and stores near ${location}` };
+        case 'sightseeing':
+            return { textQuery: `sights and attractions near ${location}` };
+        case 'transport':
+        case 'other':
+        default:
+            return { textQuery: `places near ${location}` };
+    }
+}
+
 async function handlePlacesNearby(request: Request, env: Env): Promise<Response> {
     const key = env.GOOGLE_PLACES_API_KEY;
     if (!key?.trim()) return json({ error: 'GOOGLE_PLACES_API_KEY not configured' }, 500);
 
-    let body: { location?: string; maxResults?: number };
+    let body: { location?: string; maxResults?: number; category?: string; title?: string };
     try {
-        body = await request.json() as { location?: string; maxResults?: number };
+        body = await request.json() as { location?: string; maxResults?: number; category?: string; title?: string };
     } catch {
         return json({ error: 'Invalid JSON body' }, 400);
     }
@@ -44,13 +69,14 @@ async function handlePlacesNearby(request: Request, env: Env): Promise<Response>
     if (!location) return json({ error: 'location is required' }, 400);
 
     const maxResults = typeof body.maxResults === 'number' && body.maxResults > 0 ? Math.min(body.maxResults, 20) : 5;
+    const { textQuery, includedType } = buildNearbyQuery(location, body.category, body.title);
 
-    const payload = {
-        textQuery: `top restaurants and cafes near ${location}`,
-        maxResultCount: maxResults,
+    const payload: { textQuery: string; pageSize: number; rankPreference: string; includedType?: string } = {
+        textQuery,
+        pageSize: maxResults,
         rankPreference: 'RELEVANCE',
-        includedType: 'restaurant',
     };
+    if (includedType) payload.includedType = includedType;
 
     const fieldMask = 'places.id,places.displayName,places.primaryTypeDisplayName,places.priceLevel,places.rating,places.userRatingCount,places.formattedAddress,places.currentOpeningHours';
 
@@ -99,7 +125,7 @@ async function handlePlacesDetails(request: Request, env: Env): Promise<Response
                     'X-Goog-Api-Key': key,
                     'X-Goog-FieldMask': 'places.id,places.displayName',
                 },
-                body: JSON.stringify({ textQuery: query, maxResultCount: 1 }),
+                body: JSON.stringify({ textQuery: query, pageSize: 1 }),
             });
             const data = await res.json() as { places?: Array<{ id?: string }> };
             if (!res.ok) return json({ error: 'Place resolution failed' }, res.status >= 500 ? 502 : res.status);
@@ -151,14 +177,14 @@ export default {
 
         const url = new URL(request.url);
 
-        if (url.pathname === '/places/nearby') {
+        if (url.pathname.endsWith('/places/nearby')) {
             return handlePlacesNearby(request, env);
         }
-        if (url.pathname === '/places/details') {
+        if (url.pathname.endsWith('/places/details')) {
             return handlePlacesDetails(request, env);
         }
 
-        if (url.pathname !== '/generate') {
+        if (!url.pathname.endsWith('/generate')) {
             return json({ error: 'Not found' }, 404);
         }
 

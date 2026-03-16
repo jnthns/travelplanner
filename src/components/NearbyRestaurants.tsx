@@ -1,28 +1,44 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
-import { fetchNearbyRestaurants } from '../lib/places';
+import { fetchNearbyPlaces } from '../lib/places';
 import { logEvent } from '../lib/amplitude';
 import type { PlaceResult } from '../lib/places';
 
-export interface NearbyRestaurantsProps {
-  location: string;
-  onClose: () => void;
+function formatPlacesAsNote(places: PlaceResult[]): string {
+  const heading = '**Nearby places**';
+  const lines = places.map((p) => {
+    const ratingPart = p.rating != null
+      ? `${p.rating.toFixed(1)}${p.ratingCount != null ? ` (${p.ratingCount.toLocaleString()} reviews)` : ''}`
+      : '';
+    const parts = [`**${p.name}**`, p.primaryType ? `(${p.primaryType})` : '', ratingPart, p.address].filter(Boolean);
+    return `- ${parts.join(' — ')}`;
+  });
+  return [heading, '', ...lines].join('\n');
 }
 
-const NearbyRestaurants: React.FC<NearbyRestaurantsProps> = ({ location, onClose }) => {
+export interface NearbyRestaurantsProps {
+  location: string;
+  category?: string;
+  title?: string;
+  label: string;
+  onClose: () => void;
+  onAddToNote?: (formattedText: string) => void;
+}
+
+const NearbyRestaurants: React.FC<NearbyRestaurantsProps> = ({ location, category, title, label, onClose, onAddToNote }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [places, setPlaces] = useState<PlaceResult[]>([]);
 
   useEffect(() => {
-    logEvent('Nearby Restaurants Opened', { location });
+    logEvent('Nearby Places Opened', { location, category, label });
     setLoading(true);
     setError(null);
-    fetchNearbyRestaurants(location)
+    fetchNearbyPlaces(location, category, title)
       .then(setPlaces)
-      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load restaurants'))
+      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load places'))
       .finally(() => setLoading(false));
-  }, [location]);
+  }, [location, category, title, label]);
 
   return (
     <div
@@ -37,7 +53,7 @@ const NearbyRestaurants: React.FC<NearbyRestaurantsProps> = ({ location, onClose
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-        <h3 style={{ margin: 0, fontSize: '1rem' }}>🍽 Restaurants nearby</h3>
+        <h3 style={{ margin: 0, fontSize: '1rem' }}>{label}</h3>
         <button type="button" className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Close">
           ×
         </button>
@@ -63,8 +79,8 @@ const NearbyRestaurants: React.FC<NearbyRestaurantsProps> = ({ location, onClose
                 borderBottom: '1px solid var(--border-color)',
                 cursor: 'pointer',
               }}
-              onClick={() => logEvent('Nearby Restaurants Result Clicked', { place_name: p.name, rating: p.rating ?? undefined })}
-              onKeyDown={(e) => e.key === 'Enter' && logEvent('Nearby Restaurants Result Clicked', { place_name: p.name, rating: p.rating ?? undefined })}
+              onClick={() => logEvent('Nearby Places Result Clicked', { place_name: p.name, rating: p.rating ?? undefined, category, label })}
+              onKeyDown={(e) => e.key === 'Enter' && logEvent('Nearby Places Result Clicked', { place_name: p.name, rating: p.rating ?? undefined, category, label })}
               role="button"
               tabIndex={0}
             >
@@ -96,7 +112,24 @@ const NearbyRestaurants: React.FC<NearbyRestaurantsProps> = ({ location, onClose
       )}
 
       {!loading && !error && places.length === 0 && (
-        <p style={{ color: 'var(--text-tertiary)', fontSize: '0.9rem', margin: 0 }}>No restaurants found for this location.</p>
+        <p style={{ color: 'var(--text-tertiary)', fontSize: '0.9rem', margin: 0 }}>No {label.toLowerCase()} found for this location.</p>
+      )}
+
+      {!loading && !error && places.length > 0 && onAddToNote && (
+        <div style={{ marginTop: '0.75rem' }}>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => {
+              const text = formatPlacesAsNote(places);
+              onAddToNote(text);
+              logEvent('Nearby Places Added To Note', { count: places.length, category, label });
+              onClose();
+            }}
+          >
+            Add to activity note
+          </button>
+        </div>
       )}
 
       {!loading && (

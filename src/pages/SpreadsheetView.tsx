@@ -16,6 +16,7 @@ import NoteEditor from '../components/NoteEditor';
 import ScenarioSwitcher from '../components/ScenarioSwitcher';
 import WeatherBadge from '../components/WeatherBadge';
 import NearbyRestaurants from '../components/NearbyRestaurants';
+import { getNearbyPlacesLabel } from '../lib/places';
 import ActivityReviews from '../components/ActivityReviews';
 import { useToast } from '../components/Toast';
 import { useWeatherForTrip } from '../lib/weather';
@@ -822,7 +823,7 @@ const SpreadsheetView: React.FC = () => {
             {editingActivity && selectedTripId && createPortal(
                 <div className={styles['sheet-modal-overlay']} onClick={() => { setEditingActivity(null); setShowReviewsInModal(false); setShowNearbyRestaurantsInModal(false); }}>
                     <div className={styles['sheet-modal']} onClick={e => e.stopPropagation()}>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.35rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+                        <div className={styles['sheet-modal-actions']}>
                             {editingActivity.location && (
                                 <button
                                     type="button"
@@ -832,13 +833,13 @@ const SpreadsheetView: React.FC = () => {
                                     📋 Reviews
                                 </button>
                             )}
-                            {editingActivity.category === 'food' && (editingActivity.location || (getEffectiveDayLocations(effectiveTrip?.itinerary?.[editingActivity.date], effectiveTrip?.dayLocations?.[editingActivity.date])[0])) && (
+                            {(editingActivity.location || getEffectiveDayLocations(effectiveTrip?.itinerary?.[editingActivity.date], effectiveTrip?.dayLocations?.[editingActivity.date])[0]) && (
                                 <button
                                     type="button"
                                     className="btn btn-ghost btn-sm"
                                     onClick={() => setShowNearbyRestaurantsInModal(true)}
                                 >
-                                    🍽 Find restaurants
+                                    {getNearbyPlacesLabel(editingActivity.category).button}
                                 </button>
                             )}
                         </div>
@@ -851,7 +852,17 @@ const SpreadsheetView: React.FC = () => {
                         ) : showNearbyRestaurantsInModal ? (
                             <NearbyRestaurants
                                 location={(editingActivity.location || getEffectiveDayLocations(effectiveTrip?.itinerary?.[editingActivity.date], effectiveTrip?.dayLocations?.[editingActivity.date])[0]) ?? ''}
+                                category={editingActivity.category}
+                                title={editingActivity.title}
+                                label={getNearbyPlacesLabel(editingActivity.category).panel}
                                 onClose={() => setShowNearbyRestaurantsInModal(false)}
+                                onAddToNote={(text) => {
+                                    const newNotes = editingActivity.notes ? editingActivity.notes.trimEnd() + '\n\n' + text : text;
+                                    updateActivity(editingActivity.id, { notes: newNotes });
+                                    setEditingActivity((prev) => (prev ? { ...prev, notes: newNotes } : null));
+                                    setShowNearbyRestaurantsInModal(false);
+                                    showToast('Added to activity note');
+                                }}
                             />
                         ) : (
                             <ActivityForm

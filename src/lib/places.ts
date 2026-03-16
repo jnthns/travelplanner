@@ -60,24 +60,24 @@ export interface PlaceProsCons {
   verdict: string;
 }
 
-export async function fetchNearbyRestaurants(location: string): Promise<PlaceResult[]> {
-  const raw = await getCachedAiText({
-    namespace: 'places-nearby',
-    cacheKey: location,
-    ttlMs: 3 * 60 * 60 * 1000,
-    producer: async () => {
-      const res = await fetch(`${getProxyUrl()}/places/nearby`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ location, maxResults: 5 }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error((data as { error?: string }).error ?? `Request failed: ${res.status}`);
-      return JSON.stringify(data);
-    },
-  });
+export type ActivityCategory = 'sightseeing' | 'food' | 'accommodation' | 'transport' | 'shopping' | 'other';
 
-  const data = JSON.parse(raw) as { places?: Array<{
+const NEARBY_PLACES_LABELS: Record<ActivityCategory, { button: string; panel: string }> = {
+  food: { button: 'Find restaurants', panel: 'Restaurants nearby' },
+  accommodation: { button: 'Find accommodations', panel: 'Accommodations nearby' },
+  shopping: { button: 'Find shops', panel: 'Shops nearby' },
+  sightseeing: { button: 'Find sights', panel: 'Sights nearby' },
+  transport: { button: 'Find places', panel: 'Places nearby' },
+  other: { button: 'Find places', panel: 'Places nearby' },
+};
+
+export function getNearbyPlacesLabel(category: ActivityCategory | undefined): { button: string; panel: string } {
+  const key = (category && category in NEARBY_PLACES_LABELS ? category : 'other') as ActivityCategory;
+  return NEARBY_PLACES_LABELS[key];
+}
+
+interface PlacesNearbyResponse {
+  places?: Array<{
     id?: string;
     displayName?: { text?: string };
     primaryTypeDisplayName?: { text?: string };
@@ -86,10 +86,13 @@ export async function fetchNearbyRestaurants(location: string): Promise<PlaceRes
     userRatingCount?: number;
     formattedAddress?: string;
     currentOpeningHours?: { openNow?: boolean };
-  }> };
+  }>;
+}
 
+function parseNearbyResponse(raw: string): PlaceResult[] {
+  const data = JSON.parse(raw) as PlacesNearbyResponse;
   const places = data.places ?? [];
-  return places.map((p) => ({
+  const results: PlaceResult[] = places.map((p) => ({
     id: p.id ?? '',
     name: p.displayName?.text ?? '',
     primaryType: p.primaryTypeDisplayName?.text ?? '',
@@ -99,6 +102,36 @@ export async function fetchNearbyRestaurants(location: string): Promise<PlaceRes
     isOpenNow: p.currentOpeningHours?.openNow ?? null,
     address: p.formattedAddress ?? null,
   }));
+  results.sort((a, b) => (b.ratingCount ?? 0) - (a.ratingCount ?? 0));
+  return results;
+}
+
+export async function fetchNearbyPlaces(
+  location: string,
+  category?: string,
+  title?: string
+): Promise<PlaceResult[]> {
+  const cacheKey = [location, category ?? '', title ?? ''].join('|');
+  const raw = await getCachedAiText({
+    namespace: 'places-nearby',
+    cacheKey,
+    ttlMs: 3 * 60 * 60 * 1000,
+    producer: async () => {
+      const res = await fetch(`${getProxyUrl()}/places/nearby`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ location, category, title, maxResults: 20 }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error((data as { error?: string }).error ?? `Request failed: ${res.status}`);
+      return JSON.stringify(data);
+    },
+  });
+  return parseNearbyResponse(raw);
+}
+
+export async function fetchNearbyRestaurants(location: string): Promise<PlaceResult[]> {
+  return fetchNearbyPlaces(location, 'food');
 }
 
 export async function resolvePlaceId(activityTitle: string, location: string): Promise<string | null> {
@@ -137,33 +170,44 @@ export async function fetchPlaceDetails(placeId: string): Promise<PlaceDetails> 
   });
 
   const data = JSON.parse(raw) as {
-    displayName?: { text?: string };
+    displayName?: { text?: string; languageCode?: string } | string;
     rating?: number;
     userRatingCount?: number;
-    reviewSummary?: { text?: string; reviewsUri?: string; disclosureText?: string };
+    reviewSummary?: {
+      text?: string | { text?: string; languageCode?: string };
+      reviewsUri?: string;
+      disclosureText?: string | { text?: string; languageCode?: string };
+    };
     reviews?: Array<{
-      text?: { text?: string };
+      text?: { text?: string; languageCode?: string } | string;
       rating?: number;
       authorAttribution?: { displayName?: string };
       relativePublishTimeDescription?: string;
     }>;
   };
 
-  const name = data.displayName?.text ?? '';
+  // Places API (New) can return LocalizedText as { text, languageCode }; always normalize to string for React
+  const textOf = (v: string | { text?: string; languageCode?: string } | null | undefined): string =>
+    typeof v === 'string' ? v : (v && typeof v === 'object' && typeof (v as { text?: string }).text === 'string' ? (v as { text: string }).text : '');
+
+  const name = textOf(data.displayName);
   const reviews: PlaceReview[] = (data.reviews ?? []).map((r) => ({
-    text: r.text?.text ?? '',
+    text: textOf(r.text),
     rating: r.rating ?? 0,
     authorName: r.authorAttribution?.displayName ?? '',
     relativeTime: r.relativePublishTimeDescription ?? '',
   }));
+
+  const reviewSummaryRaw = data.reviewSummary?.text;
+  const disclosureRaw = data.reviewSummary?.disclosureText;
 
   return {
     id: placeId,
     name,
     rating: typeof data.rating === 'number' ? data.rating : null,
     ratingCount: typeof data.userRatingCount === 'number' ? data.userRatingCount : null,
-    reviewSummary: data.reviewSummary?.text ?? null,
-    reviewSummaryDisclosure: data.reviewSummary?.disclosureText ?? null,
+    reviewSummary: textOf(reviewSummaryRaw) || null,
+    reviewSummaryDisclosure: textOf(disclosureRaw) || null,
     reviewsUri: data.reviewSummary?.reviewsUri ?? null,
     reviews,
   };

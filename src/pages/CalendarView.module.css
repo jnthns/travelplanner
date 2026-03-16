@@ -751,6 +751,12 @@
 }
 
 @media (max-width: 768px) {
+    .detail-actions {
+        flex-direction: column;
+        align-items: stretch;
+        margin-left: 0;
+    }
+
     .calendar-controls {
         flex-direction: row;
         flex-wrap: wrap;
