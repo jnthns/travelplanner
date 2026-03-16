@@ -950,7 +950,7 @@ const CalendarView: React.FC = () => {
                         keyFn={a => a.id}
                         onReorder={handleReorderActivities}
                         disabled={editingActivityId !== null}
-                        renderItem={(act, _idx, dragHandleProps) =>
+                        renderItem={(act, _idx) =>
                             editingActivityId === act.id ? (
                                 <ActivityForm
                                     tripId={act.tripId}
