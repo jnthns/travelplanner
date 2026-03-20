@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { getCachedAiText } from '../cache';
-import { generateWithGemini } from '../../gemini';
+import { generateWithGemini } from '../../services/aiService';
 import { getEffectiveDayLocations } from '../../itinerary';
 import type { Activity, Trip } from '../../types';
 
@@ -103,7 +103,7 @@ Activities: ${dayItinerary}
 
 Respond with a JSON object matching this exact schema:
 {
-  "summary": "A 2-3 sentence overview covering route optimization, expected travel/wait times between activities, and suggested improvements to the day's plan. 80 words max.",
+  "summary": "A 2-3 sentence overview covering route optimization, expected travel/wait times between activities, and suggested improvements to the day's plan. 120 words min.",
   "highlights": [
     "First highlight: an attraction, culinary, cultural, or historical point along the route",
     "Second highlight: a seasonal or current event for the given day, or a hidden gem near the itinerary",

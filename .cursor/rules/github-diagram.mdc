@@ -1,0 +1,159 @@
+---
+description: Analyze a GitHub repo and produce a Mermaid architecture diagram + design audit. Trigger when the user pastes a GitHub URL or repo name and asks to diagram, visualize, audit, review design, find issues, or understand how a codebase works.
+globs:
+alwaysApply: false
+---
+
+# GitHub Repo Diagram & Design Audit
+
+When triggered, produce two files in the workspace:
+1. `diagram.mermaid` — Mermaid architecture diagram
+2. `analysis.md` — Design audit with issues and optimization suggestions
+
+---
+
+## Step 1 — Clone the repo
+
+```bash
+git clone --depth=1 <repo_url> /tmp/repo-analysis
+```
+
+Expand short names like `facebook/react` → `https://github.com/facebook/react`.
+
+---
+
+## Step 2 — Assess size, choose diagram depth
+
+```bash
+find /tmp/repo-analysis -type f \( -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" \) \
+  | grep -v node_modules | grep -v dist | grep -v .next | grep -v coverage \
+  | wc -l
+```
+
+| Source files | Diagram depth |
+|---|---|
+| < 30 | Function-level — individual functions and call relationships |
+| 30–150 | Module-level — files/modules as nodes, key exports and cross-module calls |
+| > 150 | Package-level — top-level directories as nodes, data/dependency flow between them |
+
+Also check `package.json` for monorepo workspace structure.
+
+---
+
+## Step 3 — Explore the codebase
+
+Read in this order:
+- `package.json` — deps, scripts, workspace structure
+- `tsconfig.json` — module boundaries
+- Entry points: `index.ts`, `src/index.ts`, `src/main.ts`, `app.ts`, `server.ts`
+- Top-level directories, then the largest/most-imported files within each
+
+Useful analysis commands:
+```bash
+# Most-imported files (high fan-in = architectural center of gravity)
+grep -r "from '\.\." /tmp/repo-analysis/src --include="*.ts" -h \
+  | sed "s/.*from '//;s/'.*//" | sort | uniq -c | sort -rn | head -20
+
+# Circular dependency surface area
+grep -r "import" /tmp/repo-analysis/src --include="*.ts" -l | head -30
+```
+
+---
+
+## Step 4 — Build the Mermaid diagram
+
+Choose the diagram type that best fits the repo's structure:
+- `graph TD` — dependency/module graphs (most common)
+- `flowchart LR` — pipelines or request flows
+- `sequenceDiagram` — protocols or multi-actor flows
+- `classDiagram` — heavily OOP repos with clear class hierarchies
+
+**Diagram principles:**
+- Node labels: short, human-readable — not raw file paths
+- Use subgraphs to group related modules in larger repos
+- Arrow direction = data flow or dependency direction
+- Label edges where the relationship isn't self-evident (`-->|emits|`, `-->|writes|`)
+- Target 10–40 nodes — informative but not overwhelming
+- Monorepos: packages as top-level subgraphs
+
+**Example (module-level):**
+```mermaid
+graph TD
+  subgraph Core
+    A[index.ts\nEntry point]
+    B[router.ts\nRoute handler]
+    C[middleware.ts\nAuth + logging]
+  end
+  subgraph Data
+    D[db.ts\nDB connection]
+    E[models/User.ts]
+    F[models/Post.ts]
+  end
+  A --> B
+  B --> C
+  B --> D
+  D --> E
+  D --> F
+```
+
+---
+
+## Step 5 — Write the design audit
+
+Use this exact structure for `analysis.md`:
+
+```markdown
+# Design Audit: [Repo Name]
+
+> [One-sentence description of what this repo does]
+
+## Architecture Overview
+[2–4 sentences: how the system is structured, main layers/modules, how data flows.
+Plain-English companion to the diagram.]
+
+## Design Issues
+
+### 🔴 Critical
+[Correctness, security, or scalability issues. Only include if genuinely found —
+don't manufacture issues for repos that don't have them.]
+
+### 🟡 Moderate
+[Maintainability and DX issues — tight coupling, missing abstractions,
+inconsistent patterns, poor separation of concerns.]
+
+### 🟢 Minor
+[Naming, missing types, dead code, style inconsistencies.]
+
+## Optimization Suggestions
+[3–6 suggestions. For each: **What** to change, **Why** it matters, **How** to do it.
+Favor effort-to-impact ratio. Be specific — cite files, patterns, pseudocode.]
+
+## What's Done Well
+[2–4 genuine strengths. Credibility for the critique depends on this being honest.]
+```
+
+**JS/TS-specific issues to check for:**
+
+- **God modules** — files > 300 lines doing unrelated things
+- **Missing TypeScript** — JS that should be typed, heavy `any` usage
+- **Circular dependencies** — A imports B imports A
+- **Prop drilling** — state passed 3+ levels with no state management
+- **Unhandled async** — missing try/catch, bare `.catch()`, fire-and-forget promises
+- **Bundle bloat** — `import _ from 'lodash'` when only one function is needed
+- **Mixed async styles** — callbacks + promises + async/await in the same codebase
+- **Untestable architecture** — business logic fused to framework with no seams
+- **N+1 patterns** — DB/API calls inside loops
+- **Hardcoded config** — env values, secrets, or URLs in source files
+
+Cite specific file names and line numbers wherever possible. Generic advice that applies to every codebase is noise — omit it.
+
+---
+
+## Quality bar
+
+The target reader is a senior engineer deciding whether to adopt this library or understanding a new codebase before contributing. That means:
+
+- Find the *real* architectural story, not just a restatement of the folder structure
+- Surface non-obvious issues — the ones that don't show up in a quick skim
+- Calibrate critique to the repo's scope: a 100-line utility with no critical issues should say so
+- If the repo is genuinely well-designed, say that clearly and explain why
