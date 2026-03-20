@@ -1,5 +1,5 @@
 import { getCachedAiText } from '../cache';
-import { generateWithGemini } from '../../gemini';
+import { generateWithGemini } from '../../services/aiService';
 
 export async function generateAssistantResponse(args: {
   userMessage: string;
@@ -11,7 +11,7 @@ export async function generateAssistantResponse(args: {
   const prompt = `Chat History:\n${currentHistory}\n\nUser: ${userMessage}\n\nAssistant:`;
 
   const systemInstruction = `You are a direct, concise travel assistant. Adhere strictly to these rules: 
-            1. Answer in 500 words minimum and1000 words maximum.
+            1. Answer in 700 words minimum and 1000 words maximum.
             2. Be direct and avoid superlative chatter or overly enthusiastic language. No fluff.
             3. Use bullet points heavily.
             4. Use emojis.

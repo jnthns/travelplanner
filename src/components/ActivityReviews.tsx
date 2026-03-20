@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
-import { resolvePlaceId, fetchPlaceDetails, generateProsCons } from '../lib/places';
+import { resolvePlaceId, fetchPlaceDetails, generateProsCons } from '../lib/services/placesService';
 import { logEvent } from '../lib/amplitude';
-import type { PlaceDetails, PlaceProsCons } from '../lib/places';
+import type { PlaceDetails, PlaceProsCons } from '../lib/services/placesService';
 
 export interface ActivityReviewsProps {
   activityTitle: string;

@@ -16,7 +16,7 @@ import NoteEditor from '../components/NoteEditor';
 import ScenarioSwitcher from '../components/ScenarioSwitcher';
 import WeatherBadge from '../components/WeatherBadge';
 import NearbyRestaurants from '../components/NearbyRestaurants';
-import { getNearbyPlacesLabel } from '../lib/places';
+import { getNearbyPlacesLabel } from '../lib/services/placesService';
 import ActivityReviews from '../components/ActivityReviews';
 import { useToast } from '../components/Toast';
 import { useWeatherForTrip } from '../lib/weather';

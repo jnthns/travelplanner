@@ -1,5 +1,5 @@
 import { getCachedAiText } from '../cache';
-import { generateWithGemini } from '../../gemini';
+import { generateWithGemini } from '../../services/aiService';
 
 export async function suggestTransportOptions(args: {
   from: string;
