@@ -1,18 +1,18 @@
 import { getCachedAiText } from '../cache';
-import { generateWithGemini } from '../../gemini';
+import { generateWithGemini } from '../../services/aiService';
 
 export async function generateActivityGuide(title: string): Promise<string> {
   const normalizedTitle = title.trim();
 
   const prompt = `For this activity: "${normalizedTitle}".
 
-Write a highly detailed and useful guide (maximum 100 words) in bullet point format with newlines for formatting, structured in this order:
+Write a highly detailed and useful guide (maximum 200 words) in bullet point format with newlines for formatting, structured in this order:
 1. Start with specific, practical travel tips to optimize the experience — best time of the week/time of day to visit, how to avoid crowds, money-saving strategies, local etiquette, and efficiency tips for getting the most out of the visit.
 2. Include any culinary recommendations for the area.
 3. Then include lesser-known tips or details that a typical tourist might miss (nearby gems worth combining into the visit).
 4. End with a brief but rich historical, cultural, or geographical description of the location/activity.
 
-Prioritize actionable advice over general description. Use engaging but factual language. Output only the guide paragraphs, no headings or labels or ad recommendations. Use emojis for each point. Start with a newline and an underline line divider in your response. Apply markdown formatting to the response.`;
+Prioritize actionable advice over general description. Use engaging but factual language. Output only the guide paragraphs, no headings or labels or ad recommendations. Use emojis for each point. Apply markdown formatting to the response.`;
 
   return getCachedAiText({
     namespace: 'activity-guide',

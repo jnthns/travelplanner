@@ -609,7 +609,8 @@
     padding: 1.25rem;
     border: 2px solid var(--primary-color);
     border-radius: var(--radius-xl);
-    background: color-mix(in srgb, var(--primary-color) 10%, var(--surface-color));
+    background: color-mix(in srgb, var(--secondary-color) 10%, var(--surface-color));
+    margin-bottom: 1 rem;
 }
 
 .acc-card-header {

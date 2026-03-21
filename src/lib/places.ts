@@ -4,7 +4,7 @@
  */
 
 import { getCachedAiText } from './ai/cache';
-import { generateWithGemini } from './gemini';
+import { generateWithGemini } from './services/aiService';
 
 const placeIdCache = new Map<string, string>(); // key: `${title}:${location}`
 

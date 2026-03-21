@@ -85,7 +85,7 @@ const ScenarioSwitcher: React.FC<ScenarioSwitcherProps> = ({ trip, activities, r
                 onChange={handleSelectChange}
                 aria-label="Draft or live trip"
             >
-                <option value="">Live</option>
+                <option value="">Main</option>
                 {scenarios.map((s) => (
                     <option key={s.id} value={s.id}>
                         {s.name}

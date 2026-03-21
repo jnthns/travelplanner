@@ -1,462 +1,97 @@
-import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import {
-    format,
-    eachDayOfInterval,
-    isSameDay,
-    parseISO,
-} from 'date-fns';
+import React from 'react';
+import { createPortal } from 'react-dom';
+import { format, isSameDay } from 'date-fns';
 import { AlertTriangle, Info, Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
-import { useTrips, useActivities, useTransportRoutes } from '../lib/store';
-import { CATEGORY_EMOJIS, CATEGORY_COLORS } from '../lib/types';
+import { CATEGORY_EMOJIS } from '../lib/types';
 import ActivityForm from '../components/ActivityForm';
 import DraggableList from '../components/DraggableList';
 import Markdown from '../components/Markdown';
-import { useToast } from '../components/Toast';
 import { logEvent } from '../lib/amplitude';
-import { generateDayActivityDescriptions, generateDaySummary, generateOptimizedRoute } from '../lib/ai/actions/calendar';
 import ScenarioSwitcher from '../components/ScenarioSwitcher';
 import WeatherBadge from '../components/WeatherBadge';
 import NearbyRestaurants from '../components/NearbyRestaurants';
-import { getNearbyPlacesLabel } from '../lib/places';
 import ActivityReviews from '../components/ActivityReviews';
-import { getTripPlanningConflicts } from '../lib/planning/conflicts';
-import { useSettings } from '../lib/settings';
-import { useWeatherForTrip } from '../lib/weather';
-import { compareActivitiesByTimeThenOrder, getEffectiveDayLocations } from '../lib/itinerary';
-import { getTripEmoji } from '../lib/tripEmoji';
-import {
-    createScenarioActivity,
-    removeScenarioActivity,
-    reorderScenarioActivities,
-    updateScenarioTripSnapshot,
-    upsertScenarioActivity,
-    useTripScenarios,
-} from '../lib/scenarios';
+import { useCalendarViewController, type CalendarViewMode } from './useCalendarViewController';
 import styles from './CalendarView.module.css';
 
-const CALENDAR_VIEW_KEY = 'travelplanner_calendar_view';
-
-type ViewMode = 'day' | 'trip';
-
-interface CalendarPrefs {
-    viewMode: ViewMode;
-    selectedTripId: string | null;
-    currentDateStr: string | null;
-}
-
-interface PendingActivityDescription {
-    activityId: string;
-    title: string;
-    summary: string;
-    tips: string[];
-}
-
-function loadCalendarPrefs(): CalendarPrefs {
-    try {
-        const raw = localStorage.getItem(CALENDAR_VIEW_KEY);
-        if (!raw) return { viewMode: 'trip', selectedTripId: null, currentDateStr: null };
-        const p = JSON.parse(raw) as Partial<CalendarPrefs>;
-        const viewMode = (p.viewMode === 'day' || p.viewMode === 'trip') ? p.viewMode : 'trip';
-        return { viewMode, selectedTripId: p.selectedTripId ?? null, currentDateStr: p.currentDateStr ?? null };
-    } catch {
-        return { viewMode: 'trip', selectedTripId: null, currentDateStr: null };
-    }
-}
-
-function saveCalendarPrefs(viewMode: ViewMode, selectedTripId: string | null, currentDateStr: string | null) {
-    try {
-        localStorage.setItem(CALENDAR_VIEW_KEY, JSON.stringify({ viewMode, selectedTripId, currentDateStr }));
-    } catch { /* ignore */ }
-}
-
 const CalendarView: React.FC = () => {
-    const { trips, updateItineraryDay } = useTrips();
-    const { activities, addActivity, updateActivity, deleteActivity, restoreActivity, reorderActivities } = useActivities();
-    const { getRoutesByTrip } = useTransportRoutes();
-    const { showToast } = useToast();
-    const appSettings = useSettings();
-
-    const savedPrefs = useMemo(() => loadCalendarPrefs(), []);
-    const [currentDate, setCurrentDate] = useState(() => {
-        if (savedPrefs.currentDateStr) {
-            try { return parseISO(savedPrefs.currentDateStr); } catch { /* fallback */ }
-        }
-        return new Date();
-    });
-    const [viewMode, setViewMode] = useState<ViewMode>(savedPrefs.viewMode);
-    const [selectedTripId, setSelectedTripId] = useState<string | null>(savedPrefs.selectedTripId);
-    const [addingActivityForDate, setAddingActivityForDate] = useState<string | null>(null);
-    const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
-    const [tripSummary, setTripSummary] = useState<{ summary: string; highlights: string[] } | null>(null);
-    const [summaryLoading, setSummaryLoading] = useState(false);
-    const [summaryError, setSummaryError] = useState<string | null>(null);
-    const [optimizationLoading, setOptimizationLoading] = useState(false);
-    const [optimizationError, setOptimizationError] = useState<string | null>(null);
-    const [optimizedRoute, setOptimizedRoute] = useState<{ recommendation: string; optimizedOrder: string[] } | null>(null);
-    const [descriptionLoading, setDescriptionLoading] = useState(false);
-    const [descriptionError, setDescriptionError] = useState<string | null>(null);
-    const [pendingDescriptions, setPendingDescriptions] = useState<PendingActivityDescription[] | null>(null);
-    const [showAccommodationPanel, setShowAccommodationPanel] = useState(false);
-    const [showNearbyRestaurantsForActivityId, setShowNearbyRestaurantsForActivityId] = useState<string | null>(null);
-    const [reviewsActivityId, setReviewsActivityId] = useState<string | null>(null);
-    const [conflictsExpandedDate, setConflictsExpandedDate] = useState<string | null>(null);
-    const latestDescriptionContextRef = useRef({
-        currentDateStr: '',
-        selectedTripId: null as string | null,
-        scenarioId: null as string | null,
-    });
-
-    const selectedTrip = trips.find(t => t.id === selectedTripId);
-    const { weatherByDate, loading: weatherLoading } = useWeatherForTrip(selectedTrip ?? undefined);
-    const { activeScenario } = useTripScenarios(selectedTripId);
-    const effectiveTrip = activeScenario?.tripSnapshot ?? selectedTrip;
-    const hasLocationForDate = useCallback((dateStr: string) =>
-        getEffectiveDayLocations(
-            effectiveTrip?.itinerary?.[dateStr],
-            effectiveTrip?.dayLocations?.[dateStr]
-        ).length >= 1,
-    [effectiveTrip]);
-    const tripRoutes = useMemo(() => selectedTripId ? getRoutesByTrip(selectedTripId) : [], [selectedTripId, getRoutesByTrip]);
-    const effectiveRoutes = activeScenario?.transportRoutesSnapshot ?? tripRoutes;
-    const tripActivities = useMemo(
-        () => selectedTripId ? activities.filter((activity) => activity.tripId === selectedTripId) : [],
-        [selectedTripId, activities],
-    );
-    const effectiveActivities = activeScenario?.activitiesSnapshot ?? tripActivities;
-    const currentDateStr = format(currentDate, 'yyyy-MM-dd');
-    const currentDayLocations = getEffectiveDayLocations(
-        effectiveTrip?.itinerary?.[currentDateStr],
-        effectiveTrip?.dayLocations?.[currentDateStr]
-    );
-
-    useEffect(() => {
-        saveCalendarPrefs(viewMode, selectedTripId, format(currentDate, 'yyyy-MM-dd'));
-    }, [viewMode, selectedTripId, currentDate]);
-
-    useEffect(() => {
-        if (!effectiveTrip) return;
-        try {
-            const tripStart = parseISO(effectiveTrip.startDate);
-            const tripEnd = parseISO(effectiveTrip.endDate);
-            if (currentDate < tripStart || currentDate > tripEnd) {
-                setCurrentDate(tripStart);
-            }
-        } catch { /* ignore */ }
-    }, [effectiveTrip?.id, effectiveTrip?.startDate, effectiveTrip?.endDate, currentDate]);
-
-    useEffect(() => {
-        latestDescriptionContextRef.current = {
-            currentDateStr,
-            selectedTripId,
-            scenarioId: activeScenario?.id ?? null,
-        };
-        setPendingDescriptions(null);
-        setDescriptionError(null);
-        setDescriptionLoading(false);
-    }, [currentDateStr, selectedTripId, activeScenario?.id]);
-
-    const handleSelectTrip = (tripId: string | null) => {
-        setSelectedTripId(tripId);
-        if (tripId) {
-            const trip = trips.find(t => t.id === tripId);
-            if (trip) {
-                try {
-                    setCurrentDate(parseISO(trip.startDate));
-                } catch { /* ignore */ }
-            }
-        }
-    };
-
-    const hasDaySummaryContent =
-        !!descriptionError ||
-        !!summaryError ||
-        !!optimizationError ||
-        !!pendingDescriptions ||
-        !!optimizedRoute;
-
-    const calendarDays = useMemo(() => {
-        if (viewMode === 'trip' && selectedTrip) {
-            try {
-                return eachDayOfInterval({
-                    start: parseISO(effectiveTrip?.startDate ?? selectedTrip.startDate),
-                    end: parseISO(effectiveTrip?.endDate ?? selectedTrip.endDate),
-                });
-            } catch {
-                return [];
-            }
-        }
-        if (viewMode === 'day') {
-            return [currentDate];
-        }
-        return [];
-    }, [currentDate, viewMode, selectedTrip]);
-
-    const getActivitiesForDate = (date: Date) => {
-        const dateStr = format(date, 'yyyy-MM-dd');
-        return effectiveActivities.filter(a => a.date === dateStr);
-    };
-
-    const tripDays = useMemo(() => {
-        if (!effectiveTrip) return [];
-        try {
-            return eachDayOfInterval({
-                start: parseISO(effectiveTrip.startDate),
-                end: parseISO(effectiveTrip.endDate),
-            });
-        } catch {
-            return [];
-        }
-    }, [effectiveTrip]);
-
-    const handleReorderActivities = useCallback((reordered: import('../lib/types').Activity[]) => {
-        const updates = reordered
-            .map((act, idx) => ({ id: act.id, order: idx }))
-            .filter((u, idx) => reordered[idx].order !== u.order);
-        if (updates.length > 0) {
-            if (selectedTripId && activeScenario) {
-                reorderScenarioActivities(selectedTripId, activeScenario.id, reordered);
-            } else {
-                reorderActivities(updates);
-            }
-            logEvent('Activities Reordered', { count: updates.length, source: 'calendar_day' });
-        }
-    }, [activeScenario, reorderActivities, selectedTripId]);
-
-    const getActivityColor = (activity: { category?: string; color?: string }) =>
-        activity.color ?? CATEGORY_COLORS[activity.category ?? 'other'];
-
-    const dayViewActivities = effectiveActivities
-        .filter(a => a.date === currentDateStr)
-        .sort(compareActivitiesByTimeThenOrder);
-
-    const planningConflicts = useMemo(() => {
-        if (!effectiveTrip) return [];
-        return getTripPlanningConflicts({
-            trip: effectiveTrip,
-            activities: effectiveActivities,
-            routes: effectiveRoutes,
-        });
-    }, [effectiveTrip, effectiveActivities, effectiveRoutes]);
-
-    const conflictCountsByDate = useMemo(() => {
-        const counts: Record<string, number> = {};
-        planningConflicts.forEach((conflict) => {
-            if (!conflict.date) return;
-            counts[conflict.date] = (counts[conflict.date] || 0) + 1;
-        });
-        return counts;
-    }, [planningConflicts]);
-
-    const handleSaveActivity = (
-        activityData: Omit<import('../lib/types').Activity, 'id' | 'userId' | 'tripMembers'> | ({ id: string } & Partial<Omit<import('../lib/types').Activity, 'userId'>>),
-        forDate?: string,
-    ) => {
-        const targetDate = forDate ?? currentDateStr;
-        if ('id' in activityData && activityData.id) {
-            if (selectedTripId && activeScenario) {
-                const existingActivity = effectiveActivities.find((activity) => activity.id === activityData.id);
-                if (!existingActivity) return;
-                upsertScenarioActivity(selectedTripId, activeScenario.id, { ...existingActivity, ...activityData });
-            } else {
-                updateActivity(activityData.id, activityData);
-            }
-        } else if (selectedTripId && targetDate) {
-            const orderFallback = dayViewActivities.length;
-            if (activeScenario) {
-                const scenarioActivity = createScenarioActivity({
-                    ...(activityData as Omit<import('../lib/types').Activity, 'id'>),
-                    tripId: selectedTripId,
-                    date: targetDate,
-                    order: ('order' in activityData ? activityData.order : orderFallback) ?? orderFallback,
-                    title: ('title' in activityData ? activityData.title : '') || 'Activity',
-                    userId: selectedTrip?.userId || 'scenario-user',
-                    tripMembers: selectedTrip?.members || [],
-                });
-                upsertScenarioActivity(selectedTripId, activeScenario.id, scenarioActivity);
-            } else {
-                addActivity({
-                    ...activityData,
-                    tripId: selectedTripId,
-                    date: targetDate,
-                    order: ('order' in activityData ? activityData.order : orderFallback) ?? orderFallback,
-                    title: ('title' in activityData ? activityData.title : '') || 'Activity',
-                } as Omit<import('../lib/types').Activity, 'id' | 'userId' | 'tripMembers'>, selectedTrip?.members || []);
-            }
-        }
-        setAddingActivityForDate(null);
-        setEditingActivityId(null);
-    };
-
-    const handleGenerateSummary = async () => {
-        if (!selectedTrip || dayViewActivities.length === 0) return;
-        setSummaryLoading(true);
-        setSummaryError(null);
-        setTripSummary(null);
-
-        logEvent('Trip Summary Requested', { trip_name: selectedTrip.name, activity_count: dayViewActivities.length, date: currentDateStr });
-        try {
-            const parsed = await generateDaySummary({
-                trip: effectiveTrip ?? selectedTrip,
-                currentDate,
-                currentDateStr,
-                activities: dayViewActivities,
-            });
-            if (!parsed.summary || !Array.isArray(parsed.highlights)) throw new Error('Invalid response format');
-            setTripSummary(parsed);
-        } catch (e) {
-            const msg = e instanceof Error ? e.message : 'Summary generation failed';
-            setSummaryError(/429|quota|rate/i.test(msg) ? 'API rate limit reached — please wait a minute and try again.' : msg);
-        } finally {
-            setSummaryLoading(false);
-        }
-    };
-
-    const handleOptimizeRoute = async () => {
-        if (!selectedTrip || dayViewActivities.length < 2) return;
-        setOptimizationLoading(true);
-        setOptimizationError(null);
-        setOptimizedRoute(null);
-
-        logEvent('Route Optimization Requested', { date: currentDateStr, activity_count: dayViewActivities.length });
-        try {
-            const parsed = await generateOptimizedRoute({
-                trip: effectiveTrip ?? selectedTrip,
-                currentDateStr,
-                activities: dayViewActivities,
-            });
-            if (!parsed.recommendation || !Array.isArray(parsed.optimizedOrder) || parsed.optimizedOrder.length !== dayViewActivities.length) {
-                throw new Error('Invalid response format');
-            }
-            setOptimizedRoute(parsed);
-        } catch (e) {
-            const msg = e instanceof Error ? e.message : 'Optimization failed';
-            setOptimizationError(/429|quota|rate/i.test(msg) ? 'API rate limit reached — please wait a minute and try again.' : msg);
-        } finally {
-            setOptimizationLoading(false);
-        }
-    };
-
-    const handleGenerateDescriptions = async () => {
-        if (!selectedTrip || dayViewActivities.length === 0) return;
-        const requestContext = {
-            currentDateStr,
-            selectedTripId,
-            scenarioId: activeScenario?.id ?? null,
-        };
-        setDescriptionLoading(true);
-        setDescriptionError(null);
-        setPendingDescriptions(null);
-
-        logEvent('Activity Descriptions Requested', {
-            trip_name: selectedTrip.name,
-            activity_count: dayViewActivities.length,
-            date: currentDateStr,
-        });
-
-        try {
-            const parsed = await generateDayActivityDescriptions({
-                trip: effectiveTrip ?? selectedTrip,
-                currentDateStr,
-                activities: dayViewActivities,
-            });
-
-            const nextSuggestions = parsed
-                .map((item) => {
-                    const activity = dayViewActivities.find((candidate) => candidate.id === item.activityId);
-                    if (!activity) return null;
-                    return {
-                        activityId: item.activityId,
-                        title: activity.title,
-                        summary: item.summary.trim(),
-                        tips: item.tips.map((tip) => tip.trim()).filter(Boolean),
-                    };
-                })
-                .filter((item): item is PendingActivityDescription => Boolean(item));
-
-            if (nextSuggestions.length !== dayViewActivities.length) {
-                throw new Error('Missing one or more activity descriptions');
-            }
-
-            const latestContext = latestDescriptionContextRef.current;
-            if (
-                latestContext.currentDateStr !== requestContext.currentDateStr ||
-                latestContext.selectedTripId !== requestContext.selectedTripId ||
-                latestContext.scenarioId !== requestContext.scenarioId
-            ) {
-                return;
-            }
-
-            setPendingDescriptions(nextSuggestions);
-        } catch (e) {
-            const msg = e instanceof Error ? e.message : 'Description generation failed';
-            const latestContext = latestDescriptionContextRef.current;
-            if (
-                latestContext.currentDateStr !== requestContext.currentDateStr ||
-                latestContext.selectedTripId !== requestContext.selectedTripId ||
-                latestContext.scenarioId !== requestContext.scenarioId
-            ) {
-                return;
-            }
-            setDescriptionError(/429|quota|rate/i.test(msg) ? 'API rate limit reached — please wait a minute and try again.' : msg);
-        } finally {
-            const latestContext = latestDescriptionContextRef.current;
-            if (
-                latestContext.currentDateStr === requestContext.currentDateStr &&
-                latestContext.selectedTripId === requestContext.selectedTripId &&
-                latestContext.scenarioId === requestContext.scenarioId
-            ) {
-                setDescriptionLoading(false);
-            }
-        }
-    };
-
-    const dismissPendingDescription = (activityId: string) => {
-        setPendingDescriptions((current) => {
-            if (!current) return null;
-            const next = current.filter((item) => item.activityId !== activityId);
-            return next.length > 0 ? next : null;
-        });
-        logEvent('Activity Description Declined', { activity_id: activityId, date: currentDateStr });
-    };
-
-    const applyPendingDescription = async (activityId: string, summary: string, tips: string[]) => {
-        const activity = dayViewActivities.find((candidate) => candidate.id === activityId);
-        if (!activity) return;
-        const details = `${summary}\n\n${tips.map((tip) => `- ${tip}`).join('\n')}`;
-
-        if (selectedTripId && activeScenario) {
-            upsertScenarioActivity(selectedTripId, activeScenario.id, { ...activity, details });
-        } else {
-            await updateActivity(activityId, { details });
-        }
-
-        setPendingDescriptions((current) => {
-            if (!current) return null;
-            const next = current.filter((item) => item.activityId !== activityId);
-            return next.length > 0 ? next : null;
-        });
-
-        logEvent('Activity Description Accepted', {
-            activity_id: activityId,
-            activity_title: activity.title,
-            date: currentDateStr,
-        });
-    };
-
-    const handleAcceptAllDescriptions = async () => {
-        if (!pendingDescriptions || pendingDescriptions.length === 0) return;
-
-        const count = pendingDescriptions.length;
-        await Promise.all(
-            pendingDescriptions.map((item) => applyPendingDescription(item.activityId, item.summary, item.tips)),
-        );
-        setPendingDescriptions(null);
-
-        logEvent('All Activity Descriptions Accepted', {
-            count,
-            date: currentDateStr,
-        });
-    };
+    const {
+        trips,
+        updateItineraryDay,
+        activities,
+        updateActivity,
+        deleteActivity,
+        restoreActivity,
+        reorderActivities,
+        showToast,
+        appSettings,
+        currentDate,
+        setCurrentDate,
+        viewMode,
+        setViewMode,
+        selectedTripId,
+        selectedTrip,
+        addingActivityForDate,
+        setAddingActivityForDate,
+        editingActivityId,
+        setEditingActivityId,
+        tripSummary,
+        setTripSummary,
+        summaryLoading,
+        summaryError,
+        optimizationLoading,
+        optimizationError,
+        optimizedRoute,
+        setOptimizedRoute,
+        descriptionLoading,
+        descriptionError,
+        pendingDescriptions,
+        setPendingDescriptions,
+        accommodationEditDate,
+        setAccommodationEditDate,
+        accommodationCityInput,
+        setAccommodationCityInput,
+        accommodationNameInput,
+        setAccommodationNameInput,
+        showNearbyRestaurantsForActivityId,
+        setShowNearbyRestaurantsForActivityId,
+        reviewsActivityId,
+        setReviewsActivityId,
+        conflictsExpandedDate,
+        setConflictsExpandedDate,
+        weatherByDate,
+        weatherLoading,
+        activeScenario,
+        effectiveTrip,
+        hasLocationForDate,
+        effectiveActivities,
+        currentDateStr,
+        currentDayLocations,
+        handleSelectTrip,
+        calendarDays,
+        effectiveRoutes,
+        getActivitiesForDate,
+        tripDays,
+        handleReorderActivities,
+        getActivityColor,
+        dayViewActivities,
+        planningConflicts,
+        conflictCountsByDate,
+        handleSaveAccommodationForDate,
+        handleSaveActivity,
+        handleGenerateSummary,
+        handleOptimizeRoute,
+        handleGenerateDescriptions,
+        dismissPendingDescription,
+        applyPendingDescription,
+        handleAcceptAllDescriptions,
+        hasDaySummaryContent,
+        getNearbyPlacesLabel,
+        updateScenarioTripSnapshot,
+        getEffectiveDayLocations,
+        reorderScenarioActivities,
+        removeScenarioActivity,
+    } = useCalendarViewController();
 
     return (
         <div className="page-container animate-fade-in">
@@ -470,7 +105,7 @@ const CalendarView: React.FC = () => {
             {/* Controls */}
             <div className={styles['calendar-controls']}>
                 <div className={styles['view-tabs']}>
-                    {(['trip', 'day'] as ViewMode[]).map(mode => (
+                    {(['trip', 'day'] as CalendarViewMode[]).map(mode => (
                         <button
                             key={mode}
                             className={`${styles['view-tab']} ${viewMode === mode ? styles['active'] : ''}`}
@@ -582,13 +217,25 @@ const CalendarView: React.FC = () => {
                                         </div>
                                     </div>
                                     {appSettings.showAccommodationOnTripCards && (dayData?.accommodation ? (
-                                        <div className={styles['cal-day-accommodation']} title={`${dayData.accommodation.name}${dayData.accommodation.checkInTime ? ` • Check-in: ${dayData.accommodation.checkInTime}` : ''}`}>
+                                        <div
+                                            className={styles['cal-day-accommodation']}
+                                            title={dayData.accommodation.name}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setAccommodationEditDate(dateStr);
+                                            }}
+                                        >
                                             <span className={styles['cal-acc-icon']}>🏠</span>
                                             <span className={styles['cal-acc-name']}>{dayData.accommodation.name}</span>
-                                            {dayData.accommodation.checkInTime && <span className={styles['cal-acc-time']}>{dayData.accommodation.checkInTime}</span>}
                                         </div>
                                     ) : (
-                                        <div className={`${styles['cal-day-accommodation']} ${styles['empty']}`}>
+                                        <div
+                                            className={`${styles['cal-day-accommodation']} ${styles['empty']}`}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setAccommodationEditDate(dateStr);
+                                            }}
+                                        >
                                             <span className={styles['cal-acc-icon']}>🏠</span>
                                             <span className={styles['cal-acc-name']}>Add stay...</span>
                                         </div>
@@ -613,15 +260,83 @@ const CalendarView: React.FC = () => {
                 </div>
             )}
 
+            {accommodationEditDate && selectedTripId && createPortal(
+                <div
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        zIndex: 120,
+                        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '1rem',
+                    }}
+                    onClick={() => setAccommodationEditDate(null)}
+                >
+                    <div
+                        className="card"
+                        style={{
+                            width: '100%',
+                            maxWidth: '520px',
+                            background: 'var(--surface-color)',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: 'var(--radius-lg)',
+                            boxShadow: 'var(--shadow-lg)',
+                            padding: '1rem',
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                            <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>🏠 Stay</div>
+                            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setAccommodationEditDate(null)} aria-label="Close">
+                                ×
+                            </button>
+                        </div>
+
+                        <div style={{ display: 'grid', gap: '0.75rem' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>City</label>
+                                    <input
+                                        type="text"
+                                        className="input-field"
+                                        placeholder="e.g. Tokyo or Tokyo, Kyoto"
+                                        value={accommodationCityInput}
+                                        onChange={(e) => setAccommodationCityInput(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Accommodation</label>
+                                    <input
+                                        type="text"
+                                        className="input-field"
+                                        placeholder="Hotel / Ryokan / Airbnb"
+                                        value={accommodationNameInput}
+                                        onChange={(e) => setAccommodationNameInput(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
+                            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setAccommodationEditDate(null)}>
+                                Cancel
+                            </button>
+                            <button type="button" className="btn btn-primary btn-sm" onClick={handleSaveAccommodationForDate}>
+                                Save
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+
             {/* Day Detail View */}
             {viewMode === 'day' && (
                 <div className={styles['day-detail-view']}>
-                    <div className={styles['day-planner-card']}>
-                        <div className={styles['day-planner-card__header']}>
-                            <div className={styles['day-planner-card__title']}>
-                                <span className={styles['day-planner-card__emoji']} aria-hidden>{selectedTrip ? getTripEmoji(selectedTrip.name) : '📅'}</span>
-                                <span>{format(currentDate, 'EEEE, MMM d')}</span>
-                            </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <WeatherBadge
                                 day={weatherByDate.get(currentDateStr)?.[0]}
                                 hasLocation={hasLocationForDate(currentDateStr)}
@@ -630,96 +345,88 @@ const CalendarView: React.FC = () => {
                                 compact={false}
                             />
                         </div>
-                        <div className={styles['day-planner-card__fields']}>
-                            <div className={styles['day-planner-field']}>
-                                <label className={styles['day-planner-field__label']} htmlFor="day-location-input">City</label>
-                                <input
-                                    id="day-location-input"
-                                    type="text"
-                                    className={`input-field ${styles['day-planner-pill']}`}
-                                    placeholder="e.g. Tokyo or Kyoto"
-                                    defaultValue={currentDayLocations.join(', ')}
-                                    key={`day-loc-${selectedTripId}-${activeScenario?.id ?? 'live'}-${currentDateStr}`}
-                                    onBlur={e => {
-                                        const raw = e.target.value;
-                                        const parsed = raw.split(',').map(s => s.trim()).filter(Boolean);
-                                        const prev = getEffectiveDayLocations(effectiveTrip?.itinerary?.[currentDateStr], effectiveTrip?.dayLocations?.[currentDateStr]);
-                                        if (parsed.join(', ') === prev.join(', ')) return;
-                                        if (!selectedTripId) return;
-                                        const updates = parsed.length === 0
-                                            ? { location: '', locations: [] as string[] }
-                                            : parsed.length === 1
-                                                ? { location: parsed[0], locations: [parsed[0]] }
-                                                : { location: parsed[0], locations: parsed };
-                                        if (activeScenario) {
-                                            updateScenarioTripSnapshot(selectedTripId, activeScenario.id, (trip) => ({
-                                                ...trip,
-                                                itinerary: {
-                                                    ...(trip.itinerary || {}),
-                                                    [currentDateStr]: { ...(trip.itinerary?.[currentDateStr] || {}), ...updates },
-                                                },
-                                            }));
-                                        } else {
-                                            updateItineraryDay(selectedTripId, currentDateStr, updates);
-                                        }
-                                    }}
-                                    onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                                />
-                            </div>
-                            <div className={styles['day-planner-field']}>
-                                <label className={styles['day-planner-field__label']} htmlFor="day-accommodation-name-input">Accommodation</label>
-                                <div className={styles['day-planner-acc-wrap']}>
-                                    <span className={styles['day-planner-acc-icon']} aria-hidden>🏠</span>
-                                    <input
-                                        id="day-accommodation-name-input"
-                                        type="text"
-                                        className={`input-field ${styles['day-planner-pill']} ${styles['day-planner-acc-input']}`}
-                                        placeholder="Add stay…"
-                                        defaultValue={effectiveTrip?.itinerary?.[currentDateStr]?.accommodation?.name ?? ''}
-                                        key={`day-acc-name-${selectedTripId}-${activeScenario?.id ?? 'live'}-${currentDateStr}`}
-                                        disabled={!selectedTripId}
-                                        title={(() => {
-                                            const ci = effectiveTrip?.itinerary?.[currentDateStr]?.accommodation?.checkInTime;
-                                            return ci ? `Check-in: ${ci}` : undefined;
-                                        })()}
-                                        onBlur={e => {
-                                            const val = e.target.value.trim();
-                                            const current = effectiveTrip?.itinerary?.[currentDateStr]?.accommodation;
-                                            if (val === (current?.name ?? '')) return;
-                                            if (!selectedTripId) return;
-                                            if (activeScenario) {
-                                                updateScenarioTripSnapshot(selectedTripId, activeScenario.id, (trip) => ({
-                                                    ...trip,
-                                                    itinerary: {
-                                                        ...(trip.itinerary || {}),
-                                                        [currentDateStr]: {
-                                                            ...(trip.itinerary?.[currentDateStr] || {}),
-                                                            accommodation: { ...current, name: val },
+                    </div>
+                    <div className={`${styles['day-accommodation-card']} card`}>
+                        <div className={styles['acc-card-header']} style={{ alignItems: 'baseline' }}>
+                            <div className={styles['acc-card-icon']}>📅</div>
+                            <div className={styles['acc-card-info']}>
+                                <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
+                                    {format(currentDate, 'EEEE, MMM d')}
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                    <div>
+                                        <label htmlFor="day-location-input" className={styles['acc-label']}>City</label>
+                                        <input
+                                            id="day-location-input"
+                                            type="text"
+                                            className={`${styles['acc-name-input']} ${styles['input-transparent']}`}
+                                            placeholder="e.g. Tokyo or Tokyo, Kyoto"
+                                            defaultValue={currentDayLocations.join(', ')}
+                                            key={`day-loc-${selectedTripId}-${activeScenario?.id ?? 'live'}-${currentDateStr}`}
+                                            onBlur={e => {
+                                                const raw = e.target.value;
+                                                const parsed = raw.split(',').map(s => s.trim()).filter(Boolean);
+                                                const prev = getEffectiveDayLocations(effectiveTrip?.itinerary?.[currentDateStr], effectiveTrip?.dayLocations?.[currentDateStr]);
+                                                if (parsed.join(', ') === prev.join(', ')) return;
+                                                if (!selectedTripId) return;
+                                                const updates = parsed.length === 0
+                                                    ? { location: '', locations: [] as string[] }
+                                                    : parsed.length === 1
+                                                        ? { location: parsed[0], locations: [parsed[0]] }
+                                                        : { location: parsed[0], locations: parsed };
+                                                if (activeScenario) {
+                                                    updateScenarioTripSnapshot(selectedTripId, activeScenario.id, (trip) => ({
+                                                        ...trip,
+                                                        itinerary: {
+                                                            ...(trip.itinerary || {}),
+                                                            [currentDateStr]: { ...(trip.itinerary?.[currentDateStr] || {}), ...updates },
                                                         },
-                                                    },
-                                                }));
-                                            } else {
-                                                updateItineraryDay(selectedTripId, currentDateStr, {
-                                                    accommodation: { ...current, name: val },
-                                                });
-                                            }
-                                        }}
-                                        onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                                    />
+                                                    }));
+                                                } else {
+                                                    updateItineraryDay(selectedTripId, currentDateStr, updates);
+                                                }
+                                            }}
+                                            onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className={styles['acc-label']}>Accommodation</label>
+                                        <input
+                                            type="text"
+                                            className={`${styles['acc-name-input']} ${styles['input-transparent']}`}
+                                            placeholder="Hotel / Ryokan / Airbnb"
+                                            defaultValue={effectiveTrip?.itinerary?.[currentDateStr]?.accommodation?.name ?? ''}
+                                            key={`acc-name-inline-${selectedTripId}-${activeScenario?.id ?? 'live'}-${currentDateStr}`}
+                                            onBlur={e => {
+                                                const val = e.target.value.trim();
+                                                const current = effectiveTrip?.itinerary?.[currentDateStr]?.accommodation;
+                                                if (val !== (current?.name ?? '')) {
+                                                    if (selectedTripId && activeScenario) {
+                                                        updateScenarioTripSnapshot(selectedTripId, activeScenario.id, (trip) => ({
+                                                            ...trip,
+                                                            itinerary: {
+                                                                ...(trip.itinerary || {}),
+                                                                [currentDateStr]: {
+                                                                    ...(trip.itinerary?.[currentDateStr] || {}),
+                                                                    accommodation: { ...current, name: val },
+                                                                },
+                                                            },
+                                                        }));
+                                                    } else {
+                                                        updateItineraryDay(selectedTripId!, currentDateStr, {
+                                                            accommodation: { ...current, name: val }
+                                                        });
+                                                    }
+                                                }
+                                            }}
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                     <div className={styles['planning-action-row']}>
                         <div className={styles['planning-action-row__left']}>
-                            <button
-                                type="button"
-                                className={`${styles['action-btn']} ${styles['action-btn-sky']} ${styles['planner-action-btn']} ${!showAccommodationPanel ? styles['planner-toggle-inactive'] : ''}`}
-                                onClick={() => setShowAccommodationPanel((prev) => !prev)}
-                            >
-                                <span className={styles['action-btn-icon']}>🏠</span>
-                                Check-in &amp; cost
-                            </button>
                             <button
                                 type="button"
                                 className={`${styles['action-btn']} ${styles['action-btn-violet']}`}
@@ -758,117 +465,6 @@ const CalendarView: React.FC = () => {
                             </button>
                         )}
                     </div>
-
-                    {showAccommodationPanel && (
-                        <div className={`${styles['day-accommodation-card']} card`}>
-                            <div className={styles['acc-card-header']}>
-                                <div className={styles['acc-card-icon']}>🏠</div>
-                                <div className={styles['acc-card-info']}>
-                                    <label className={styles['acc-label']}>Accommodation</label>
-                                    <input
-                                        type="text"
-                                        className={`${styles['acc-name-input']} ${styles['input-transparent']}`}
-                                        placeholder="Add accommodation..."
-                                        defaultValue={effectiveTrip?.itinerary?.[currentDateStr]?.accommodation?.name ?? ''}
-                                        key={`acc-name-${selectedTripId}-${activeScenario?.id ?? 'live'}-${currentDateStr}`}
-                                        onBlur={e => {
-                                            const val = e.target.value.trim();
-                                            const current = effectiveTrip?.itinerary?.[currentDateStr]?.accommodation;
-                                            if (val !== (current?.name ?? '')) {
-                                                if (selectedTripId && activeScenario) {
-                                                    updateScenarioTripSnapshot(selectedTripId, activeScenario.id, (trip) => ({
-                                                        ...trip,
-                                                        itinerary: {
-                                                            ...(trip.itinerary || {}),
-                                                            [currentDateStr]: {
-                                                                ...(trip.itinerary?.[currentDateStr] || {}),
-                                                                accommodation: { ...current, name: val },
-                                                            },
-                                                        },
-                                                    }));
-                                                } else {
-                                                    updateItineraryDay(selectedTripId!, currentDateStr, {
-                                                        accommodation: { ...current, name: val }
-                                                    });
-                                                }
-                                            }
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                            <div className={styles['acc-card-meta']}>
-                                <div className={styles['acc-meta-item']}>
-                                    <span className={styles['acc-meta-label']}>Check-In</span>
-                                    <input
-                                        type="time"
-                                        className={`${styles['acc-time-input']} ${styles['input-transparent']}`}
-                                        defaultValue={effectiveTrip?.itinerary?.[currentDateStr]?.accommodation?.checkInTime ?? ''}
-                                        key={`acc-time-${selectedTripId}-${activeScenario?.id ?? 'live'}-${currentDateStr}`}
-                                        onBlur={e => {
-                                            const val = e.target.value;
-                                            const current = effectiveTrip?.itinerary?.[currentDateStr]?.accommodation;
-                                            if (val !== (current?.checkInTime ?? '')) {
-                                                if (selectedTripId && activeScenario) {
-                                                    updateScenarioTripSnapshot(selectedTripId, activeScenario.id, (trip) => ({
-                                                        ...trip,
-                                                        itinerary: {
-                                                            ...(trip.itinerary || {}),
-                                                            [currentDateStr]: {
-                                                                ...(trip.itinerary?.[currentDateStr] || {}),
-                                                                accommodation: { ...current, name: current?.name || '', checkInTime: val },
-                                                            },
-                                                        },
-                                                    }));
-                                                } else {
-                                                    updateItineraryDay(selectedTripId!, currentDateStr, {
-                                                        accommodation: { ...current, name: current?.name || '', checkInTime: val }
-                                                    });
-                                                }
-                                            }
-                                        }}
-                                    />
-                                </div>
-                                <div className={styles['acc-meta-item']}>
-                                    <span className={styles['acc-meta-label']}>Cost ({selectedTrip?.defaultCurrency || '$'})</span>
-                                    <input
-                                        type="number"
-                                        className={`${styles['acc-cost-input']} ${styles['input-transparent']}`}
-                                        placeholder="0"
-                                        defaultValue={effectiveTrip?.itinerary?.[currentDateStr]?.accommodation?.cost ?? ''}
-                                        key={`acc-cost-${selectedTripId}-${activeScenario?.id ?? 'live'}-${currentDateStr}`}
-                                        onBlur={e => {
-                                            const val = parseFloat(e.target.value);
-                                            const current = effectiveTrip?.itinerary?.[currentDateStr]?.accommodation;
-                                            if (val !== (current?.cost ?? 0)) {
-                                                const nextAccommodation = {
-                                                    ...current,
-                                                    name: current?.name || '',
-                                                    cost: isNaN(val) ? undefined : val,
-                                                    currency: current?.currency || effectiveTrip?.defaultCurrency || 'USD'
-                                                };
-                                                if (selectedTripId && activeScenario) {
-                                                    updateScenarioTripSnapshot(selectedTripId, activeScenario.id, (trip) => ({
-                                                        ...trip,
-                                                        itinerary: {
-                                                            ...(trip.itinerary || {}),
-                                                            [currentDateStr]: {
-                                                                ...(trip.itinerary?.[currentDateStr] || {}),
-                                                                accommodation: nextAccommodation,
-                                                            },
-                                                        },
-                                                    }));
-                                                } else {
-                                                    updateItineraryDay(selectedTripId!, currentDateStr, {
-                                                        accommodation: nextAccommodation
-                                                    });
-                                                }
-                                            }
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    )}
                     {selectedTripId && dayViewActivities.length > 0 && hasDaySummaryContent && (
                         <div className={styles['day-summary-section']}>
                             {descriptionError && <p className="text-red-500 text-sm mt-2">{descriptionError}</p>}
@@ -1032,7 +628,7 @@ const CalendarView: React.FC = () => {
                                             {act.time && <span className={styles['detail-time']}>{act.time}</span>}
                                         </div>
                                         <div className={styles['detail-actions']}>
-                                            {act.location && (
+                                            {(act.location || currentDayLocations[0]) && (
                                                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => setReviewsActivityId(act.id)} aria-label="Reviews">📋 Reviews</button>
                                             )}
                                             {(act.location || currentDayLocations[0]) && (
@@ -1072,7 +668,7 @@ const CalendarView: React.FC = () => {
                                         <div style={{ marginTop: '0.75rem' }}>
                                             <ActivityReviews
                                                 activityTitle={act.title}
-                                                activityLocation={act.location}
+                                                activityLocation={act.location || currentDayLocations[0]}
                                                 onClose={() => setReviewsActivityId(null)}
                                             />
                                         </div>

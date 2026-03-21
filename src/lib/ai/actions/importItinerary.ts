@@ -1,5 +1,5 @@
 import { getCachedAiText } from '../cache';
-import { generateWithGemini } from '../../gemini';
+import { generateWithGemini } from '../../services/aiService';
 
 export interface ParsedActivity {
   date: string;
