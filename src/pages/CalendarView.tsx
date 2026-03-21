@@ -23,6 +23,7 @@ import { getTripPlanningConflicts } from '../lib/planning/conflicts';
 import { useSettings } from '../lib/settings';
 import { useWeatherForTrip } from '../lib/weather';
 import { compareActivitiesByTimeThenOrder, getEffectiveDayLocations } from '../lib/itinerary';
+import { getTripEmoji } from '../lib/tripEmoji';
 import {
     createScenarioActivity,
     removeScenarioActivity,
@@ -615,9 +616,12 @@ const CalendarView: React.FC = () => {
             {/* Day Detail View */}
             {viewMode === 'day' && (
                 <div className={styles['day-detail-view']}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                        <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{format(currentDate, 'EEEE, MMM d')}</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <div className={styles['day-planner-card']}>
+                        <div className={styles['day-planner-card__header']}>
+                            <div className={styles['day-planner-card__title']}>
+                                <span className={styles['day-planner-card__emoji']} aria-hidden>{selectedTrip ? getTripEmoji(selectedTrip.name) : '📅'}</span>
+                                <span>{format(currentDate, 'EEEE, MMM d')}</span>
+                            </div>
                             <WeatherBadge
                                 day={weatherByDate.get(currentDateStr)?.[0]}
                                 hasLocation={hasLocationForDate(currentDateStr)}
@@ -626,42 +630,85 @@ const CalendarView: React.FC = () => {
                                 compact={false}
                             />
                         </div>
-                    </div>
-                    <div style={{ marginBottom: '0.75rem' }}>
-                        <label htmlFor="day-location-input" style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>City</label>
-                        <input
-                            id="day-location-input"
-                            type="text"
-                            className="input-field"
-                            placeholder="e.g. Tokyo or Tokyo, Kyoto"
-                            defaultValue={currentDayLocations.join(', ')}
-                            key={`day-loc-${selectedTripId}-${activeScenario?.id ?? 'live'}-${currentDateStr}`}
-                            onBlur={e => {
-                                const raw = e.target.value;
-                                const parsed = raw.split(',').map(s => s.trim()).filter(Boolean);
-                                const prev = getEffectiveDayLocations(effectiveTrip?.itinerary?.[currentDateStr], effectiveTrip?.dayLocations?.[currentDateStr]);
-                                if (parsed.join(', ') === prev.join(', ')) return;
-                                if (!selectedTripId) return;
-                                const updates = parsed.length === 0
-                                    ? { location: '', locations: [] as string[] }
-                                    : parsed.length === 1
-                                        ? { location: parsed[0], locations: [parsed[0]] }
-                                        : { location: parsed[0], locations: parsed };
-                                if (activeScenario) {
-                                    updateScenarioTripSnapshot(selectedTripId, activeScenario.id, (trip) => ({
-                                        ...trip,
-                                        itinerary: {
-                                            ...(trip.itinerary || {}),
-                                            [currentDateStr]: { ...(trip.itinerary?.[currentDateStr] || {}), ...updates },
-                                        },
-                                    }));
-                                } else {
-                                    updateItineraryDay(selectedTripId, currentDateStr, updates);
-                                }
-                            }}
-                            onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                            style={{ width: '100%', maxWidth: '320px' }}
-                        />
+                        <div className={styles['day-planner-card__fields']}>
+                            <div className={styles['day-planner-field']}>
+                                <label className={styles['day-planner-field__label']} htmlFor="day-location-input">City</label>
+                                <input
+                                    id="day-location-input"
+                                    type="text"
+                                    className={`input-field ${styles['day-planner-pill']}`}
+                                    placeholder="e.g. Tokyo or Kyoto"
+                                    defaultValue={currentDayLocations.join(', ')}
+                                    key={`day-loc-${selectedTripId}-${activeScenario?.id ?? 'live'}-${currentDateStr}`}
+                                    onBlur={e => {
+                                        const raw = e.target.value;
+                                        const parsed = raw.split(',').map(s => s.trim()).filter(Boolean);
+                                        const prev = getEffectiveDayLocations(effectiveTrip?.itinerary?.[currentDateStr], effectiveTrip?.dayLocations?.[currentDateStr]);
+                                        if (parsed.join(', ') === prev.join(', ')) return;
+                                        if (!selectedTripId) return;
+                                        const updates = parsed.length === 0
+                                            ? { location: '', locations: [] as string[] }
+                                            : parsed.length === 1
+                                                ? { location: parsed[0], locations: [parsed[0]] }
+                                                : { location: parsed[0], locations: parsed };
+                                        if (activeScenario) {
+                                            updateScenarioTripSnapshot(selectedTripId, activeScenario.id, (trip) => ({
+                                                ...trip,
+                                                itinerary: {
+                                                    ...(trip.itinerary || {}),
+                                                    [currentDateStr]: { ...(trip.itinerary?.[currentDateStr] || {}), ...updates },
+                                                },
+                                            }));
+                                        } else {
+                                            updateItineraryDay(selectedTripId, currentDateStr, updates);
+                                        }
+                                    }}
+                                    onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                                />
+                            </div>
+                            <div className={styles['day-planner-field']}>
+                                <label className={styles['day-planner-field__label']} htmlFor="day-accommodation-name-input">Accommodation</label>
+                                <div className={styles['day-planner-acc-wrap']}>
+                                    <span className={styles['day-planner-acc-icon']} aria-hidden>🏠</span>
+                                    <input
+                                        id="day-accommodation-name-input"
+                                        type="text"
+                                        className={`input-field ${styles['day-planner-pill']} ${styles['day-planner-acc-input']}`}
+                                        placeholder="Add stay…"
+                                        defaultValue={effectiveTrip?.itinerary?.[currentDateStr]?.accommodation?.name ?? ''}
+                                        key={`day-acc-name-${selectedTripId}-${activeScenario?.id ?? 'live'}-${currentDateStr}`}
+                                        disabled={!selectedTripId}
+                                        title={(() => {
+                                            const ci = effectiveTrip?.itinerary?.[currentDateStr]?.accommodation?.checkInTime;
+                                            return ci ? `Check-in: ${ci}` : undefined;
+                                        })()}
+                                        onBlur={e => {
+                                            const val = e.target.value.trim();
+                                            const current = effectiveTrip?.itinerary?.[currentDateStr]?.accommodation;
+                                            if (val === (current?.name ?? '')) return;
+                                            if (!selectedTripId) return;
+                                            if (activeScenario) {
+                                                updateScenarioTripSnapshot(selectedTripId, activeScenario.id, (trip) => ({
+                                                    ...trip,
+                                                    itinerary: {
+                                                        ...(trip.itinerary || {}),
+                                                        [currentDateStr]: {
+                                                            ...(trip.itinerary?.[currentDateStr] || {}),
+                                                            accommodation: { ...current, name: val },
+                                                        },
+                                                    },
+                                                }));
+                                            } else {
+                                                updateItineraryDay(selectedTripId, currentDateStr, {
+                                                    accommodation: { ...current, name: val },
+                                                });
+                                            }
+                                        }}
+                                        onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div className={styles['planning-action-row']}>
                         <div className={styles['planning-action-row__left']}>
@@ -671,7 +718,7 @@ const CalendarView: React.FC = () => {
                                 onClick={() => setShowAccommodationPanel((prev) => !prev)}
                             >
                                 <span className={styles['action-btn-icon']}>🏠</span>
-                                Accommodation
+                                Check-in &amp; cost
                             </button>
                             <button
                                 type="button"

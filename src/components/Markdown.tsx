@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 
 marked.setOptions({
@@ -14,7 +15,8 @@ interface MarkdownProps {
 const Markdown: React.FC<MarkdownProps> = ({ children, className }) => {
   const html = useMemo(() => {
     const result = marked.parse(children);
-    return typeof result === 'string' ? result : '';
+    const raw = typeof result === 'string' ? result : '';
+    return DOMPurify.sanitize(raw, { USE_PROFILES: { html: true } });
   }, [children]);
 
   return (

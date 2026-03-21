@@ -22,6 +22,18 @@ export interface ActivityDescriptionSuggestion {
 
 const ACTIVITY_DESCRIPTION_CACHE_VERSION = 'v3';
 
+function formatAiPreferenceContext(trip: Trip): string {
+  const prefs = trip.aiPreferences;
+  if (!prefs) return 'AI preferences: none set.';
+  return `AI preferences:
+- Pace: ${prefs.pace || 'balanced'}
+- Interests: ${(prefs.interests || []).join(', ') || 'none set'}
+- Dietary needs: ${prefs.dietaryNeeds || 'none set'}
+- Accessibility needs: ${prefs.accessibilityNeeds || 'none set'}
+- Avoid: ${prefs.avoid || 'none set'}
+- Notes: ${prefs.notes || 'none set'}`;
+}
+
 function normalizeActivityDescriptionSuggestion(
   value: unknown,
 ): ActivityDescriptionSuggestion | null {
@@ -100,6 +112,7 @@ export async function generateDaySummary(args: {
 Location: ${dayLocation || 'Not specified'}
 Accommodation: ${dayAccommodation || 'Not specified'}
 Activities: ${dayItinerary}
+${formatAiPreferenceContext(trip)}
 
 Respond with a JSON object matching this exact schema:
 {
@@ -166,6 +179,7 @@ export async function generateOptimizedRoute(args: {
   const prompt = `Here are the activities planned for ${currentDateStr} on a trip to "${trip.name}":
 
 ${currentDayActs}
+${formatAiPreferenceContext(trip)}
 
 Respond with a JSON object matching this exact schema:
 {
@@ -223,6 +237,7 @@ Day context:
 
 Activities:
 ${currentDayActs}
+${formatAiPreferenceContext(trip)}
 
 Respond with a JSON array matching this exact schema:
 [

@@ -1,16 +1,17 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useTrips, useActivities, useNotes, useChatHistory, useTransportRoutes } from '../lib/store';
 import { useTripScenarios } from '../lib/scenarios';
 import ScenarioSwitcher from '../components/ScenarioSwitcher';
-import { Send, Bot, User, Loader2, CalendarPlus, StickyNote, Check, ChevronDown } from 'lucide-react';
+import { Send, Bot, User, Loader2, CalendarPlus, StickyNote, Check, ChevronDown, X } from 'lucide-react';
 import Markdown from '../components/Markdown';
 import { generateAssistantResponse } from '../lib/ai/actions/assistant';
 import { compareActivitiesByTimeThenOrder, getEffectiveDayLocations } from '../lib/itinerary';
 
 const Assistant: React.FC = () => {
     const navigate = useNavigate();
-    const { trips } = useTrips();
+    const { trips, updateTrip } = useTrips();
     const { activities } = useActivities();
     const { getRoutesByTrip } = useTransportRoutes();
     const { addNote } = useNotes();
@@ -38,10 +39,29 @@ const Assistant: React.FC = () => {
     const [savedNotes, setSavedNotes] = useState<Record<string, boolean>>({});
     const [importedPayloads] = useState<Record<string, boolean>>({});
     const [importMenuOpenFor, setImportMenuOpenFor] = useState<string | null>(null);
+    const [prefsOpen, setPrefsOpen] = useState(false);
+    const [prefPace, setPrefPace] = useState<'relaxed' | 'balanced' | 'fast'>('balanced');
+    const [prefInterests, setPrefInterests] = useState('');
+    const [prefDietaryNeeds, setPrefDietaryNeeds] = useState('');
+    const [prefAccessibilityNeeds, setPrefAccessibilityNeeds] = useState('');
+    const [prefAvoid, setPrefAvoid] = useState('');
+    const [prefNotes, setPrefNotes] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const selectedTrip = trips.find(t => t.id === selectedTripId);
     const { activeScenarioId, activeScenario } = useTripScenarios(selectedTripId);
+    const effectiveTrip = activeScenario?.tripSnapshot ?? selectedTrip;
+
+    const resetPrefsFromTrip = useCallback(() => {
+        if (!selectedTrip) return;
+        const prefs = selectedTrip.aiPreferences;
+        setPrefPace(prefs?.pace || 'balanced');
+        setPrefInterests((prefs?.interests || []).join(', '));
+        setPrefDietaryNeeds(prefs?.dietaryNeeds || '');
+        setPrefAccessibilityNeeds(prefs?.accessibilityNeeds || '');
+        setPrefAvoid(prefs?.avoid || '');
+        setPrefNotes(prefs?.notes || '');
+    }, [selectedTrip]);
 
     /** Shown so user knows which trip (and Live vs draft) Import will edit. */
     const editingContextLabel = useMemo(() => {
@@ -53,8 +73,53 @@ const Assistant: React.FC = () => {
     const assistantTripActivities = useMemo(() => selectedTripId ? activities.filter(a => a.tripId === selectedTripId) : [], [selectedTripId, activities]);
     const assistantTripRoutes = useMemo(() => selectedTripId ? getRoutesByTrip(selectedTripId) : [], [selectedTripId, getRoutesByTrip]);
 
+    useEffect(() => {
+        if (!selectedTrip) return;
+        const prefs = selectedTrip.aiPreferences;
+        setPrefPace(prefs?.pace || 'balanced');
+        setPrefInterests((prefs?.interests || []).join(', '));
+        setPrefDietaryNeeds(prefs?.dietaryNeeds || '');
+        setPrefAccessibilityNeeds(prefs?.accessibilityNeeds || '');
+        setPrefAvoid(prefs?.avoid || '');
+        setPrefNotes(prefs?.notes || '');
+    }, [selectedTripId, selectedTrip?.id]);
+
+    const saveAiPreferences = async () => {
+        if (!selectedTripId || !selectedTrip) return;
+        const interests = prefInterests.split(',').map((v) => v.trim()).filter(Boolean);
+        await updateTrip(selectedTripId, {
+            aiPreferences: {
+                pace: prefPace,
+                interests: interests.length > 0 ? interests : undefined,
+                dietaryNeeds: prefDietaryNeeds.trim() || undefined,
+                accessibilityNeeds: prefAccessibilityNeeds.trim() || undefined,
+                avoid: prefAvoid.trim() || undefined,
+                notes: prefNotes.trim() || undefined,
+            },
+        });
+    };
+
+    useEffect(() => {
+        if (!prefsOpen) return;
+        resetPrefsFromTrip();
+
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setPrefsOpen(false);
+        };
+        document.addEventListener('keydown', onKeyDown);
+
+        // Prevent background scroll while modal is open.
+        const prevOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+
+        return () => {
+            document.removeEventListener('keydown', onKeyDown);
+            document.body.style.overflow = prevOverflow;
+        };
+    }, [prefsOpen, selectedTripId, resetPrefsFromTrip]);
+
     const tripContext = useMemo(() => {
-        if (!selectedTrip) return "No trip selected.";
+        if (!effectiveTrip) return "No trip selected.";
         const tripActs = activities
             .filter(a => a.tripId === selectedTripId)
             .sort((a, b) => a.date.localeCompare(b.date) || compareActivitiesByTimeThenOrder(a, b))
@@ -62,26 +127,34 @@ const Assistant: React.FC = () => {
             .join('\n');
 
         return `ACTIVE TRIP CONTEXT:
-Name: ${selectedTrip.name}
-Dates: ${selectedTrip.startDate} to ${selectedTrip.endDate}
+Name: ${effectiveTrip.name}
+Dates: ${effectiveTrip.startDate} to ${effectiveTrip.endDate}
 Destinations: ${(() => {
           const dates: string[] = [];
           try {
-            const start = new Date(selectedTrip.startDate + 'T12:00:00Z');
-            const end = new Date(selectedTrip.endDate + 'T12:00:00Z');
+            const start = new Date(effectiveTrip.startDate + 'T12:00:00Z');
+            const end = new Date(effectiveTrip.endDate + 'T12:00:00Z');
             for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
               dates.push(d.toISOString().slice(0, 10));
             }
           } catch { /* ignore */ }
           const all = dates.flatMap((date) =>
-            getEffectiveDayLocations(selectedTrip.itinerary?.[date], selectedTrip.dayLocations?.[date])
+            getEffectiveDayLocations(effectiveTrip.itinerary?.[date], effectiveTrip.dayLocations?.[date])
           );
           return [...new Set(all)].filter(Boolean).join(', ') || 'Not set';
         })()}
 
 ACTIVITIES:
-${tripActs || "None planned yet."}`;
-    }, [selectedTrip, selectedTripId, activities]);
+${tripActs || "None planned yet."}
+
+AI_PREFERENCES:
+Pace: ${effectiveTrip.aiPreferences?.pace || 'balanced'}
+Interests: ${(effectiveTrip.aiPreferences?.interests || []).join(', ') || 'none set'}
+Dietary: ${effectiveTrip.aiPreferences?.dietaryNeeds || 'none set'}
+Accessibility: ${effectiveTrip.aiPreferences?.accessibilityNeeds || 'none set'}
+Avoid: ${effectiveTrip.aiPreferences?.avoid || 'none set'}
+Notes: ${effectiveTrip.aiPreferences?.notes || 'none set'}`;
+    }, [effectiveTrip, selectedTripId, activities]);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -184,6 +257,79 @@ ${tripActs || "None planned yet."}`;
                     .assistant-page .assistant-loading-row { max-width: 95% !important; }
                     .assistant-page .assistant-form .input-field { min-width: 0; flex: 1 1 100%; }
                 }
+
+                /* AI preferences modal / bottom-sheet (option 2) — portaled to document.body */
+                .prefs-overlay {
+                    position: fixed;
+                    inset: 0;
+                    z-index: 10000;
+                    background: rgba(0, 0, 0, 0.48);
+                    backdrop-filter: blur(4px);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 16px;
+                }
+
+                .prefs-panel {
+                    width: 100%;
+                    max-width: 720px;
+                    max-height: 90vh;
+                    overflow: hidden;
+                    display: flex;
+                    flex-direction: column;
+                    background: var(--surface-color);
+                    border: 1px solid var(--border-color);
+                    border-radius: var(--radius-lg);
+                    box-shadow: var(--shadow-lg);
+                }
+
+                @media (max-width: 768px) {
+                    .prefs-overlay { align-items: flex-end; padding: 0; }
+                    .prefs-panel { max-width: 100%; border-radius: 20px 20px 0 0; }
+                }
+
+                .prefs-header {
+                    padding: 12px 16px;
+                    border-bottom: 1px solid var(--border-color);
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 12px;
+                }
+
+                .prefs-content {
+                    padding: 16px;
+                    overflow: auto;
+                }
+
+                .prefs-grid {
+                    display: grid;
+                    grid-template-columns: 1fr;
+                    gap: 12px;
+                }
+
+                .prefs-field { min-width: 0; }
+
+                .prefs-label {
+                    display: block;
+                    font-size: 0.85rem;
+                    color: var(--text-secondary);
+                    margin-bottom: 6px;
+                    font-weight: 600;
+                }
+
+                .prefs-actions {
+                    padding: 12px 16px;
+                    border-top: 1px solid var(--border-color);
+                    display: flex;
+                    gap: 8px;
+                    justify-content: flex-end;
+                    position: sticky;
+                    bottom: 0;
+                    background: var(--surface-color);
+                    z-index: 1;
+                }
             `}</style>
             <header className="page-header mb-md">
                 <div>
@@ -219,6 +365,17 @@ ${tripActs || "None planned yet."}`;
                         <ScenarioSwitcher trip={selectedTrip} activities={assistantTripActivities} routes={assistantTripRoutes} />
                     )}
                 </div>
+                {selectedTrip && (
+                    <div className="mt-2">
+                        <button
+                            type="button"
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => setPrefsOpen(true)}
+                        >
+                            Edit AI preferences
+                        </button>
+                    </div>
+                )}
                 {selectedTripId && (
                     <div className="mt-2 text-xs flex justify-between items-center flex-wrap gap-1" style={{ color: 'var(--text-secondary)' }}>
                         {editingContextLabel && (
@@ -443,6 +600,127 @@ ${tripActs || "None planned yet."}`;
                         <Send size={18} />
                     </button>
                 </form>
+
+                {prefsOpen && selectedTripId && selectedTrip &&
+                    createPortal(
+                        <div
+                            className="prefs-overlay"
+                            role="dialog"
+                            aria-modal="true"
+                            aria-label="Edit AI preferences"
+                            onClick={() => setPrefsOpen(false)}
+                        >
+                            <div className="prefs-panel" onClick={(e) => e.stopPropagation()}>
+                                <div className="prefs-header">
+                                    <div className="flex items-center gap-sm">
+                                        <div
+                                            className="flex items-center justify-center rounded-full bg-surface-1"
+                                            style={{
+                                                width: 34,
+                                                height: 34,
+                                                border: '1px solid var(--border-color)',
+                                                color: 'var(--text-secondary)',
+                                            }}
+                                        >
+                                            <Bot size={16} />
+                                        </div>
+                                        <div>
+                                            <div style={{ fontWeight: 700, lineHeight: 1.2 }}>AI preferences</div>
+                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{selectedTrip.name}</div>
+                                        </div>
+                                    </div>
+
+                                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setPrefsOpen(false)} aria-label="Close">
+                                        <X size={16} />
+                                    </button>
+                                </div>
+
+                                <div className="prefs-content">
+                                    <div className="prefs-grid">
+                                        <div className="prefs-field">
+                                            <label className="prefs-label">Pace</label>
+                                            <select className="input-field" value={prefPace} onChange={(e) => setPrefPace(e.target.value as 'relaxed' | 'balanced' | 'fast')}>
+                                                <option value="relaxed">Relaxed</option>
+                                                <option value="balanced">Balanced</option>
+                                                <option value="fast">Fast-paced</option>
+                                            </select>
+                                        </div>
+
+                                        <div className="prefs-field">
+                                            <label className="prefs-label">Interests</label>
+                                            <input
+                                                className="input-field"
+                                                value={prefInterests}
+                                                onChange={(e) => setPrefInterests(e.target.value)}
+                                                placeholder="food, history, museums"
+                                            />
+                                        </div>
+
+                                        <div className="prefs-field">
+                                            <label className="prefs-label">Dietary needs</label>
+                                            <input
+                                                className="input-field"
+                                                value={prefDietaryNeeds}
+                                                onChange={(e) => setPrefDietaryNeeds(e.target.value)}
+                                                placeholder="vegetarian, halal..."
+                                            />
+                                        </div>
+
+                                        <div className="prefs-field">
+                                            <label className="prefs-label">Accessibility needs</label>
+                                            <input
+                                                className="input-field"
+                                                value={prefAccessibilityNeeds}
+                                                onChange={(e) => setPrefAccessibilityNeeds(e.target.value)}
+                                                placeholder="wheelchair-friendly..."
+                                            />
+                                        </div>
+
+                                        <div className="prefs-field">
+                                            <label className="prefs-label">Avoid</label>
+                                            <input
+                                                className="input-field"
+                                                value={prefAvoid}
+                                                onChange={(e) => setPrefAvoid(e.target.value)}
+                                                placeholder="long hikes, nightlife..."
+                                            />
+                                        </div>
+
+                                        <div className="prefs-field">
+                                            <label className="prefs-label">Notes</label>
+                                            <input
+                                                className="input-field"
+                                                value={prefNotes}
+                                                onChange={(e) => setPrefNotes(e.target.value)}
+                                                placeholder="Any special constraints..."
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="prefs-actions">
+                                    <button
+                                        type="button"
+                                        className="btn btn-ghost"
+                                        onClick={() => {
+                                            resetPrefsFromTrip();
+                                            setPrefsOpen(false);
+                                        }}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="btn btn-primary"
+                                        onClick={() => void saveAiPreferences().then(() => setPrefsOpen(false))}
+                                    >
+                                        Save AI preferences
+                                    </button>
+                                </div>
+                            </div>
+                        </div>,
+                        document.body
+                    )}
             </div>
         </div>
     );

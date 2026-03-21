@@ -17,6 +17,15 @@ export interface ItineraryDay {
     accommodation?: Accommodation;
 }
 
+export interface AiPreferences {
+    pace?: 'relaxed' | 'balanced' | 'fast';
+    interests?: string[];
+    dietaryNeeds?: string;
+    accessibilityNeeds?: string;
+    avoid?: string;
+    notes?: string;
+}
+
 export interface Trip {
     id: string;
     userId: string; // owner UID
@@ -30,6 +39,7 @@ export interface Trip {
     itinerary?: Record<string, ItineraryDay>; // "YYYY-MM-DD" -> day details
     budgetTarget?: number;
     budgetCurrency?: string;
+    aiPreferences?: AiPreferences;
     members: string[];          // [ownerUid, ...collaboratorUids]
     sharedWithEmails: string[]; // display-only mirror of members
     _pendingWrite?: boolean;
@@ -118,6 +128,22 @@ export interface Note {
     order: number;
     color?: string;
     images?: string[]; // Firebase Storage download URLs
+    createdAt: string; // ISO datetime
+    updatedAt: string; // ISO datetime
+    _pendingWrite?: boolean;
+}
+
+export interface PackingItem {
+    id: string;
+    userId: string;
+    tripId: string;
+    tripMembers: string[]; // denormalized from trip.members for security rules
+    title: string;
+    category?: 'documents' | 'clothing' | 'toiletries' | 'electronics' | 'medication' | 'other';
+    quantity?: number;
+    packed: boolean;
+    notes?: string;
+    order: number;
     createdAt: string; // ISO datetime
     updatedAt: string; // ISO datetime
     _pendingWrite?: boolean;

@@ -68,7 +68,11 @@ type CsvRow = Partial<Record<CsvColumn, string | number>>;
 
 function csvEscape(value: string | number | null | undefined): string {
     if (value === null || value === undefined) return '';
-    const str = String(value);
+    let str = String(value);
+    // Mitigate CSV/formula injection when opened in Excel or similar (OWASP: leading =, +, -, @).
+    if (/^[=+\-@]/.test(str)) {
+        str = `'${str.replace(/'/g, "''")}`;
+    }
     if (/[",\n]/.test(str)) {
         return `"${str.replace(/"/g, '""')}"`;
     }

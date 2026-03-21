@@ -4,10 +4,16 @@ service firebase.storage {
   match /b/{bucket}/o {
     match /notes/{userId}/{tripId}/{noteId}/{fileName} {
       allow read: if request.auth != null && request.auth.uid == userId;
+      // Block SVG/scriptable types while keeping common photo formats (not broad image/*).
       allow write: if request.auth != null
                    && request.auth.uid == userId
                    && request.resource.size < 5 * 1024 * 1024
-                   && request.resource.contentType.matches('image/.*');
+                   && request.resource.contentType in [
+                     'image/jpeg',
+                     'image/png',
+                     'image/gif',
+                     'image/webp'
+                   ];
     }
   }
 }

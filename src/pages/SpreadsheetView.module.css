@@ -163,10 +163,25 @@
     margin-right: 0.35rem;
 }
 
+.spreadsheet-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 100%;
+}
+
+.spreadsheet-toolbar :global(.scenario-dropdown-wrap) {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
 .zoom-controls {
     display: flex;
     align-items: center;
     gap: 0.35rem;
+    flex-shrink: 0;
 }
 
 .zoom-value {
@@ -620,10 +635,46 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
     padding: 0.75rem 1rem;
-    cursor: pointer;
-    user-select: none;
     border-bottom: 1px solid var(--border-light);
+}
+
+.unscheduled-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.unscheduled-row {
+    display: flex;
+    align-items: stretch;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
+.unscheduled-row .sheet-activity {
+    flex: 1;
+    min-width: 0;
+}
+
+.unscheduled-edit-btn {
+    flex-shrink: 0;
+}
+
+.unscheduled-empty {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.25rem;
+}
+
+.unscheduled-add-btn {
+    white-space: nowrap;
 }
 
 .unscheduled-title {

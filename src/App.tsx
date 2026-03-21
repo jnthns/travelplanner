@@ -18,6 +18,7 @@ const Transportation = lazy(() => import('./pages/Transportation'));
 const SpreadsheetView = lazy(() => import('./pages/SpreadsheetView'));
 const Budget = lazy(() => import('./pages/Budget'));
 const Notes = lazy(() => import('./pages/Notes'));
+const Packing = lazy(() => import('./pages/Packing'));
 const Settings = lazy(() => import('./pages/Settings'));
 const ImportItinerary = lazy(() => import('./pages/ImportItinerary'));
 const Assistant = lazy(() => import('./pages/Assistant'));
@@ -81,6 +82,7 @@ const App: React.FC = () => {
                     <Route path="/spreadsheet" element={<SpreadsheetView />} />
                     <Route path="/budget" element={<Budget />} />
                     <Route path="/notes" element={<Notes />} />
+                    <Route path="/packing" element={<Packing />} />
                     <Route path="/import" element={<ImportItinerary />} />
                     <Route path="/assistant" element={<Assistant />} />
                     <Route path="/settings" element={<Settings />} />

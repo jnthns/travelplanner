@@ -74,7 +74,6 @@ export async function generateWithGemini(
           throw new Error(data.error || `Proxy returned ${response.status}`);
         }
 
-        console.log('Gemini raw response:', data);
         const text = data.text?.trim() ?? '';
         if (!text) throw new Error('Empty response from AI proxy');
         recordAiRequestSuccess();

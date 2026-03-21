@@ -30,6 +30,24 @@ function buildConflictId(parts: Array<string | undefined>) {
   return parts.filter(Boolean).join(':');
 }
 
+/** True if a logged move exists across the day boundary: Transport tab routes or calendar activities with category `transport`. */
+function hasTransportAcrossDayBoundary(
+  previousDate: string,
+  currentDate: string,
+  routes: TransportRoute[],
+  activities: Activity[],
+): boolean {
+  const onBoundary = (d: string) => routes.some((r) => r.date === d);
+  if (onBoundary(previousDate) || onBoundary(currentDate)) return true;
+
+  const transportActivityOnBoundary = activities.some(
+    (a) =>
+      a.category === 'transport' &&
+      (a.date === previousDate || a.date === currentDate),
+  );
+  return transportActivityOnBoundary;
+}
+
 export function getTripPlanningConflicts(args: {
   trip: Trip;
   activities: Activity[];
@@ -165,15 +183,14 @@ export function getTripPlanningConflicts(args: {
 
     if (!previousLocation || !currentLocation || previousLocation === currentLocation) continue;
 
-    const boundaryRoutes = routes.filter((route) => route.date === previousDate || route.date === currentDate);
-    if (boundaryRoutes.length === 0) {
+    if (!hasTransportAcrossDayBoundary(previousDate, currentDate, routes, activities)) {
       conflicts.push({
         id: buildConflictId(['location-change-no-route', previousDate, currentDate]),
         type: 'location-change-no-route',
         scope: 'trip',
         severity: 'warning',
         title: 'Location change without transport',
-        message: `The trip moves from ${previousLocation} to ${currentLocation}, but no transport route is logged for the change.`,
+        message: `The trip moves from ${previousLocation} to ${currentLocation}, but no transport is logged (add a route in Transportation or an activity with category Transport on ${previousDate} or ${currentDate}).`,
         date: currentDate,
       });
     }

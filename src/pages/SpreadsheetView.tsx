@@ -97,6 +97,8 @@ const SpreadsheetView: React.FC = () => {
     const [focusedDate, setFocusedDate] = useState<Date>(() => new Date());
     const spreadsheetWrapperRef = useRef<HTMLDivElement>(null);
     const [unscheduledOpen, setUnscheduledOpen] = useState(true);
+    /** When set, open add-activity modal for this date with no default time (unscheduled). */
+    const [addingUnscheduledForDate, setAddingUnscheduledForDate] = useState<string | null>(null);
 
     const [quickNoteForDate, setQuickNoteForDate] = useState<string | null>(null);
     const [quickNoteContent, setQuickNoteContent] = useState('');
@@ -280,6 +282,7 @@ const SpreadsheetView: React.FC = () => {
         }
         setEditingActivity(null);
         setAddingCell(null);
+        setAddingUnscheduledForDate(null);
     };
 
     const handleDeleteFromModal = (id: string) => {
@@ -488,9 +491,6 @@ const SpreadsheetView: React.FC = () => {
                 </select>
                 {selectedTripId && (
                     <div className={styles['trip-mobile-actions']}>
-                        {selectedTrip && (
-                            <ScenarioSwitcher trip={selectedTrip} activities={effectiveActivities} routes={effectiveRoutes} />
-                        )}
                         <button className="btn btn-ghost btn-sm" onClick={() => { setEditingTrip(selectedTripId); setShowTripForm(true); }}>
                             <Pencil size={14} />
                         </button>
@@ -504,32 +504,35 @@ const SpreadsheetView: React.FC = () => {
             {selectedTrip && tripDays.length > 0 && (
                 <>
                     <div className={styles['day-nav-wrapper']}>
-                        <div className={styles['zoom-controls']}>
-                            <button
-                                type="button"
-                                className="btn btn-ghost btn-sm"
-                                onClick={() => setSheetZoom((prev) => clampZoom(prev - 10))}
-                                aria-label="Zoom out spreadsheet"
-                            >
-                                -
-                            </button>
-                            <span className={styles['zoom-value']}>Zoom: {clampZoom(sheetZoom)}%</span>
-                            <button
-                                type="button"
-                                className="btn btn-ghost btn-sm"
-                                onClick={() => setSheetZoom(100)}
-                                aria-label="Reset spreadsheet zoom"
-                            >
-                                Reset
-                            </button>
-                            <button
-                                type="button"
-                                className="btn btn-ghost btn-sm"
-                                onClick={() => setSheetZoom((prev) => clampZoom(prev + 10))}
-                                aria-label="Zoom in spreadsheet"
-                            >
-                                +
-                            </button>
+                        <div className={styles['spreadsheet-toolbar']}>
+                            <ScenarioSwitcher trip={selectedTrip} activities={effectiveActivities} routes={effectiveRoutes} />
+                            <div className={styles['zoom-controls']}>
+                                <button
+                                    type="button"
+                                    className="btn btn-ghost btn-sm"
+                                    onClick={() => setSheetZoom((prev) => clampZoom(prev - 10))}
+                                    aria-label="Zoom out spreadsheet"
+                                >
+                                    -
+                                </button>
+                                <span className={styles['zoom-value']}>Zoom: {clampZoom(sheetZoom)}%</span>
+                                <button
+                                    type="button"
+                                    className="btn btn-ghost btn-sm"
+                                    onClick={() => setSheetZoom(100)}
+                                    aria-label="Reset spreadsheet zoom"
+                                >
+                                    Reset
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-ghost btn-sm"
+                                    onClick={() => setSheetZoom((prev) => clampZoom(prev + 10))}
+                                    aria-label="Zoom in spreadsheet"
+                                >
+                                    +
+                                </button>
+                            </div>
                         </div>
                         <div className={styles['day-pills']}>
                             {tripDays.map((day, idx) => {
@@ -767,41 +770,79 @@ const SpreadsheetView: React.FC = () => {
 
                     {/* Unscheduled activities (focused day) */}
                     {appSettings.showUnscheduledSection && <div className={styles['unscheduled-wrap']}>
-                        <div
-                            className={styles['unscheduled-header']}
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => setUnscheduledOpen(v => !v)}
-                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setUnscheduledOpen(v => !v); }}
-                        >
+                        <div className={styles['unscheduled-header']}>
                             <div className={styles['unscheduled-title']}>
                                 <Clock size={16} />
                                 Unscheduled activities ({unscheduledActivitiesForFocusedDay.length})
                             </div>
-                            <button type="button" className="btn btn-ghost btn-sm">
-                                {unscheduledOpen ? 'Hide' : 'Show'}
-                            </button>
+                            <div className={styles['unscheduled-header-actions']}>
+                                <button
+                                    type="button"
+                                    className={`btn btn-primary btn-sm ${styles['unscheduled-add-btn']}`}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        const d = format(focusedDate, 'yyyy-MM-dd');
+                                        setAddingUnscheduledForDate(d);
+                                        setUnscheduledOpen(true);
+                                        logEvent('Unscheduled Activity Add Clicked', { date: d, source: 'spreadsheet' });
+                                    }}
+                                >
+                                    <Plus size={14} /> Add without time
+                                </button>
+                                <button type="button" className="btn btn-ghost btn-sm" onClick={(e) => { e.stopPropagation(); setUnscheduledOpen(v => !v); }}>
+                                    {unscheduledOpen ? 'Hide' : 'Show'}
+                                </button>
+                            </div>
                         </div>
                         {unscheduledOpen && (
                             <div className={styles['unscheduled-list']}>
                                 {unscheduledActivitiesForFocusedDay.length === 0 ? (
-                                    <div className="text-secondary text-sm" style={{ padding: '0.25rem' }}>
-                                        Nothing unscheduled for this day.
+                                    <div className={styles['unscheduled-empty']}>
+                                        <p className="text-secondary text-sm" style={{ margin: 0 }}>
+                                            Nothing unscheduled for this day.
+                                        </p>
+                                        <button
+                                            type="button"
+                                            className="btn btn-primary btn-sm"
+                                            onClick={() => {
+                                                const d = format(focusedDate, 'yyyy-MM-dd');
+                                                setAddingUnscheduledForDate(d);
+                                                logEvent('Unscheduled Activity Add Clicked', { date: d, source: 'spreadsheet_empty' });
+                                            }}
+                                        >
+                                            <Plus size={14} /> Add activity
+                                        </button>
                                     </div>
                                 ) : (
                                     unscheduledActivitiesForFocusedDay.map(act => (
                                         <div
                                             key={act.id}
-                                            className={styles['sheet-activity']}
-                                            draggable
-                                            onDragStart={e => handleDragStart(e, act)}
-                                            onClick={() => setEditingActivity(act)}
-                                            style={{ ['--activity-color' as string]: act.color ?? CATEGORY_COLORS[act.category || 'other'] }}
+                                            className={styles['unscheduled-row']}
                                         >
-                                            <span className={styles['sheet-act-emoji']}>{CATEGORY_EMOJIS[act.category || 'other']}</span>
-                                            <div className={styles['sheet-act-info']}>
-                                                <span className={styles['sheet-act-title']}>{act.title}</span>
+                                            <div
+                                                className={styles['sheet-activity']}
+                                                draggable
+                                                onDragStart={e => handleDragStart(e, act)}
+                                                onClick={() => setEditingActivity(act)}
+                                                style={{ ['--activity-color' as string]: act.color ?? CATEGORY_COLORS[act.category || 'other'] }}
+                                            >
+                                                <span className={styles['sheet-act-emoji']}>{CATEGORY_EMOJIS[act.category || 'other']}</span>
+                                                <div className={styles['sheet-act-info']}>
+                                                    <span className={styles['sheet-act-title']}>{act.title}</span>
+                                                </div>
                                             </div>
+                                            <button
+                                                type="button"
+                                                className={`btn btn-ghost btn-sm ${styles['unscheduled-edit-btn']}`}
+                                                aria-label={`Edit ${act.title}`}
+                                                title="Edit"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setEditingActivity(act);
+                                                }}
+                                            >
+                                                <Pencil size={16} />
+                                            </button>
                                         </div>
                                     ))
                                 )}
@@ -892,6 +933,26 @@ const SpreadsheetView: React.FC = () => {
                             defaultCurrency={effectiveTrip?.defaultCurrency}
                             onSave={handleSaveActivity}
                             onCancel={() => setAddingCell(null)}
+                        />
+                    </div>
+                </div>,
+                document.body,
+            )}
+
+            {/* Modal: add activity with no time (unscheduled) for a given day */}
+            {addingUnscheduledForDate && selectedTripId && createPortal(
+                <div className={styles['sheet-modal-overlay']} onClick={() => setAddingUnscheduledForDate(null)}>
+                    <div className={styles['sheet-modal']} onClick={e => e.stopPropagation()}>
+                        <p className="text-secondary text-sm" style={{ marginBottom: '0.75rem' }}>
+                            Adding for <strong>{safeFormatDate(addingUnscheduledForDate, 'EEEE, MMM d')}</strong> — leave time as &quot;No time&quot; to stay unscheduled.
+                        </p>
+                        <ActivityForm
+                            tripId={selectedTripId}
+                            date={addingUnscheduledForDate}
+                            nextOrder={effectiveActivities.filter((a) => a.date === addingUnscheduledForDate).length}
+                            defaultCurrency={effectiveTrip?.defaultCurrency}
+                            onSave={handleSaveActivity}
+                            onCancel={() => setAddingUnscheduledForDate(null)}
                         />
                     </div>
                 </div>,

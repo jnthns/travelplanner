@@ -38,7 +38,7 @@ Create a `.env` file in the project root:
 VITE_FIREBASE_API_KEY=your-api-key
 VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
 VITE_FIREBASE_PROJECT_ID=your-project-id
-VITE_FIREBASE_STORAGE_BUCKET=your-project.firebasestorage.app
+VITE_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
 VITE_FIREBASE_MESSAGING_SENDER_ID=your-sender-id
 VITE_FIREBASE_APP_ID=your-app-id
 VITE_AI_PROXY_URL=https://your-worker.workers.dev
@@ -67,7 +67,18 @@ cd worker
 npx wrangler deploy
 ```
 
-Set the `GEMINI_API_KEY` secret in your Cloudflare dashboard.
+Set `GEMINI_API_KEYS` (comma-separated) or the legacy `GEMINI_API_KEY` secret in the Cloudflare dashboard.
+
+Optional worker vars:
+
+- **`ALLOWED_ORIGINS`** — Comma-separated list of origins (e.g. `https://yourapp.pages.dev`). If set, browsers sending a `Origin` header must match; omit for local dev / open CORS (`*`).
+- Gemini calls are limited by **model allowlist**, **body size**, and **per-IP rate limits** inside the worker (see `worker/src/index.ts`).
+
+Deploy Firestore and Storage rules after changing them:
+
+```bash
+firebase deploy --only firestore:rules,storage
+```
 
 ## Deployment
 

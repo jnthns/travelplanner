@@ -17,7 +17,7 @@ import {
 import { db } from './firebase';
 import { useAuth } from './AuthContext';
 import { compareActivitiesByTimeThenOrder } from './itinerary';
-import type { Trip, Activity, TransportRoute, Note, ChatMessage } from './types';
+import type { Trip, Activity, TransportRoute, Note, ChatMessage, PackingItem } from './types';
 
 function stripUndefined<T extends Record<string, any>>(obj: T): T {
     return Object.fromEntries(
@@ -420,4 +420,80 @@ export function useChatHistory(tripId: string | null) {
     }, [user, tripId]);
 
     return { messages, loading, addMessage, clearHistory };
+}
+
+// ---- Packing Items ----
+export function usePackingItems() {
+    const { user } = useAuth();
+    const [packingItems, setPackingItems] = useState<PackingItem[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (!user) {
+            setPackingItems([]);
+            setLoading(false);
+            return;
+        }
+        let unsub: Unsubscribe;
+        try {
+            const q = query(
+                collection(db, 'packingItems'),
+                or(
+                    where('tripMembers', 'array-contains', user.uid),
+                    where('userId', '==', user.uid)
+                )
+            );
+            unsub = onSnapshot(
+                q,
+                (snapshot) => {
+                    const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data(), _pendingWrite: d.metadata.hasPendingWrites }) as PackingItem);
+                    setPackingItems(data);
+                    setLoading(false);
+                },
+                (error) => {
+                    console.error('Error fetching packing items:', error);
+                    setLoading(false);
+                }
+            );
+        } catch (error) {
+            console.error('Error setting up packing items listener:', error);
+            setLoading(false);
+        }
+        return () => unsub?.();
+    }, [user?.uid]);
+
+    const addPackingItem = useCallback(async (item: Omit<PackingItem, 'id' | 'userId' | 'tripMembers'>, tripMembers: string[]) => {
+        if (!user) throw new Error('Not authenticated');
+        const finalMembers = Array.from(new Set([...tripMembers, user.uid])).filter(Boolean);
+        const docRef = await addDoc(collection(db, 'packingItems'), stripUndefined({ ...item, userId: user.uid, tripMembers: finalMembers }));
+        return { ...item, id: docRef.id, userId: user.uid, tripMembers: finalMembers } as PackingItem;
+    }, [user]);
+
+    const updatePackingItem = useCallback(async (id: string, updates: Partial<PackingItem>) => {
+        await updateDoc(doc(db, 'packingItems', id), stripUndefined(updates));
+    }, []);
+
+    const deletePackingItem = useCallback(async (id: string) => {
+        await deleteDoc(doc(db, 'packingItems', id));
+    }, []);
+
+    const restorePackingItem = useCallback(async (item: PackingItem) => {
+        const { id, ...data } = item;
+        await setDoc(doc(db, 'packingItems', id), stripUndefined(data));
+    }, []);
+
+    const getPackingItemsByTrip = useCallback(
+        (tripId: string) => packingItems.filter((item) => item.tripId === tripId).sort((a, b) => a.order - b.order),
+        [packingItems]
+    );
+
+    return {
+        packingItems,
+        loading,
+        addPackingItem,
+        updatePackingItem,
+        deletePackingItem,
+        restorePackingItem,
+        getPackingItemsByTrip,
+    };
 }
