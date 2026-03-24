@@ -1,12 +1,13 @@
 import { useSyncExternalStore } from 'react';
 import type { Activity, TransportRoute, Trip, TripScenario } from './types';
-
-interface TripScenarioStore {
-    byTripId: Record<string, TripScenario[]>;
-    selectedByTripId: Record<string, string | null>;
-}
-
-const STORAGE_KEY = 'travelplanner_trip_scenarios_v1';
+import {
+    hydrateTripScenarioStore,
+    saveTripScenarioStoreToIndexedDb,
+    pruneTripScenarioStore,
+    clearTripScenarioStoreIndexedDb,
+    removeLegacyTripScenarioStoreFromLocalStorage,
+    type TripScenarioStore,
+} from './scenariosStorage';
 
 const listeners = new Set<() => void>();
 
@@ -16,6 +17,20 @@ function createEmptyStore(): TripScenarioStore {
         selectedByTripId: {},
     };
 }
+
+let currentStore: TripScenarioStore = createEmptyStore();
+let hydrationStarted = false;
+
+function startScenariosHydration() {
+    if (typeof window === 'undefined' || hydrationStarted) return;
+    hydrationStarted = true;
+    void (async () => {
+        currentStore = await hydrateTripScenarioStore();
+        listeners.forEach((listener) => listener());
+    })();
+}
+
+startScenariosHydration();
 
 function cloneTrip(trip: Trip): Trip {
     return JSON.parse(JSON.stringify(trip)) as Trip;
@@ -37,38 +52,18 @@ function generateId(prefix: string): string {
     return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function readStore(): TripScenarioStore {
-    if (typeof window === 'undefined') return createEmptyStore();
-
-    try {
-        const raw = window.localStorage.getItem(STORAGE_KEY);
-        if (!raw) return createEmptyStore();
-
-        const parsed = JSON.parse(raw) as Partial<TripScenarioStore>;
-
-        return {
-            byTripId: parsed.byTripId ?? {},
-            selectedByTripId: parsed.selectedByTripId ?? {},
-        };
-    } catch {
-        return createEmptyStore();
-    }
+function persistStore(store: TripScenarioStore) {
+    currentStore = pruneTripScenarioStore(store);
+    listeners.forEach((listener) => listener());
+    void saveTripScenarioStoreToIndexedDb(currentStore);
 }
 
-let currentStore = readStore();
-
-function persistStore(store: TripScenarioStore) {
-    currentStore = store;
-
-    if (typeof window !== 'undefined') {
-        try {
-            window.localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
-        } catch {
-            // Ignore local storage write failures and keep in-memory state.
-        }
-    }
-
+/** Clear all what-if scenarios from memory and persistent storage (IndexedDB + legacy localStorage). */
+export async function clearAllScenariosStorage(): Promise<void> {
+    currentStore = createEmptyStore();
     listeners.forEach((listener) => listener());
+    removeLegacyTripScenarioStoreFromLocalStorage();
+    await clearTripScenarioStoreIndexedDb();
 }
 
 function subscribe(listener: () => void) {
@@ -76,7 +71,7 @@ function subscribe(listener: () => void) {
     return () => listeners.delete(listener);
 }
 
-function getSnapshot() {
+function getSnapshot(): TripScenarioStore {
     return currentStore;
 }
 

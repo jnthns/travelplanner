@@ -490,15 +490,17 @@ const Settings: React.FC = () => {
                 className="btn btn-ghost btn-sm"
                 onClick={() => {
                   if (window.confirm('Delete all local what-if drafts? This cannot be undone.')) {
-                    clearLocalDrafts();
-                    logEvent('Local Drafts Cleared');
+                    void (async () => {
+                      await clearLocalDrafts();
+                      logEvent('Local Drafts Cleared');
+                    })();
                   }
                 }}
               >
                 <Trash2 size={14} /> Clear local drafts
               </button>
             </div>
-            <p className="text-sm text-subtle m-0" style={{ paddingLeft: '0.25rem' }}>Remove all what-if scenario snapshots stored in your browser.</p>
+            <p className="text-sm text-subtle m-0" style={{ paddingLeft: '0.25rem' }}>Remove all what-if scenario snapshots stored in your browser (IndexedDB).</p>
           </div>
           <div className="flex flex-col gap-xs">
             <div className="flex items-center gap-sm">

@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from './firebase';
+import { clearAllScenariosStorage } from './scenarios';
 
 export interface AppSettings {
   // Appearance
@@ -176,8 +177,7 @@ export async function onAuthChange(uid: string | null, isAnonymous: boolean) {
   }
 }
 
-export function clearLocalDrafts() {
-  try {
-    localStorage.removeItem('travelplanner_trip_scenarios_v1');
-  } catch { /* ignore */ }
+/** Clears what-if scenario drafts (IndexedDB + any legacy localStorage key). */
+export async function clearLocalDrafts() {
+  await clearAllScenariosStorage();
 }

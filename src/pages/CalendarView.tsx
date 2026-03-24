@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { format, isSameDay } from 'date-fns';
-import { AlertTriangle, Info, Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { toPng } from 'html-to-image';
+import { AlertTriangle, Info, Plus, Pencil, Trash2, Loader2, ImageDown, CalendarPlus } from 'lucide-react';
+import { buildIcsForDay, downloadIcsFile } from '../lib/exportDayIcs';
 import { CATEGORY_EMOJIS } from '../lib/types';
 import ActivityForm from '../components/ActivityForm';
 import DraggableList from '../components/DraggableList';
@@ -14,7 +16,14 @@ import ActivityReviews from '../components/ActivityReviews';
 import { useCalendarViewController, type CalendarViewMode } from './useCalendarViewController';
 import styles from './CalendarView.module.css';
 
+function sanitizeFilenameBase(name: string): string {
+    return name.replace(/[^\w\-]+/g, '_').replace(/_+/g, '_').slice(0, 80) || 'trip';
+}
+
 const CalendarView: React.FC = () => {
+    const dayExportRef = useRef<HTMLDivElement>(null);
+    const [exportImageLoading, setExportImageLoading] = useState(false);
+
     const {
         trips,
         updateItineraryDay,
@@ -92,6 +101,43 @@ const CalendarView: React.FC = () => {
         reorderScenarioActivities,
         removeScenarioActivity,
     } = useCalendarViewController();
+
+    const handleExportDayIcs = () => {
+        if (!selectedTrip || !selectedTripId) return;
+        const ics = buildIcsForDay({
+            tripName: selectedTrip.name,
+            dateStr: currentDateStr,
+            activities: dayViewActivities,
+        });
+        const base = sanitizeFilenameBase(selectedTrip.name);
+        downloadIcsFile(`${base}-${currentDateStr}.ics`, ics);
+        logEvent('Calendar Day Exported ICS', { date: currentDateStr, activity_count: dayViewActivities.length });
+    };
+
+    const handleExportDayImage = async () => {
+        const el = dayExportRef.current;
+        if (!el || !selectedTrip) return;
+        setExportImageLoading(true);
+        try {
+            const dataUrl = await toPng(el, {
+                pixelRatio: 2,
+                cacheBust: true,
+                backgroundColor: getComputedStyle(document.body).backgroundColor || '#ffffff',
+                filter: (node) =>
+                    !(node instanceof HTMLElement && node.classList.contains('no-export')),
+            });
+            const a = document.createElement('a');
+            a.href = dataUrl;
+            a.download = `${sanitizeFilenameBase(selectedTrip.name)}-${currentDateStr}.png`;
+            a.click();
+            logEvent('Calendar Day Exported PNG', { date: currentDateStr });
+        } catch (e) {
+            console.error(e);
+            showToast('Could not create image. Try again or use a shorter day.');
+        } finally {
+            setExportImageLoading(false);
+        }
+    };
 
     return (
         <div className="page-container animate-fade-in">
@@ -335,6 +381,37 @@ const CalendarView: React.FC = () => {
             {/* Day Detail View */}
             {viewMode === 'day' && (
                 <div className={styles['day-detail-view']}>
+                    {selectedTrip && (
+                        <div
+                            className={`${styles['day-export-toolbar']} no-export`}
+                            style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}
+                        >
+                            <button type="button" className="btn btn-ghost btn-sm" onClick={handleExportDayIcs} title="Download .ics for this day">
+                                <CalendarPlus size={16} /> Export .ics
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-ghost btn-sm"
+                                onClick={() => void handleExportDayImage()}
+                                disabled={exportImageLoading}
+                                title="Save the full day view as a PNG"
+                            >
+                                {exportImageLoading ? <Loader2 size={16} className="spin" /> : <ImageDown size={16} />}
+                                Export day image
+                            </button>
+                            <span className="text-sm text-subtle" style={{ margin: 0 }}>
+                                For multi-day trips, export each day separately.
+                            </span>
+                        </div>
+                    )}
+                    <div ref={dayExportRef} className={styles['day-export-capture']}>
+                    {selectedTrip && (
+                        <div className={styles['day-export-heading']} style={{ marginBottom: '0.75rem' }}>
+                            <h2 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)' }}>
+                                {selectedTrip.name} · {format(currentDate, 'EEEE, MMM d, yyyy')}
+                            </h2>
+                        </div>
+                    )}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <WeatherBadge
@@ -425,7 +502,7 @@ const CalendarView: React.FC = () => {
                             </div>
                         </div>
                     </div>
-                    <div className={styles['planning-action-row']}>
+                    <div className={`${styles['planning-action-row']} no-export`}>
                         <div className={styles['planning-action-row__left']}>
                             <button
                                 type="button"
@@ -466,7 +543,7 @@ const CalendarView: React.FC = () => {
                         )}
                     </div>
                     {selectedTripId && dayViewActivities.length > 0 && hasDaySummaryContent && (
-                        <div className={styles['day-summary-section']}>
+                        <div className={`${styles['day-summary-section']} no-export`}>
                             {descriptionError && <p className="text-red-500 text-sm mt-2">{descriptionError}</p>}
                             {summaryError && <p className="text-red-500 text-sm mt-2">{summaryError}</p>}
                             {optimizationError && <p className="text-red-500 text-sm mt-2">{optimizationError}</p>}
@@ -575,6 +652,7 @@ const CalendarView: React.FC = () => {
                     )}
                     {selectedTripId && (
                         addingActivityForDate === currentDateStr && (
+                            <div className="no-export">
                             <ActivityForm
                                 tripId={selectedTripId}
                                 date={currentDateStr}
@@ -583,6 +661,7 @@ const CalendarView: React.FC = () => {
                                 onSave={(data) => handleSaveActivity(data, currentDateStr)}
                                 onCancel={() => setAddingActivityForDate(null)}
                             />
+                            </div>
                         )
                     )}
                     {dayViewActivities.length === 0 && !addingActivityForDate && (
@@ -595,6 +674,7 @@ const CalendarView: React.FC = () => {
                         disabled={editingActivityId !== null}
                         renderItem={(act, _idx) =>
                             editingActivityId === act.id ? (
+                                <div className="no-export">
                                 <ActivityForm
                                     tripId={act.tripId}
                                     date={act.date}
@@ -619,6 +699,7 @@ const CalendarView: React.FC = () => {
                                         }
                                     }}
                                 />
+                                </div>
                             ) : (
                                 <div className={`${styles['day-detail-activity']} card`} style={{ ['--activity-color' as string]: getActivityColor(act) }}>
                                     <div className={styles['detail-header']}>
@@ -627,7 +708,7 @@ const CalendarView: React.FC = () => {
                                             <h4>{act.title}</h4>
                                             {act.time && <span className={styles['detail-time']}>{act.time}</span>}
                                         </div>
-                                        <div className={styles['detail-actions']}>
+                                        <div className={`${styles['detail-actions']} no-export`}>
                                             {(act.location || currentDayLocations[0]) && (
                                                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => setReviewsActivityId(act.id)} aria-label="Reviews">📋 Reviews</button>
                                             )}
@@ -665,7 +746,7 @@ const CalendarView: React.FC = () => {
                                     {act.cost != null && <p className={styles['detail-cost']}>💰 {act.currency || '$'}{act.cost.toFixed(2)}</p>}
                                     {act.notes && <Markdown className={styles['detail-notes']}>{act.notes}</Markdown>}
                                     {reviewsActivityId === act.id && (
-                                        <div style={{ marginTop: '0.75rem' }}>
+                                        <div className="no-export" style={{ marginTop: '0.75rem' }}>
                                             <ActivityReviews
                                                 activityTitle={act.title}
                                                 activityLocation={act.location || currentDayLocations[0]}
@@ -674,7 +755,7 @@ const CalendarView: React.FC = () => {
                                         </div>
                                     )}
                                     {showNearbyRestaurantsForActivityId === act.id && (
-                                        <div style={{ marginTop: '0.75rem' }}>
+                                        <div className="no-export" style={{ marginTop: '0.75rem' }}>
                                             <NearbyRestaurants
                                                 location={(act.location || currentDayLocations[0]) ?? ''}
                                                 category={act.category}
@@ -694,6 +775,7 @@ const CalendarView: React.FC = () => {
                             )
                         }
                     />
+                    </div>
                 </div>
             )}
         </div>

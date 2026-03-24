@@ -133,12 +133,17 @@ export interface Note {
     _pendingWrite?: boolean;
 }
 
+/** System-seeded defaults vs user-added rows (older docs may omit; treat as `custom`). */
+export type PackingListGroup = 'essential' | 'custom';
+
 export interface PackingItem {
     id: string;
     userId: string;
     tripId: string;
     tripMembers: string[]; // denormalized from trip.members for security rules
     title: string;
+    /** Defaults from trip creation use `essential`; user adds use `custom`. */
+    listGroup?: PackingListGroup;
     category?: 'documents' | 'clothing' | 'toiletries' | 'electronics' | 'medication' | 'other';
     quantity?: number;
     packed: boolean;

@@ -24,7 +24,6 @@ const ALLOWED_GEMINI_MODELS = new Set<string>([
     'gemini-2.0-flash',
     'gemini-2.5-flash-preview-05-20',
     'gemini-3.1-pro-preview',
-    'gemini-3-flash-preview'
 ]);
 
 const MAX_JSON_BODY_BYTES = 512 * 1024;

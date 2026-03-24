@@ -43,7 +43,7 @@ const OnlineStatus: React.FC = () => {
             <span className="offline-banner-dot" />
             {online
                 ? 'Back online — changes synced'
-                : 'You\'re offline — edits will sync when reconnected'}
+                : "You're offline — showing saved data where available. Reconnect to refresh. Edits will sync when you're back online."}
         </div>
     );
 };

@@ -333,8 +333,8 @@ Notes: ${effectiveTrip.aiPreferences?.notes || 'none set'}`;
             `}</style>
             <header className="page-header mb-md">
                 <div>
-                    <h1>Travel Assistant</h1>
-                    <p>Context-aware AI help for your planning.</p>
+                    <h1>Trip Assistant</h1>
+                    <p>This chatbot AI knows your trip details and can help you plan your trip. Ask if there are alternatives for day 3, if the travel time from day 4 to 5 is too long, or if you need to adjust your budget.</p>
                 </div>
             </header>
 

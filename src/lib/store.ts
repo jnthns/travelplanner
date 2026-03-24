@@ -18,6 +18,7 @@ import { db } from './firebase';
 import { useAuth } from './AuthContext';
 import { compareActivitiesByTimeThenOrder } from './itinerary';
 import type { Trip, Activity, TransportRoute, Note, ChatMessage, PackingItem } from './types';
+import { ESSENTIAL_PACKING_SEEDS } from './packingSeeds';
 
 function stripUndefined<T extends Record<string, any>>(obj: T): T {
     return Object.fromEntries(
@@ -74,7 +75,30 @@ export function useTrips() {
             sharedWithEmails: [],
         };
         const docRef = await addDoc(collection(db, 'trips'), stripUndefined(newTrip));
-        return { ...newTrip, id: docRef.id } as Trip;
+        const tripId = docRef.id;
+        const tripMembers: string[] = [user.uid];
+        const nowIso = new Date().toISOString();
+
+        const batch = writeBatch(db);
+        ESSENTIAL_PACKING_SEEDS.forEach((seed, index) => {
+            const itemRef = doc(collection(db, 'packingItems'));
+            const newPackingItem = {
+                tripId,
+                userId: user.uid,
+                tripMembers,
+                title: seed.title,
+                category: seed.category,
+                packed: false,
+                listGroup: 'essential' as const,
+                order: index,
+                createdAt: nowIso,
+                updatedAt: nowIso,
+            };
+            batch.set(itemRef, stripUndefined(newPackingItem));
+        });
+        await batch.commit();
+
+        return { ...newTrip, id: tripId } as Trip;
     }, [user]);
 
     const updateTrip = useCallback(async (id: string, updates: Partial<Trip>) => {
@@ -465,7 +489,9 @@ export function usePackingItems() {
     const addPackingItem = useCallback(async (item: Omit<PackingItem, 'id' | 'userId' | 'tripMembers'>, tripMembers: string[]) => {
         if (!user) throw new Error('Not authenticated');
         const finalMembers = Array.from(new Set([...tripMembers, user.uid])).filter(Boolean);
-        const docRef = await addDoc(collection(db, 'packingItems'), stripUndefined({ ...item, userId: user.uid, tripMembers: finalMembers }));
+        const newPackingItem = { ...item, userId: user.uid, tripMembers: finalMembers };
+        const payload = stripUndefined(newPackingItem);
+        const docRef = await addDoc(collection(db, 'packingItems'), payload);
         return { ...item, id: docRef.id, userId: user.uid, tripMembers: finalMembers } as PackingItem;
     }, [user]);
 

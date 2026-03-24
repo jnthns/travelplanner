@@ -18,6 +18,7 @@ import {
     upsertScenarioActivity,
     useTripScenarios,
 } from '../lib/scenarios';
+import { prefetchTripDocumentsForOfflineCache } from '../lib/prefetchTripCache';
 import type { Activity } from '../lib/types';
 
 const CALENDAR_VIEW_KEY = 'travelplanner_calendar_view';
@@ -143,6 +144,13 @@ export function useCalendarViewController() {
     useEffect(() => {
         saveCalendarPrefs(viewMode, selectedTripId, format(currentDate, 'yyyy-MM-dd'));
     }, [viewMode, selectedTripId, currentDate]);
+
+    /** Warm Firestore persistent cache for the selected trip while online. */
+    useEffect(() => {
+        if (!selectedTripId) return;
+        if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+        void prefetchTripDocumentsForOfflineCache(selectedTripId);
+    }, [selectedTripId]);
 
     useEffect(() => {
         if (!effectiveTrip) return;
