@@ -21,7 +21,6 @@ A personal travel itinerary planner. Users create trips, plan day-by-day activit
 | Auth | Firebase Auth | Google OAuth + anonymous sign-in |
 | Storage | Firebase Storage | Images only, max 5MB, scoped to `notes/{userId}/{tripId}/...` |
 | AI | Google Gemini via Cloudflare Worker proxy | Never call Gemini directly from frontend |
-| Analytics | Amplitude | `logEvent()` from `src/lib/amplitude.ts` |
 | Icons | lucide-react | |
 | Dates | date-fns | All date strings are ISO `YYYY-MM-DD` |
 | Markdown | marked | Used in `Markdown.tsx` component |
@@ -153,7 +152,6 @@ src/
     AuthContext.tsx   # useAuth() → { user, loading, signInWithGoogle, signInAnonymously, signOut }
     firebase.ts      # db, auth, storage, googleProvider exports
     gemini.ts        # generateWithGemini() — the ONLY way to call AI
-    amplitude.ts     # logEvent(), identifyUser(), trackExposure()
     persist.ts       # useLocalStorageState (preferred over hooks/ version)
     upload.ts        # Firebase Storage image upload helpers
   pages/
@@ -232,9 +230,8 @@ All pages are lazy-loaded via `React.lazy`.
 5. **tripMembers denormalization** — when mutating trip membership, batch-update child collections (activities, notes, transportRoutes, chat_history).
 6. **Date strings** — always ISO `YYYY-MM-DD`; use `date-fns` for all manipulation.
 7. **CSS** — use CSS custom properties from `theme.css` (e.g., `var(--primary-color)`), not hardcoded values.
-8. **Analytics** — `logEvent(eventName, props)` for all meaningful user interactions. Event names are Title Case strings.
-9. **Error handling** — surface errors to UI state; never swallow silently except in non-critical paths (e.g., analytics init).
-10. **Import paths** — no barrel `index.ts` files; import directly from the file.
+8. **Error handling** — surface errors to UI state; never swallow silently except in clearly non-critical paths.
+9. **Import paths** — no barrel `index.ts` files; import directly from the file.
 
 ---
 
@@ -247,7 +244,6 @@ VITE_FIREBASE_STORAGE_BUCKET
 VITE_FIREBASE_MESSAGING_SENDER_ID
 VITE_FIREBASE_APP_ID
 VITE_AI_PROXY_URL          # Required for all AI features (Cloudflare Worker URL)
-VITE_AMPLITUDE_API_KEY     # Optional; analytics silently disabled if missing
 ```
 
 Worker (set in Cloudflare dashboard, not .env):

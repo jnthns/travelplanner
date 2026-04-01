@@ -3,7 +3,6 @@ import { AlignLeft, ImagePlus, List, ListOrdered, Loader2, Trash2, X } from 'luc
 import type { Note } from '../lib/types';
 import { NOTE_COLORS } from '../lib/types';
 import { uploadNoteImage } from '../lib/upload';
-import { logEvent } from '../lib/amplitude';
 
 const FORMAT_OPTIONS: { value: Note['format']; label: string; icon: React.ReactNode }[] = [
     { value: 'freeform', label: 'Freeform', icon: <AlignLeft size={14} /> },
@@ -55,7 +54,6 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ existingNote, tripId, onSave, o
                 newUrls.push(url);
             }
             setImages(prev => [...prev, ...newUrls]);
-            logEvent('Note Image Uploaded', { count: newUrls.length });
         } catch (err) {
             console.error('Image upload failed:', err);
             setUploadError(err instanceof Error ? err.message : 'Image upload failed.');

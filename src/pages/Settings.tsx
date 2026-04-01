@@ -12,7 +12,6 @@ import {
   preloadPresetFonts,
 } from '../design-system/themes';
 import { useSettings, updateSettings, resetSettings, clearLocalDrafts, type AppSettings } from '../lib/settings';
-import { logEvent } from '../lib/amplitude';
 
 const TEXT_SIZE_OPTIONS = [
   { label: 'Small', value: 75 },
@@ -92,7 +91,6 @@ const Settings: React.FC = () => {
 
   const selectPreset = (presetId: string) => {
     setThemeConfig({ presetId, colorOverrides: {} });
-    logEvent('Theme Preset Selected', { preset: presetId });
   };
 
   const updateColor = (key: 'primaryColor' | 'secondaryColor' | 'accentColor', value: string) => {
@@ -100,7 +98,6 @@ const Settings: React.FC = () => {
       ...prev,
       colorOverrides: { ...prev.colorOverrides, [key]: value },
     }));
-    logEvent('Theme Color Customized', { color_key: key, color_value: value });
   };
 
   const resetColors = () => {
@@ -178,7 +175,6 @@ const Settings: React.FC = () => {
               className={`dark-mode-toggle ${settings.darkMode ? 'active' : ''}`}
               onClick={() => {
                 set({ darkMode: !settings.darkMode });
-                logEvent('Dark Mode Toggled', { enabled: !settings.darkMode });
               }}
               aria-label={settings.darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
             >
@@ -289,7 +285,7 @@ const Settings: React.FC = () => {
             label="Compact layout"
             description="Use tighter spacing to fit more information on screen."
             checked={settings.compactLayout}
-            onChange={(v) => { set({ compactLayout: v }); logEvent('Compact Layout Toggled', { enabled: v }); }}
+            onChange={(v) => { set({ compactLayout: v }); }}
           />
           <div className="flex flex-col gap-xs" style={{ marginTop: '0.5rem' }}>
             <label className="text-sm font-medium text-primary">Text size</label>
@@ -299,7 +295,7 @@ const Settings: React.FC = () => {
                   key={opt.value}
                   type="button"
                   className={`text-size-btn ${settings.textSize === opt.value ? 'active' : ''}`}
-                  onClick={() => { set({ textSize: opt.value }); logEvent('Text Size Changed', { size: opt.label, value: opt.value }); }}
+                  onClick={() => { set({ textSize: opt.value }); }}
                 >
                   {opt.label}
                 </button>
@@ -322,7 +318,7 @@ const Settings: React.FC = () => {
                   type="button"
                   className={`text-size-btn ${settings.temperatureUnit === unit ? 'active' : ''}`}
                   style={{ borderRadius: 0, margin: 0 }}
-                  onClick={() => { set({ temperatureUnit: unit }); logEvent('Temperature Unit Changed', { unit }); }}
+                  onClick={() => { set({ temperatureUnit: unit }); }}
                 >
                   °{unit}
                 </button>
@@ -336,7 +332,7 @@ const Settings: React.FC = () => {
               <label className="text-sm text-subtle">From</label>
               <select
                 value={settings.hourlyForecastStartHour ?? 9}
-                onChange={(e) => { set({ hourlyForecastStartHour: Number(e.target.value) }); logEvent('Setting Changed', { key: 'hourlyForecastStartHour', value: e.target.value }); }}
+                onChange={(e) => { set({ hourlyForecastStartHour: Number(e.target.value) }); }}
                 className="input-field"
                 style={{ width: '5rem' }}
               >
@@ -347,7 +343,7 @@ const Settings: React.FC = () => {
               <span className="text-sm text-subtle">to</span>
               <select
                 value={settings.hourlyForecastEndHour ?? 21}
-                onChange={(e) => { set({ hourlyForecastEndHour: Number(e.target.value) }); logEvent('Setting Changed', { key: 'hourlyForecastEndHour', value: e.target.value }); }}
+                onChange={(e) => { set({ hourlyForecastEndHour: Number(e.target.value) }); }}
                 className="input-field"
                 style={{ width: '5rem' }}
               >
@@ -369,7 +365,7 @@ const Settings: React.FC = () => {
             label="Color-coded time rows"
             description="Apply the morning/afternoon/evening tint across the entire spreadsheet row, not just the label."
             checked={settings.colorCodedTimeRows}
-            onChange={(v) => { set({ colorCodedTimeRows: v }); logEvent('Setting Changed', { key: 'colorCodedTimeRows', value: v }); }}
+            onChange={(v) => { set({ colorCodedTimeRows: v }); }}
           />
           {settings.colorCodedTimeRows && (
             <div className="flex flex-col gap-xs" style={{ paddingLeft: '1.5rem' }}>
@@ -396,7 +392,7 @@ const Settings: React.FC = () => {
                   key={opt.value}
                   type="button"
                   className={`zoom-btn ${settings.headerRowColor === opt.value ? 'active' : ''}`}
-                  onClick={() => { set({ headerRowColor: opt.value }); logEvent('Setting Changed', { key: 'headerRowColor', value: opt.value }); }}
+                  onClick={() => { set({ headerRowColor: opt.value }); }}
                   style={opt.preview ? { borderLeft: `3px solid ${opt.preview}` } : undefined}
                 >
                   {opt.label}
@@ -409,7 +405,7 @@ const Settings: React.FC = () => {
             label="Show unscheduled section"
             description="Show the collapsible unscheduled activities section below the spreadsheet grid."
             checked={settings.showUnscheduledSection}
-            onChange={(v) => { set({ showUnscheduledSection: v }); logEvent('Setting Changed', { key: 'showUnscheduledSection', value: v }); }}
+            onChange={(v) => { set({ showUnscheduledSection: v }); }}
           />
           <div className="flex flex-col gap-xs" style={{ marginTop: '0.25rem' }}>
             <label className="text-sm font-medium text-primary">Default zoom level</label>
@@ -419,7 +415,7 @@ const Settings: React.FC = () => {
                   key={z}
                   type="button"
                   className={`zoom-btn ${settings.defaultSpreadsheetZoom === z ? 'active' : ''}`}
-                  onClick={() => { set({ defaultSpreadsheetZoom: z }); logEvent('Setting Changed', { key: 'defaultSpreadsheetZoom', value: z }); }}
+                  onClick={() => { set({ defaultSpreadsheetZoom: z }); }}
                 >
                   {z}%
                 </button>
@@ -441,7 +437,7 @@ const Settings: React.FC = () => {
                   key={v}
                   type="button"
                   className={`text-size-btn ${settings.defaultCalendarView === v ? 'active' : ''}`}
-                  onClick={() => { set({ defaultCalendarView: v }); logEvent('Setting Changed', { key: 'defaultCalendarView', value: v }); }}
+                  onClick={() => { set({ defaultCalendarView: v }); }}
                 >
                   {v.charAt(0).toUpperCase() + v.slice(1)}
                 </button>
@@ -453,7 +449,7 @@ const Settings: React.FC = () => {
             label="Show accommodation on trip cards"
             description="Display the accommodation row on calendar trip grid cards."
             checked={settings.showAccommodationOnTripCards}
-            onChange={(v) => { set({ showAccommodationOnTripCards: v }); logEvent('Setting Changed', { key: 'showAccommodationOnTripCards', value: v }); }}
+            onChange={(v) => { set({ showAccommodationOnTripCards: v }); }}
           />
         </div>
       </div>
@@ -467,14 +463,14 @@ const Settings: React.FC = () => {
             label="Show planning checks"
             description="Display issue badges and conflict details on day pills."
             checked={settings.showPlanningChecks}
-            onChange={(v) => { set({ showPlanningChecks: v }); logEvent('Setting Changed', { key: 'showPlanningChecks', value: v }); }}
+            onChange={(v) => { set({ showPlanningChecks: v }); }}
           />
           <SettingsToggle
             id="show-budget-warnings"
             label="Show budget warnings"
             description="Display budget threshold alerts on the Budget page."
             checked={settings.showBudgetWarnings}
-            onChange={(v) => { set({ showBudgetWarnings: v }); logEvent('Setting Changed', { key: 'showBudgetWarnings', value: v }); }}
+            onChange={(v) => { set({ showBudgetWarnings: v }); }}
           />
         </div>
       </div>
@@ -492,7 +488,6 @@ const Settings: React.FC = () => {
                   if (window.confirm('Delete all local what-if drafts? This cannot be undone.')) {
                     void (async () => {
                       await clearLocalDrafts();
-                      logEvent('Local Drafts Cleared');
                     })();
                   }
                 }}
@@ -510,7 +505,6 @@ const Settings: React.FC = () => {
                 onClick={() => {
                   if (window.confirm('Reset all settings to defaults? Your theme selection will be kept.')) {
                     resetSettings();
-                    logEvent('Settings Reset');
                   }
                 }}
               >

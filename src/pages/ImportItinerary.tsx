@@ -6,7 +6,6 @@ import { useLocalStorageState } from '../hooks/useLocalStorageState';
 import { CATEGORY_EMOJIS } from '../lib/types';
 import type { Activity } from '../lib/types';
 import { useToast } from '../components/Toast';
-import { logEvent } from '../lib/amplitude';
 import { selectTripScenario, replaceScenarioDay, overwriteScenarioActivities } from '../lib/scenarios';
 import { buildTripExportPayload, downloadTextFile, slugifyFilename, toTripCsv } from '../lib/exportTrip';
 import { compareActivitiesByTimeThenOrder } from '../lib/itinerary';
@@ -262,7 +261,6 @@ const ImportItinerary: React.FC = () => {
         setError(null);
         setRawText('');
         setStage('input');
-        logEvent('Import Discarded');
     }, [setParsed, setRawText, setStage]);
 
     const CHUNK_LIMITS: ParseItineraryOptions = { maxActivitiesPerChunk: 25, maxTransportPerChunk: 12 };
@@ -276,7 +274,6 @@ const ImportItinerary: React.FC = () => {
         setLoading(true);
         setError(null);
         setParseProgress('');
-        logEvent('Import Parse Started', { is_append: isAppending, single_day: isSingleDayMode });
 
         try {
             setParseProgress('Parsing itinerary...');
@@ -292,7 +289,6 @@ const ImportItinerary: React.FC = () => {
                     throw new Error('The AI response was too long even for a single chunk. Try pasting less text.');
                 }
 
-                logEvent('Import Auto Chunking', { chunk_count: chunks.length });
                 const results: ParsedItinerary[] = [];
                 for (let i = 0; i < chunks.length; i++) {
                     setParseProgress(`Parsing chunk ${i + 1} of ${chunks.length}...`);
@@ -331,12 +327,10 @@ const ImportItinerary: React.FC = () => {
 
             setParsed(result);
             setStage('preview');
-            logEvent('Import Parse Success', { activity_count: result.activities.length, trip_name: result.tripName, is_append: isAppending, single_day: isSingleDayMode });
         } catch (e) {
             const msg = e instanceof Error ? e.message : 'Parsing failed';
             console.error('Import parse error:', e);
             setError(msg);
-            logEvent('Import Parse Failed', { error: msg, input_length: rawText.trim().length });
         } finally {
             setLoading(false);
             setParseProgress('');
@@ -402,7 +396,6 @@ const ImportItinerary: React.FC = () => {
                     setActiveTripName(overwriteTrip?.name ?? null);
                     selectTripScenario(overwriteTripId, activeScenarioId);
                     showToast(`Replaced draft with ${scenarioActivities.length} activities. View in Calendar (draft).`);
-                    logEvent('Import Confirmed', { trip_id: overwriteTripId, scenario_id: activeScenarioId, activity_count: scenarioActivities.length, import_mode: 'overwrite_trip_draft' });
                     setStage('done');
                     return;
                 }
@@ -452,7 +445,6 @@ const ImportItinerary: React.FC = () => {
                 selectTripScenario(overwriteTripId, null);
                 const routeCount = (parsed.transportRoutes ?? []).length;
                 showToast(`Replaced trip with ${overwriteCount} activities${routeCount > 0 ? ` and ${routeCount} transport` : ''}. View in Calendar or Spreadsheet (Live).`);
-                logEvent('Import Confirmed', { trip_id: overwriteTripId, activity_count: overwriteCount, transport_count: routeCount, import_mode: 'overwrite_trip' });
                 setStage('done');
                 return;
             }
@@ -478,7 +470,6 @@ const ImportItinerary: React.FC = () => {
                 setActiveTripName(selectedTripForDay?.name ?? null);
                 selectTripScenario(tripId, activeScenarioId);
                 showToast(`Replaced ${selectedDateForDay} in draft with ${dayActivities.length} activities. View in Calendar (draft).`);
-                logEvent('Import Confirmed', { trip_id: tripId, scenario_id: activeScenarioId, date: selectedDateForDay, activity_count: dayActivities.length, import_mode: 'replace_day_draft' });
                 setStage('done');
                 return;
             }
@@ -543,13 +534,11 @@ const ImportItinerary: React.FC = () => {
                 const verb = isReplaceDayMode ? 'Replaced' : 'Added';
                 showToast(`${verb} ${addedCount} activities ${isReplaceDayMode ? 'for' : 'to'} ${formatDate(selectedDateForDay)} in ${tripName}. View in Calendar or Spreadsheet (Live).`);
             }
-            logEvent('Import Confirmed', { trip_id: tripId, trip_name: activeTripName ?? parsed.tripName, activity_count: addedCount, is_append: isAppending, single_day: isSingleDayMode });
             setStage('done');
         } catch (e) {
             const msg = e instanceof Error ? e.message : 'Failed to save';
             console.error('Import save error:', e);
             setError(msg);
-            logEvent('Import Save Failed', { error: msg, trip_name: parsed.tripName, activity_count: parsed.activities.length, single_day: isSingleDayMode });
             setStage('preview');
         }
     };
@@ -673,14 +662,6 @@ const ImportItinerary: React.FC = () => {
                 downloadTextFile(`${baseFilename}-trip.csv`, csv, 'text/csv;charset=utf-8');
             }
 
-            logEvent('Trip Exported', {
-                trip_id: selectedExportTrip.id,
-                trip_name: selectedExportTrip.name,
-                format: exportFormat,
-                activity_count: activitiesForTrip.length,
-                route_count: routesForTrip.length,
-                note_count: notesForTrip.length,
-            });
             showToast(`Exported ${selectedExportTrip.name} as ${exportFormat.toUpperCase()}`);
         } catch (err) {
             console.error('Export failed:', err);

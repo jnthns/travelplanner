@@ -10,6 +10,11 @@
       "source": "google-gemini/gemini-skills",
       "sourceType": "github",
       "computedHash": "dd9eb2f0595ea631b87932026ee8c4556d63b13fcb97fb564b78bd59f2b1eee6"
+    },
+    "react:components": {
+      "source": "google-labs-code/stitch-skills",
+      "sourceType": "github",
+      "computedHash": "5e786773a89012ae15b01b5c11942db30b09f935929283d8eb8a30b2da5fabf7"
     }
   }
 }

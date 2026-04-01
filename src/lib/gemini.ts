@@ -1,3 +1,4 @@
+import { getAuth } from 'firebase/auth';
 
 import {
   recordAiRequestAttempt,
@@ -62,9 +63,12 @@ export async function generateWithGemini(
     while (true) {
       try {
         recordAiRequestAttempt(model);
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        const token = await getAuth().currentUser?.getIdToken();
+        if (token) headers.Authorization = `Bearer ${token}`;
         const response = await fetch(`${proxyUrl}/generate`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({ prompt, systemInstruction, responseMimeType, responseSchema, model }),
         });
 

@@ -99,8 +99,8 @@ service cloud.firestore {
     // User directory: authenticated users can read anyone's profile;
     // users can only write their own doc
     match /users/{uid} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && request.auth.uid == uid;
+      allow read: if isAuthenticated() && request.auth.token.firebase.sign_in_provider != 'anonymous';
+      allow write: if isAuthenticated() && request.auth.uid == uid && request.auth.token.firebase.sign_in_provider != 'anonymous';
     }
   }
 }

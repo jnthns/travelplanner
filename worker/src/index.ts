@@ -3,6 +3,8 @@ import { GoogleGenAI } from '@google/genai';
 interface Env {
     GEMINI_API_KEYS: string; // Comma-separated list of keys
     GOOGLE_PLACES_API_KEY: string;
+    /** Firebase project ID — used as expected JWT aud and in iss host path. */
+    FIREBASE_PROJECT_ID: string;
     /** Optional: comma-separated web origins (e.g. https://app.example.com). If unset, Access-Control-Allow-Origin is *. */
     ALLOWED_ORIGINS?: string;
     GEMINI_API_KEY?: string; // legacy single key (wrangler secret)
@@ -33,6 +35,172 @@ const RATE_MAX_GENERATE = 60;
 const RATE_MAX_PLACES = 120;
 
 const rateBuckets = new Map<string, { count: number; resetAt: number }>();
+
+const FIREBASE_JWKS_URL =
+    'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
+const JWKS_CACHE_TTL_MS = 3_600_000;
+const JWT_CLOCK_SKEW_SEC = 60;
+
+let jwksCache: { keys: unknown[]; fetchedAt: number } = { keys: [], fetchedAt: 0 };
+
+interface FirebaseJwkKey {
+    kid?: string;
+    kty?: string;
+    n?: string;
+    e?: string;
+}
+
+function b64UrlToUint8Array(segment: string): Uint8Array {
+    let base64 = segment.replace(/-/g, '+').replace(/_/g, '/');
+    const pad = base64.length % 4;
+    if (pad) base64 += '='.repeat(4 - pad);
+    const binary = atob(base64);
+    const out = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
+    return out;
+}
+
+async function getCachedJwksKeys(): Promise<unknown[]> {
+    const now = Date.now();
+    if (jwksCache.keys.length > 0 && now - jwksCache.fetchedAt < JWKS_CACHE_TTL_MS) {
+        return jwksCache.keys;
+    }
+    const res = await fetch(FIREBASE_JWKS_URL);
+    if (!res.ok) {
+        throw new Error(`JWKS HTTP ${res.status}`);
+    }
+    const data = (await res.json()) as { keys?: unknown[] };
+    const keys = Array.isArray(data.keys) ? data.keys : [];
+    jwksCache = { keys, fetchedAt: now };
+    return keys;
+}
+
+function isFirebaseJwkKey(k: unknown): k is FirebaseJwkKey {
+    if (k === null || typeof k !== 'object') return false;
+    const o = k as Record<string, unknown>;
+    return o.kty === 'RSA' && typeof o.n === 'string' && typeof o.e === 'string';
+}
+
+async function importRsaVerifyKeyFromJwk(jwk: FirebaseJwkKey): Promise<CryptoKey> {
+    return crypto.subtle.importKey(
+        'jwk',
+        {
+            kty: 'RSA',
+            n: jwk.n,
+            e: jwk.e,
+            alg: 'RS256',
+            ext: true,
+        } as JsonWebKey,
+        { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+        false,
+        ['verify'],
+    );
+}
+
+/**
+ * Verifies Firebase ID token (RS256) via JWKS + Web Crypto. Returns null if valid.
+ */
+async function verifyFirebaseIdToken(token: string, projectId: string): Promise<string | null> {
+    const parts = token.split('.');
+    if (parts.length !== 3) return 'Malformed token';
+
+    const [headerB64, payloadB64, sigB64] = parts;
+    let headerJson: { alg?: string; kid?: string };
+    let payload: Record<string, unknown>;
+    try {
+        headerJson = JSON.parse(new TextDecoder().decode(b64UrlToUint8Array(headerB64))) as {
+            alg?: string;
+            kid?: string;
+        };
+        payload = JSON.parse(new TextDecoder().decode(b64UrlToUint8Array(payloadB64))) as Record<
+            string,
+            unknown
+        >;
+    } catch {
+        return 'Invalid token encoding';
+    }
+
+    if (headerJson.alg !== 'RS256') return 'Invalid algorithm';
+    const kid = headerJson.kid;
+    if (!kid || typeof kid !== 'string') return 'Missing key id';
+
+    const keys = await getCachedJwksKeys();
+    const jwk = keys.find((k) => isFirebaseJwkKey(k) && k.kid === kid);
+    if (!jwk || !isFirebaseJwkKey(jwk)) return 'Unknown signing key';
+
+    let cryptoKey: CryptoKey;
+    try {
+        cryptoKey = await importRsaVerifyKeyFromJwk(jwk);
+    } catch {
+        return 'Invalid signing key';
+    }
+
+    const signedBytes = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
+    let sigBytes: Uint8Array;
+    try {
+        sigBytes = b64UrlToUint8Array(sigB64);
+    } catch {
+        return 'Invalid signature encoding';
+    }
+
+    let ok: boolean;
+    try {
+        ok = await crypto.subtle.verify(
+            { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+            cryptoKey,
+            sigBytes,
+            signedBytes,
+        );
+    } catch {
+        return 'Verification failed';
+    }
+    if (!ok) return 'Invalid signature';
+
+    const nowSec = Math.floor(Date.now() / 1000);
+    const exp = payload.exp;
+    if (typeof exp !== 'number' || exp < nowSec - JWT_CLOCK_SKEW_SEC) {
+        return 'Token expired';
+    }
+
+    const expectedIss = `https://securetoken.google.com/${projectId}`;
+    if (payload.iss !== expectedIss) return 'Invalid issuer';
+
+    const aud = payload.aud;
+    if (aud !== projectId) return 'Invalid audience';
+
+    return null;
+}
+
+async function requireFirebaseAuth(
+    request: Request,
+    env: Env,
+    cors: Record<string, string> | null,
+): Promise<Response | null> {
+    const projectId = env.FIREBASE_PROJECT_ID?.trim();
+    if (!projectId) {
+        return json({ error: 'Server misconfiguration' }, 500, cors);
+    }
+
+    const auth = request.headers.get('Authorization');
+    if (!auth || !auth.startsWith('Bearer ')) {
+        return json({ error: 'Unauthorized' }, 401, cors);
+    }
+    const token = auth.slice(7).trim();
+    if (!token) {
+        return json({ error: 'Unauthorized' }, 401, cors);
+    }
+
+    try {
+        const err = await verifyFirebaseIdToken(token, projectId);
+        if (err) {
+            return json({ error: 'Unauthorized' }, 401, cors);
+        }
+    } catch {
+        return json({ error: 'Unauthorized' }, 401, cors);
+    }
+
+    return null;
+}
 
 function getClientId(request: Request): string {
     return request.headers.get('CF-Connecting-IP')
@@ -82,6 +250,18 @@ function json(data: unknown, status = 200, cors: Record<string, string> | null):
         ...(cors ?? { 'Access-Control-Allow-Origin': '*' }),
     };
     return new Response(JSON.stringify(data), { status, headers });
+}
+
+/** Generic client-safe message; full detail is logged via logWorkerError. */
+function sanitizeClientError(status: number): string {
+    if (status === 400) return 'Invalid request parameters';
+    if (status === 429) return 'Too many requests';
+    if (status >= 500) return 'Upstream service error';
+    return 'Request failed';
+}
+
+function logWorkerError(path: string, status: number, detail: string): void {
+    console.error('Worker error:', { path, status, detail });
 }
 
 async function readJsonBody(request: Request, cors: Record<string, string> | null): Promise<unknown | Response> {
@@ -166,12 +346,15 @@ async function handlePlacesNearby(request: Request, env: Env, cors: Record<strin
         const data = await res.json() as Record<string, unknown>;
         if (!res.ok) {
             const errMsg = (data as { error?: { message?: string } }).error?.message ?? `Google returned ${res.status}`;
-            return json({ error: errMsg }, res.status >= 500 ? 502 : res.status, cors);
+            const outStatus = res.status >= 500 ? 502 : res.status;
+            logWorkerError(new URL(request.url).pathname, res.status, errMsg);
+            return json({ error: sanitizeClientError(outStatus) }, outStatus, cors);
         }
         return json(data, 200, cors);
     } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        return json({ error: msg }, 502, cors);
+        logWorkerError(new URL(request.url).pathname, 502, msg);
+        return json({ error: sanitizeClientError(502) }, 502, cors);
     }
 }
 
@@ -198,13 +381,19 @@ async function handlePlacesDetails(request: Request, env: Env, cors: Record<stri
                 },
                 body: JSON.stringify({ textQuery: query, pageSize: 1 }),
             });
-            const data = await res.json() as { places?: Array<{ id?: string }> };
-            if (!res.ok) return json({ error: 'Place resolution failed' }, res.status >= 500 ? 502 : res.status, cors);
+            const data = await res.json() as { places?: Array<{ id?: string }>; error?: { message?: string } };
+            if (!res.ok) {
+                const errMsg = data.error?.message ?? `Google returned ${res.status}`;
+                const outStatus = res.status >= 500 ? 502 : res.status;
+                logWorkerError(new URL(request.url).pathname, res.status, errMsg);
+                return json({ error: sanitizeClientError(outStatus) }, outStatus, cors);
+            }
             const placeId = data.places?.[0]?.id ?? null;
             return json({ placeId }, 200, cors);
         } catch (e) {
             const msg = e instanceof Error ? e.message : String(e);
-            return json({ error: msg }, 502, cors);
+            logWorkerError(new URL(request.url).pathname, 502, msg);
+            return json({ error: sanitizeClientError(502) }, 502, cors);
         }
     }
 
@@ -224,12 +413,15 @@ async function handlePlacesDetails(request: Request, env: Env, cors: Record<stri
             const data = await res.json() as Record<string, unknown>;
             if (!res.ok) {
                 const errMsg = (data as { error?: { message?: string } }).error?.message ?? `Google returned ${res.status}`;
-                return json({ error: errMsg }, res.status >= 500 ? 502 : res.status, cors);
+                const outStatus = res.status >= 500 ? 502 : res.status;
+                logWorkerError(new URL(request.url).pathname, res.status, errMsg);
+                return json({ error: sanitizeClientError(outStatus) }, outStatus, cors);
             }
             return json(data, 200, cors);
         } catch (e) {
             const msg = e instanceof Error ? e.message : String(e);
-            return json({ error: msg }, 502, cors);
+            logWorkerError(new URL(request.url).pathname, 502, msg);
+            return json({ error: sanitizeClientError(502) }, 502, cors);
         }
     }
 
@@ -255,6 +447,15 @@ export default {
         }
 
         const url = new URL(request.url);
+        const requiresFirebaseAuth =
+            url.pathname.endsWith('/generate') ||
+            url.pathname.endsWith('/places/nearby') ||
+            url.pathname.endsWith('/places/details');
+        if (requiresFirebaseAuth) {
+            const authResponse = await requireFirebaseAuth(request, env, cors);
+            if (authResponse) return authResponse;
+        }
+
         const clientId = getClientId(request);
 
         if (url.pathname.endsWith('/places/nearby')) {
@@ -346,13 +547,15 @@ export default {
                 }
 
                 if (/400|invalid|bad/i.test(message)) {
-                    return json({ error: message }, 400, cors);
+                    logWorkerError(url.pathname, 400, message);
+                    return json({ error: sanitizeClientError(400) }, 400, cors);
                 }
             }
         }
 
         const finalMessage = lastError instanceof Error ? lastError.message : String(lastError);
         const status = /429|quota|rate/i.test(finalMessage) ? 429 : 500;
-        return json({ error: `All keys failed. Last error: ${finalMessage}` }, status, cors);
+        logWorkerError(url.pathname, status, finalMessage);
+        return json({ error: sanitizeClientError(status) }, status, cors);
     },
 };

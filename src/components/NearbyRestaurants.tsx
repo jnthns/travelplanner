@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { fetchNearbyPlaces } from '../lib/services/placesService';
-import { logEvent } from '../lib/amplitude';
 import type { PlaceResult } from '../lib/services/placesService';
 
 function formatPlacesAsNote(places: PlaceResult[]): string {
@@ -31,7 +30,6 @@ const NearbyRestaurants: React.FC<NearbyRestaurantsProps> = ({ location, categor
   const [places, setPlaces] = useState<PlaceResult[]>([]);
 
   useEffect(() => {
-    logEvent('Nearby Places Opened', { location, category, label });
     setLoading(true);
     setError(null);
     fetchNearbyPlaces(location, category, title)
@@ -77,12 +75,7 @@ const NearbyRestaurants: React.FC<NearbyRestaurantsProps> = ({ location, categor
               style={{
                 padding: '0.6rem 0',
                 borderBottom: '1px solid var(--border-color)',
-                cursor: 'pointer',
               }}
-              onClick={() => logEvent('Nearby Places Result Clicked', { place_name: p.name, rating: p.rating ?? undefined, category, label })}
-              onKeyDown={(e) => e.key === 'Enter' && logEvent('Nearby Places Result Clicked', { place_name: p.name, rating: p.rating ?? undefined, category, label })}
-              role="button"
-              tabIndex={0}
             >
               <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{p.name}</div>
               {p.primaryType && <div style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)' }}>{p.primaryType}</div>}
@@ -123,7 +116,6 @@ const NearbyRestaurants: React.FC<NearbyRestaurantsProps> = ({ location, categor
             onClick={() => {
               const text = formatPlacesAsNote(places);
               onAddToNote(text);
-              logEvent('Nearby Places Added To Note', { count: places.length, category, label });
               onClose();
             }}
           >

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import type { Activity } from '../lib/types';
 import { CATEGORY_EMOJIS, ACTIVITY_COLORS } from '../lib/types';
 import { Loader2, Trash2 } from 'lucide-react';
-import { logEvent } from '../lib/amplitude';
 import Markdown from './Markdown';
 import AutoTextarea from './AutoTextarea';
 import { generateActivityGuide } from '../lib/ai/actions/forms';
@@ -67,7 +66,6 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ tripId, date, existingActiv
         setAiLoading(true);
         setAiError(null);
         setAiSuggestion(null);
-        logEvent('AI Suggestion Requested', { activity_title: title.trim() });
         try {
             const text = await generateActivityGuide(title);
             setAiSuggestion(text);
@@ -100,27 +98,6 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ tripId, date, existingActiv
         };
 
         onSave(activityData);
-
-        const hasCost = !!activityData.cost;
-        if (existingActivity) {
-            logEvent('Activity Updated', {
-                activity_title: activityData.title,
-                category: activityData.category,
-                has_cost: hasCost,
-                has_time: !!activityData.time,
-                has_location: !!activityData.location,
-            });
-        } else {
-            logEvent('Activity Created', {
-                activity_title: activityData.title,
-                category: activityData.category,
-                has_cost: hasCost,
-                has_time: !!activityData.time,
-                has_location: !!activityData.location,
-                trip_id: activityData.tripId,
-                date: activityData.date,
-            });
-        }
     };
 
     return (
@@ -176,8 +153,8 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ tripId, date, existingActiv
                             <div className="ai-suggestion-card card">
                                 <Markdown className="ai-suggestion-text">{aiSuggestion}</Markdown>
                                 <div className="ai-suggestion-actions">
-                                    <button type="button" className="btn btn-primary btn-sm" onClick={() => { setDetails(aiSuggestion!); setAiSuggestion(null); logEvent('AI Suggestion Accepted', { activity_title: title.trim() }); }}>Accept</button>
-                                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setAiSuggestion(null); logEvent('AI Suggestion Declined', { activity_title: title.trim() }); }}>Decline</button>
+                                    <button type="button" className="btn btn-primary btn-sm" onClick={() => { setDetails(aiSuggestion!); setAiSuggestion(null); }}>Accept</button>
+                                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setAiSuggestion(null); }}>Decline</button>
                                 </div>
                             </div>
                         )}

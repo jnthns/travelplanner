@@ -3,6 +3,8 @@
  * Never call places.googleapis.com from the frontend.
  */
 
+import { getAuth } from 'firebase/auth';
+
 import { getCachedAiText } from './ai/cache';
 import { generateWithGemini } from './services/aiService';
 
@@ -12,6 +14,13 @@ function getProxyUrl(): string {
   const url = import.meta.env.VITE_AI_PROXY_URL as string | undefined;
   if (!url?.trim()) throw new Error('VITE_AI_PROXY_URL is not set.');
   return url.replace(/\/+$/, '');
+}
+
+async function workerRequestHeaders(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const token = await getAuth().currentUser?.getIdToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return headers;
 }
 
 function mapPriceLevel(v?: string): PlaceResult['priceLevel'] {
@@ -119,7 +128,7 @@ export async function fetchNearbyPlaces(
     producer: async () => {
       const res = await fetch(`${getProxyUrl()}/places/nearby`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await workerRequestHeaders(),
         body: JSON.stringify({ location, category, title, maxResults: 20 }),
       });
       const data = await res.json();
@@ -142,7 +151,7 @@ export async function resolvePlaceId(activityTitle: string, location: string): P
   const query = `${activityTitle} ${location}`.trim();
   const res = await fetch(`${getProxyUrl()}/places/details`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: await workerRequestHeaders(),
     body: JSON.stringify({ query, mode: 'resolve' }),
   });
   const data = (await res.json()) as { placeId?: string | null; error?: string };
@@ -160,7 +169,7 @@ export async function fetchPlaceDetails(placeId: string): Promise<PlaceDetails> 
     producer: async () => {
       const res = await fetch(`${getProxyUrl()}/places/details`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await workerRequestHeaders(),
         body: JSON.stringify({ placeId, mode: 'details' }),
       });
       const data = await res.json();

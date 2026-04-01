@@ -2,7 +2,6 @@ import React, { Suspense, useEffect, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import { AuthProvider, useAuth } from './lib/AuthContext';
-import AnalyticsProvider from './lib/amplitude';
 import { ToastProvider } from './components/Toast';
 import { loadThemeConfig, getResolvedTokens, getDarkTokens, applyTheme } from './design-system/themes';
 import { getSettingsSnapshot } from './lib/settings';
@@ -10,6 +9,7 @@ import OnlineStatus from './components/OnlineStatus';
 import GeminiUsageHeader from './components/GeminiUsageHeader';
 import { Loader2 } from 'lucide-react';
 import './theme.css';
+import TripDefaultRedirect from './pages/TripDefaultRedirect';
 
 const Login = lazy(() => import('./pages/Login'));
 const CalendarView = lazy(() => import('./pages/CalendarView'));
@@ -22,6 +22,7 @@ const Packing = lazy(() => import('./pages/Packing'));
 const Settings = lazy(() => import('./pages/Settings'));
 const ImportItinerary = lazy(() => import('./pages/ImportItinerary'));
 const Assistant = lazy(() => import('./pages/Assistant'));
+const TripDayView = lazy(() => import('./pages/TripDayView'));
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -65,7 +66,6 @@ const App: React.FC = () => {
   return (
     <Router basename="/travelplanner/">
       <AuthProvider>
-        <AnalyticsProvider />
         <ToastProvider>
           <AuthGate>
             <OnlineStatus />
@@ -77,6 +77,8 @@ const App: React.FC = () => {
                   <Routes>
                     <Route path="/" element={<Navigate to="/spreadsheet" replace />} />
                     <Route path="/calendar" element={<CalendarView />} />
+                    <Route path="/trip/:tripId/day/:date" element={<TripDayView />} />
+                    <Route path="/trip/:tripId" element={<TripDefaultRedirect />} />
                     <Route path="/weather" element={<Weather />} />
                     <Route path="/transportation" element={<Transportation />} />
                     <Route path="/spreadsheet" element={<SpreadsheetView />} />
