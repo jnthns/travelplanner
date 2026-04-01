@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { resolvePlaceId, fetchPlaceDetails, generateProsCons } from '../lib/services/placesService';
-import { logEvent } from '../lib/amplitude';
 import type { PlaceDetails, PlaceProsCons } from '../lib/services/placesService';
 
 export interface ActivityReviewsProps {
@@ -24,10 +23,6 @@ const ActivityReviews: React.FC<ActivityReviewsProps> = ({
   const location = activityLocation ?? activityTitle;
 
   useEffect(() => {
-    logEvent('Activity Reviews Opened', { activity_title: activityTitle, has_location: Boolean(activityLocation) });
-  }, [activityTitle, activityLocation]);
-
-  useEffect(() => {
     let cancelled = false;
 
     (async () => {
@@ -37,7 +32,6 @@ const ActivityReviews: React.FC<ActivityReviewsProps> = ({
         if (!placeId) {
           setStep('error');
           setErrorMessage('No Google Places data found for this activity.');
-          logEvent('Activity Reviews Failed', { activity_title: activityTitle, step: 'resolve' });
           return;
         }
 
@@ -45,7 +39,6 @@ const ActivityReviews: React.FC<ActivityReviewsProps> = ({
         if (cancelled) return;
         setDetails(d);
         setStep('done');
-        logEvent('Activity Reviews Loaded', { place_name: d.name, rating: d.rating ?? undefined, review_count: d.ratingCount ?? undefined });
 
         setProsConsLoading(true);
         generateProsCons(d.name, d.reviews, placeId)
@@ -56,7 +49,6 @@ const ActivityReviews: React.FC<ActivityReviewsProps> = ({
         if (cancelled) return;
         setStep('error');
         setErrorMessage(e instanceof Error ? e.message : 'Failed to load reviews');
-        logEvent('Activity Reviews Failed', { activity_title: activityTitle, step: 'details' });
       }
     })();
 

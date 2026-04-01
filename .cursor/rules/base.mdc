@@ -1,0 +1,193 @@
+---
+description: >
+  Project-agnostic prompt discipline and coding standards for TypeScript/React
+  projects. Enforces structured debugging, constrained edits, and autonomous
+  execution. Drop into any repo's .cursor/rules/ and extend with a
+  project-specific overlay file.
+globs: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"]
+alwaysApply: true
+---
+
+# Cursor Rules — Base Standard
+> Project-agnostic. Extend with a project-specific overlay in the same rules directory.
+> Overlay values always win over this file.
+
+---
+
+## ⚡ Vibe-Coding Contract
+
+Two modes exist. Select based on prompt type — do not ask the user which mode to use.
+
+### Mode A — Autonomous
+_Trigger: clear goal + file(s) named + no diagnostic ambiguity._
+
+- Ship **complete, runnable output** — no partial scaffolds, no `// ... rest of implementation`.
+- One file per response unless the task explicitly spans multiple files.
+- When refactoring, show the **full updated file**, not a diff.
+- Add a one-line comment at the top of every new file: `// Purpose: …`
+- If something is ambiguous, make the most reasonable choice and leave a
+  `// ASSUMPTION: …` comment — do not stop to ask.
+
+### Mode B — Diagnostic
+_Trigger: prompt contains a symptom, broken behavior, or a hypothesis —
+keywords like "seems like," "I think," "not working," "blank," "broken,"
+"loading too slow," or any behavior mismatch._
+
+- **Do not write code until diagnosis is complete.**
+- Restate the prompt in structured form and confirm before proceeding:
+
+```
+## Restatement
+Context:     [files involved, what they do, relevant deps]
+Expected:    [desired behavior]
+Actual:      [current behavior]
+Hypothesis:  [user's or yours — always labeled as hypothesis]
+Goal:        [specific outcome]
+Constraints: [what not to touch]
+```
+
+- If the user's hypothesis is wrong, say so **first**, then give your own diagnosis.
+- Never implement a fix built on an incorrect hypothesis.
+
+---
+
+## 🔍 Context Gate (Mode B only)
+
+If a diagnostic prompt is missing any of the following, ask for it before proceeding.
+One question per missing element — do not infer silently.
+
+| Required          | Example                                        |
+|-------------------|------------------------------------------------|
+| File(s) affected  | `@ComponentName.tsx`, `@useHookName.ts`        |
+| Expected behavior | "Should render data on first paint"            |
+| Actual behavior   | "Blank screen / stale data / console error"    |
+| Constraints       | "Don't change the hook's return signature"     |
+
+---
+
+## 📋 Plan Before Code
+
+For any change touching more than one file or one logical concern:
+
+1. Output a **numbered plan** — what changes, in which file, and why.
+2. Wait for explicit approval: `"looks good"`, `"proceed"`, `"go"`.
+3. Only then write code.
+
+Never auto-proceed on multi-file changes.
+
+---
+
+## 🔒 Constraint Enforcement
+
+- **Scope creep is a bug.** Flag cross-concern improvements before touching them.
+- **No new dependencies** without flagging: `"This needs [package] — confirm?"`
+- **Preserve API contracts.** Hook signatures, prop interfaces, and exported
+  function shapes are frozen unless explicitly told otherwise.
+- **One concern per diff.** Bug fix ≠ cleanup ≠ refactor. Keep them separate.
+
+---
+
+## ⏱ Async / Hook Diagnostic Checklist
+
+Run this before diagnosing any timing, blank render, or stale data issue:
+
+- [ ] Component renders before async data resolves? (missing `loading` guard)
+- [ ] Hook return value accessed before defined? (undefined access on first render)
+- [ ] Missing `useEffect` dependency causing stale closure?
+- [ ] `Suspense` or `ErrorBoundary` absent where needed?
+- [ ] Hook called conditionally? (Rules of Hooks violation)
+- [ ] StrictMode double-render exposing a side effect?
+
+Surface findings before writing any code.
+
+---
+
+## ✅ Pre-Finalise Checklist
+
+Run silently before every output:
+
+- [ ] No `any` without a `// reason:` comment
+- [ ] Exported functions have explicit return types
+- [ ] No hardcoded colour values — use design tokens / CSS vars
+- [ ] Loading and error states handled
+- [ ] Fix works on **first render**, not just after re-render
+- [ ] Change scoped only to what was asked
+- [ ] No new deps introduced silently
+- [ ] Types verified — no regressions introduced
+
+_Project-specific checks (Firestore writes, Amplitude events, etc.)
+belong in the overlay file, not here._
+
+---
+
+## 📊 Confidence Signal (Mode B — append to every diagnostic response)
+
+```
+Confidence: [High / Medium / Low]
+Reason:     [e.g. "full hook not visible" or "well-established React pattern"]
+If wrong:   [next thing to check or rule out]
+```
+
+---
+
+## TypeScript
+
+- All production code is TypeScript — avoid `.js` files.
+- Explicit return types on all **exported** functions.
+- No `any` without a `// reason:` comment. Prefer `unknown` + narrowing.
+- Optional chaining (`?.`) and nullish coalescing (`??`) over manual null checks.
+- Prefer `interface` over `type` for object shapes.
+- Avoid `enum` — use `const` maps or union string literals.
+- Boolean names: `isLoading`, `hasError`, `canSubmit`, `isVisible`.
+
+---
+
+## React
+
+- Functional components and hooks only — no class components.
+- `React.lazy` for route-level components; wrap in `<Suspense fallback={…}>`.
+- No inline styles — use CSS custom properties or your project's styling system.
+- Never hardcode color values in component files.
+- Images: WebP format, explicit `width`/`height`, `loading="lazy"`.
+
+---
+
+## Imports & File Structure
+
+- Import from the defining file directly — no barrel `index.ts` re-exports.
+- One concern per file: component, helpers, types, or constants — not mixed.
+- Directory names: `lowercase-with-dashes`.
+- Named exports for utilities and hooks; default exports for page/route components.
+
+---
+
+## Dates
+
+- Store and pass dates as ISO strings: `YYYY-MM-DD` or `YYYY-MM-DDTHH:mm:ssZ`.
+- Use a date library (`date-fns` preferred) for all parsing, formatting,
+  and arithmetic — no inline `new Date()` arithmetic.
+
+---
+
+## Performance
+
+- Dynamic-import non-critical components (`React.lazy` / `import()`).
+- Audit bundle size and Web Vitals (LCP, CLS, FID) before marking work done.
+- No premature optimisation — profile before adding memoisation.
+
+---
+
+## How to Extend This File
+
+Create a second `.mdc` file in `.cursor/rules/` named after your project
+(e.g. `signal.mdc`, `travelplanner.mdc`). Overlay values always take precedence.
+
+Recommended overlay sections:
+- Project name and stack summary
+- Data layer conventions (Firestore, Supabase, Prisma, etc.)
+- Analytics / event tracking conventions
+- State management patterns
+- Auth patterns
+- CI / lint / test requirements
+- Project-specific file structure and type locations
+- Agent file ownership (for parallel worktree workflows)

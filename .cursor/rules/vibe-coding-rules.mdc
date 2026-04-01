@@ -2,23 +2,125 @@
 description: >
   Full-stack TypeScript standards for TravelPlanner — React, Vite, Firestore,
   DaisyUI/Tailwind, and date-fns. Enforces type safety, performance, and
-  project-specific patterns. Optimised for vibe-coding with Cursor.
+  project-specific patterns. Includes prompt discipline protocol for debugging,
+  diagnosis, and constrained multi-file changes. Optimised for vibe-coding with Cursor.
 globs: ["**/*.ts", "**/*.tsx"]
-alwaysApply: false
+alwaysApply: true
 ---
 
 # Cursor Vibe-Coding Rules — TravelPlanner
 
+---
+
 ## ⚡ Vibe-Coding Contract
-> These rules exist so Cursor can move fast without asking. If something is
-> ambiguous, **make the most reasonable choice and leave a `// TODO:` comment**
-> rather than stopping to ask. Produce working code on the first pass.
+
+Two modes exist. Cursor selects the correct mode based on the prompt type.
+
+### Mode A — Autonomous (well-specified tasks)
+Use when the prompt includes: a clear goal, the file(s) to touch, and no diagnostic ambiguity.
 
 - Prefer **complete, runnable output** over partial scaffolds.
 - Never omit logic with `// ... rest of implementation` — write it out.
 - One file per response unless the task explicitly spans multiple files.
 - When refactoring, show the **full updated file**, not a diff.
 - Add a one-line comment at the top of every new file describing its purpose.
+- If something is ambiguous, **make the most reasonable choice and leave a `// ASSUMPTION:` comment** — don't stop to ask.
+
+### Mode B — Diagnostic (bugs, blank renders, async issues, unclear symptoms)
+Use when the prompt describes a symptom, a broken behavior, or contains a hypothesis.
+
+- **Do not write code until diagnosis is complete.**
+- Restate the prompt in structured form, then confirm before proceeding:
+
+```
+## Restatement
+Context:    [files involved, what they do, relevant deps]
+Expected:   [desired behavior]
+Actual:     [current behavior]
+Hypothesis: [user's or your own — always labeled as hypothesis]
+Goal:       [specific outcome]
+Constraints: [what not to touch]
+```
+
+- If the user's hypothesis is wrong, **say so first**, then give your own diagnosis.
+- Never silently implement a fix built on an incorrect hypothesis.
+
+> Rule of thumb: if the prompt contains the words "seems like," "I think," "not working,"
+> "blank," "broken," or describes a behavior mismatch — use Mode B.
+
+---
+
+## 🔍 Context Gate (Mode B only)
+
+If a bug/diagnostic prompt is missing any of the following, ask for it before proceeding:
+
+| Required         | Example                                      |
+|------------------|----------------------------------------------|
+| File(s) affected | `@Dashboard.tsx`, `@useProjectData.ts`       |
+| Expected behavior| "Should render table on first paint"         |
+| Actual behavior  | "Blank screen on first load"                 |
+| Constraints      | "Don't modify the hook signature"            |
+
+Ask one question per missing element. Do not infer silently.
+
+---
+
+## 📋 Plan Before Code (multi-file changes)
+
+For any change touching more than one file or one logical concern:
+
+1. Output a **numbered plan** (what you'll change and why)
+2. Wait for explicit approval (`"looks good"`, `"proceed"`, `"go"`)
+3. Only then write code
+
+**Never auto-proceed on multi-file changes.**
+
+---
+
+## 🔒 Constraint Enforcement
+
+- **Scope creep is a bug.** If fixing X would be cleaner with a refactor of Y, flag it — don't just do it.
+- **No new dependencies** without flagging: `"This would require adding [package] — confirm?"`
+- **Preserve API contracts.** Hook signatures, prop interfaces, and exported function shapes are frozen unless explicitly told otherwise.
+- **One concern per diff.** Debugging fix ≠ cleanup ≠ refactor. Separate them.
+
+---
+
+## ⏱ Async / Hook Issue Checklist (run before diagnosing timing bugs)
+
+- [ ] Is the component rendering before async data resolves? (missing `loading` guard)
+- [ ] Is the hook's return value accessed before it's defined? (undefined access)
+- [ ] Is there a missing `useEffect` dependency causing a stale closure?
+- [ ] Is `Suspense` or `ErrorBoundary` absent where it should exist?
+- [ ] Is the hook called conditionally? (Rules of Hooks violation)
+- [ ] Is a double-render in StrictMode exposing a side effect?
+
+Surface findings from this checklist in your diagnosis before proposing a fix.
+
+---
+
+## ✅ Post-Fix Checklist (run silently before finalising any output)
+
+- [ ] No `any` without a `// reason:` comment
+- [ ] No hardcoded colours — CSS vars only
+- [ ] No `undefined` passed to Firestore — `stripUndefined()` called
+- [ ] Exported functions have return types
+- [ ] Dates are ISO strings, manipulated via `date-fns`
+- [ ] New user actions emit an Amplitude event
+- [ ] Lazy-loaded components wrapped in `<Suspense>`
+- [ ] Loading and error states handled
+- [ ] Fix works on first render, not just after re-render
+- [ ] Change is scoped only to what was asked
+
+---
+
+## 📊 Confidence Signal (Mode B — end every diagnostic response with this)
+
+```
+Confidence: [High / Medium / Low]
+Reason: [e.g., "couldn't see full hook implementation" or "well-established pattern"]
+If wrong: [what to check next if this fix doesn't work]
+```
 
 ---
 
@@ -93,29 +195,8 @@ Always follow this write sequence — no exceptions:
 
 ---
 
-## Analytics
-
-- Log meaningful user actions via `logEvent(eventName, props)` from
-  `src/lib/amplitude.ts`.
-- Event names in Title Case: `"Activity Created"`, `"Collaborator Added"`.
-
----
-
 ## Performance
 
 - Dynamic import non-critical components (`React.lazy` / Vite `import()`).
 - Vite build: configure manual `chunks` in `rollupOptions` for code splitting.
 - Audit Web Vitals (LCP, CLS, FID) with Lighthouse before marking work done.
-
----
-
-## Code Quality Checklist
-> Cursor: silently verify these before finalising any output.
-
-- [ ] No `any` without a `// reason:` comment
-- [ ] No hardcoded colours — CSS vars only
-- [ ] No `undefined` passed to Firestore — `stripUndefined()` called
-- [ ] Exported functions have return types
-- [ ] Dates are ISO strings, manipulated via `date-fns`
-- [ ] New user actions emit an Amplitude event
-- [ ] Lazy-loaded components wrapped in `<Suspense>`

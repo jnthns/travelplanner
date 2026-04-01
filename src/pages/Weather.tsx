@@ -6,7 +6,6 @@ import { useTrips } from '../lib/store';
 import { useWeatherForTrip, formatTemp, type WeatherRequestLog } from '../lib/weather';
 import { getDatesMissingLocation, getEffectiveDayLocations } from '../lib/itinerary';
 import { useSettings } from '../lib/settings';
-import { logEvent } from '../lib/amplitude';
 import type { TempUnit } from '../lib/weather';
 
 const MAX_DEBUG_LOGS = 80;
@@ -76,12 +75,6 @@ const Weather: React.FC = () => {
     tripDaysRef.current = tripDays;
   }, [tripDays.join(',')]);
 
-  useEffect(() => {
-    if (selectedTripId && tripDays.length > 0) {
-      logEvent('Weather Page Viewed', { trip_id: selectedTripId, total_days: tripDays.length });
-    }
-  }, [selectedTripId, tripDays.length]);
-
   if (trips.length === 0) {
     return (
       <div className="page-container animate-fade-in">
@@ -121,7 +114,6 @@ const Weather: React.FC = () => {
           className="btn btn-ghost"
           onClick={() => {
             refetch();
-            logEvent('Weather Refreshed', { trip_id: selectedTripId ?? undefined });
           }}
           disabled={weatherLoading}
           title="Sync latest weather"
@@ -186,7 +178,6 @@ const Weather: React.FC = () => {
                       setExpandedDate(null);
                     } else {
                       setExpandedDate(dateStr);
-                      if (firstDay) logEvent('Weather Day Expanded', { trip_id: selectedTripId, date: dateStr, location: firstDay.location });
                     }
                   }}
                   style={{
@@ -245,7 +236,6 @@ const Weather: React.FC = () => {
                                   location: locations[0],
                                   locations,
                                 });
-                                logEvent('Weather Day Location Updated', { trip_id: selectedTripId, date: dateStr });
                               }
                               setEditingLocationDate(null);
                               setEditLocationValue('');

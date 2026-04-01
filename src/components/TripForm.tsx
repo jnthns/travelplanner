@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import type { Trip } from '../lib/types';
 import { TRIP_COLORS } from '../lib/types';
-import { logEvent } from '../lib/amplitude';
 import Markdown from './Markdown';
 import { generateTripAutofillSuggestion } from '../lib/ai/actions/forms';
 
@@ -30,7 +29,6 @@ const TripForm: React.FC<TripFormProps> = ({ existing, onSave, onCancel }) => {
         setAiLoading(true);
         setAiError(null);
         setAiSuggestion(null);
-        logEvent('AI Trip Autofill Requested', { trip_name: name.trim() });
         try {
             const text = await generateTripAutofillSuggestion({
                 name,
@@ -118,8 +116,8 @@ const TripForm: React.FC<TripFormProps> = ({ existing, onSave, onCancel }) => {
                             <div className="ai-suggestion-card card" style={{ maxHeight: '200px', overflowY: 'auto' }}>
                                 <Markdown className="ai-suggestion-text">{aiSuggestion}</Markdown>
                                 <div className="ai-suggestion-actions">
-                                    <button type="button" className="btn btn-primary btn-sm" onClick={() => { setDescription(aiSuggestion); setAiSuggestion(null); logEvent('AI Trip Autofill Accepted', { trip_name: name.trim() }); }}>Use as description</button>
-                                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setAiSuggestion(null); logEvent('AI Trip Autofill Declined', { trip_name: name.trim() }); }}>Dismiss</button>
+                                    <button type="button" className="btn btn-primary btn-sm" onClick={() => { setDescription(aiSuggestion); setAiSuggestion(null); }}>Use as description</button>
+                                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setAiSuggestion(null); }}>Dismiss</button>
                                 </div>
                             </div>
                         )}

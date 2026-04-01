@@ -8,7 +8,6 @@ import { TRANSPORT_EMOJIS } from '../lib/types';
 import { useLocalStorageState } from '../lib/persist';
 import Markdown from '../components/Markdown';
 import { useToast } from '../components/Toast';
-import { logEvent } from '../lib/amplitude';
 import { suggestTransportOptions } from '../lib/ai/actions/transport';
 import ConflictList from '../components/ConflictList';
 import { getTripPlanningConflicts } from '../lib/planning/conflicts';
@@ -134,7 +133,6 @@ const Transportation: React.FC = () => {
         setAiRoutesLoading(true);
         setAiRoutesError(null);
         setAiRoutesSuggestion(null);
-        logEvent('AI Route Suggestion Requested', { from: formData.from.trim(), to: formData.to.trim() });
         try {
             const text = await suggestTransportOptions({
                 from: formData.from,
@@ -168,10 +166,8 @@ const Transportation: React.FC = () => {
 
         if (editingRoute) {
             await updateRoute(editingRoute.id, routeData);
-            logEvent('Route Updated', { transport_type: routeData.type, from: routeData.from, to: routeData.to, date: routeData.date });
         } else {
             await addRoute(routeData as Omit<TransportRoute, 'id' | 'userId' | 'tripMembers'>, selectedTrip?.members || []);
-            logEvent('Route Created', { transport_type: routeData.type, from: routeData.from, to: routeData.to, date: routeData.date, cost: routeData.cost, currency: routeData.currency });
         }
         resetForm();
     };
@@ -180,10 +176,8 @@ const Transportation: React.FC = () => {
         const route = routes.find(r => r.id === id);
         if (!route) return;
         deleteRoute(id);
-        logEvent('Route Deleted', { transport_type: route.type, from: route.from, to: route.to });
         showToast(`Route "${route.from} → ${route.to}" deleted`, () => {
             restoreRoute(route);
-            logEvent('Route Delete Undone', { transport_type: route.type });
         });
     };
 
@@ -302,8 +296,8 @@ const Transportation: React.FC = () => {
                                         <Markdown>{aiRoutesSuggestion}</Markdown>
                                     </div>
                                     <div className="flex gap-sm">
-                                        <button type="button" className="btn btn-primary btn-sm" onClick={() => { setFormData(p => ({ ...p, notes: (p.notes ? p.notes + '\n\n' : '') + aiRoutesSuggestion })); setAiRoutesSuggestion(null); logEvent('AI Route Suggestion Accepted', { from: formData.from.trim(), to: formData.to.trim() }); }}>Accept</button>
-                                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setAiRoutesSuggestion(null); logEvent('AI Route Suggestion Declined', { from: formData.from.trim(), to: formData.to.trim() }); }}>Decline</button>
+                                        <button type="button" className="btn btn-primary btn-sm" onClick={() => { setFormData(p => ({ ...p, notes: (p.notes ? p.notes + '\n\n' : '') + aiRoutesSuggestion })); setAiRoutesSuggestion(null); }}>Accept</button>
+                                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setAiRoutesSuggestion(null); }}>Decline</button>
                                     </div>
                                 </div>
                             )}

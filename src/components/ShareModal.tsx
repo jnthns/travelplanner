@@ -5,7 +5,6 @@ import { db } from '../lib/firebase';
 import { useTrips } from '../lib/store';
 import type { Trip } from '../lib/types';
 import { useToast } from './Toast';
-import { logEvent } from '../lib/amplitude';
 
 interface ShareModalProps {
     trip: Trip;
@@ -111,7 +110,6 @@ const ShareModal: React.FC<ShareModalProps> = ({ trip, onClose }) => {
                 return;
             }
 
-            logEvent('Collaborator Added', { trip_id: trip.id });
             showToast(`${targetEmail} can now collaborate on this trip!`);
             setEmail('');
         } catch (err) {
@@ -172,7 +170,6 @@ const ShareModal: React.FC<ShareModalProps> = ({ trip, onClose }) => {
                 return;
             }
 
-            logEvent('Collaborator Removed', { trip_id: trip.id });
             showToast(`${emailToRemove} removed.`);
         } catch (err) {
             console.error('Failed to remove collaborator:', err);

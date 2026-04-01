@@ -3,7 +3,6 @@ import { format, parseISO, eachDayOfInterval } from 'date-fns';
 import { useTrips, useActivities, useTransportRoutes } from '../lib/store';
 import { CATEGORY_EMOJIS, CATEGORY_COLORS } from '../lib/types';
 import { useLocalStorageState } from '../lib/persist';
-import { logEvent } from '../lib/amplitude';
 import ConflictList from '../components/ConflictList';
 import ScenarioSwitcher from '../components/ScenarioSwitcher';
 import { getBudgetConflicts } from '../lib/planning/conflicts';
@@ -486,7 +485,6 @@ const Budget: React.FC = () => {
             updateTrip(selectedTrip.id, { budgetTarget: val, budgetCurrency: budgetCurrInput });
         }
         setShowBudgetEditor(false);
-        logEvent('Budget Target Set', { amount: val, currency: budgetCurrInput });
     }, [selectedTrip, budgetInput, budgetCurrInput, updateTrip]);
 
     const handleSetRate = useCallback((fromCur: string, rate: number) => {
@@ -506,24 +504,6 @@ const Budget: React.FC = () => {
         }
         return Object.entries(totals).map(([cur, amt]) => <span key={cur}>{formatCurrency(amt, cur)}</span>);
     }, [displayCurrency, tripRates]);
-
-    useEffect(() => {
-        if (!selectedTrip) return;
-        let tripDays: string[] = [];
-        try {
-            tripDays = eachDayOfInterval({ start: parseISO(effectiveTrip?.startDate ?? selectedTrip.startDate), end: parseISO(effectiveTrip?.endDate ?? selectedTrip.endDate) }).map(d => format(d, 'yyyy-MM-dd'));
-        } catch { return; }
-        const daysWithCost = new Set(costedActivities.map(a => a.date));
-        const daysWithActivity = new Set(effectiveActivities.map(a => a.date));
-        logEvent('Budget Viewed', {
-            trip_id: selectedTrip.id, trip_name: selectedTrip.name,
-            duration_days: tripDays.length, total_activities: effectiveActivities.length,
-            costed_activities: costedActivities.length, total_expense_items: totalExpenses,
-            days_with_any_activity: tripDays.filter(d => daysWithActivity.has(d)).length,
-            days_with_any_cost: tripDays.filter(d => daysWithCost.has(d)).length,
-        });
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedTripId, effectiveTrip, effectiveActivities, costedActivities.length, totalExpenses]);
 
     useEffect(() => { setLocationFilter(''); setTagFilter(''); }, [selectedTripId]);
 

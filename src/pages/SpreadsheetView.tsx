@@ -21,7 +21,6 @@ import ActivityReviews from '../components/ActivityReviews';
 import { useToast } from '../components/Toast';
 import { useWeatherForTrip } from '../lib/weather';
 import { compareActivitiesByTimeThenOrder, getEffectiveDayLocations } from '../lib/itinerary';
-import { logEvent } from '../lib/amplitude';
 import { getTripEmoji } from '../lib/tripEmoji';
 import { getTripPlanningConflicts } from '../lib/planning/conflicts';
 import { useSettings } from '../lib/settings';
@@ -245,12 +244,6 @@ const SpreadsheetView: React.FC = () => {
         } else {
             updateActivity(activityId, { date: dateStr, time: newTime });
         }
-        logEvent('Activity Moved in Spreadsheet', {
-            activity_title: activity.title,
-            from_date: activity.date,
-            to_date: dateStr,
-            to_slot: slot,
-        });
     };
 
     const handleSaveActivity = (data: Omit<Activity, 'id' | 'userId' | 'tripMembers'> | ({ id: string } & Partial<Omit<Activity, 'userId'>>)) => {
@@ -262,7 +255,6 @@ const SpreadsheetView: React.FC = () => {
             } else {
                 updateActivity(data.id, data);
             }
-            logEvent('Activity Updated', { activity_title: data.title, source: 'spreadsheet', scenario_mode: Boolean(activeScenario) });
         } else {
             const trip = trips.find(t => t.id === selectedTripId);
             if (selectedTripId && activeScenario) {
@@ -278,7 +270,6 @@ const SpreadsheetView: React.FC = () => {
             } else {
                 addActivity(data as Omit<import('../lib/types').Activity, 'id' | 'userId' | 'tripMembers'>, trip?.members || []);
             }
-            logEvent('Activity Created', { activity_title: data.title, date: data.date, source: 'spreadsheet', scenario_mode: Boolean(activeScenario) });
         }
         setEditingActivity(null);
         setAddingCell(null);
@@ -293,12 +284,10 @@ const SpreadsheetView: React.FC = () => {
         } else {
             deleteActivity(id);
         }
-        logEvent('Activity Deleted', { activity_title: act.title, source: 'spreadsheet', scenario_mode: Boolean(activeScenario) });
         setEditingActivity(null);
         if (!activeScenario) {
             showToast(`"${act.title}" deleted`, () => {
                 restoreActivity(act);
-                logEvent('Activity Delete Undone', { activity_title: act.title });
             });
         }
     };
@@ -322,7 +311,6 @@ const SpreadsheetView: React.FC = () => {
             updatedAt: now,
         } as Omit<import('../lib/types').Note, 'id' | 'userId' | 'tripMembers'>, trip?.members || []);
 
-        logEvent('Note Created', { trip_id: selectedTripId, source: 'spreadsheet', date: dateStr });
         setQuickNoteContent('');
         setQuickNoteForDate(null);
     }, [addNote, quickNoteContent, selectedTripId, trips, tripNotes.length]);
@@ -330,10 +318,8 @@ const SpreadsheetView: React.FC = () => {
     const handleDeleteNoteFromModal = useCallback((note: Note) => {
         deleteNote(note.id);
         setEditingNote(null);
-        logEvent('Note Deleted', { note_id: note.id, source: 'spreadsheet' });
         showToast('Note deleted', () => {
             restoreNote(note);
-            logEvent('Note Delete Undone', { note_id: note.id });
         });
     }, [deleteNote, restoreNote, showToast]);
 
@@ -342,11 +328,9 @@ const SpreadsheetView: React.FC = () => {
         try {
             if ('id' in tripData) {
                 await updateTrip(tripData.id, tripData);
-                logEvent('Trip Updated', { trip_name: tripData.name, start_date: tripData.startDate, end_date: tripData.endDate });
             } else {
                 const newTrip = await addTrip(tripData);
                 setSelectedTripId(newTrip.id);
-                logEvent('Trip Created', { trip_name: tripData.name, start_date: tripData.startDate, end_date: tripData.endDate, default_currency: tripData.defaultCurrency });
             }
             setShowTripForm(false);
             setEditingTrip(null);
@@ -362,12 +346,10 @@ const SpreadsheetView: React.FC = () => {
         const deletedActivities = getActivitiesByTrip(id);
         deleteTrip(id);
         deletedActivities.forEach(a => deleteActivity(a.id));
-        logEvent('Trip Deleted', { trip_name: trip.name });
         if (selectedTripId === id) setSelectedTripId(null);
         showToast(`"${trip.name}" deleted`, () => {
             restoreTrip(trip);
             deletedActivities.forEach(a => restoreActivity(a));
-            logEvent('Trip Delete Undone', { trip_name: trip.name });
         });
     };
 
@@ -784,7 +766,6 @@ const SpreadsheetView: React.FC = () => {
                                         const d = format(focusedDate, 'yyyy-MM-dd');
                                         setAddingUnscheduledForDate(d);
                                         setUnscheduledOpen(true);
-                                        logEvent('Unscheduled Activity Add Clicked', { date: d, source: 'spreadsheet' });
                                     }}
                                 >
                                     <Plus size={14} /> Add without time
@@ -807,7 +788,6 @@ const SpreadsheetView: React.FC = () => {
                                             onClick={() => {
                                                 const d = format(focusedDate, 'yyyy-MM-dd');
                                                 setAddingUnscheduledForDate(d);
-                                                logEvent('Unscheduled Activity Add Clicked', { date: d, source: 'spreadsheet_empty' });
                                             }}
                                         >
                                             <Plus size={14} /> Add activity
@@ -968,7 +948,6 @@ const SpreadsheetView: React.FC = () => {
                             onSave={(data) => {
                                 updateNote(editingNote.id, { ...data, updatedAt: new Date().toISOString() });
                                 setEditingNote(null);
-                                logEvent('Note Updated', { note_id: editingNote.id, source: 'spreadsheet' });
                             }}
                             onCancel={() => setEditingNote(null)}
                             onDelete={() => handleDeleteNoteFromModal(editingNote)}

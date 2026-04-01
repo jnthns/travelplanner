@@ -3,7 +3,6 @@ import { format, eachDayOfInterval, parseISO } from 'date-fns';
 import { useTrips, useActivities, useTransportRoutes } from '../lib/store';
 import { CATEGORY_COLORS } from '../lib/types';
 import { useToast } from '../components/Toast';
-import { logEvent } from '../lib/amplitude';
 import { generateDayActivityDescriptions, generateDaySummary, generateOptimizedRoute } from '../lib/ai/actions/calendar';
 import { getNearbyPlacesLabel } from '../lib/services/placesService';
 import { getTripPlanningConflicts } from '../lib/planning/conflicts';
@@ -58,7 +57,13 @@ function saveCalendarPrefs(viewMode: CalendarViewMode, selectedTripId: string | 
     }
 }
 
-export function useCalendarViewController() {
+export interface UseCalendarViewControllerOptions {
+    /** When set (Trip day route), syncs selected trip and day view mode from the URL. */
+    routeTripId?: string | null;
+    routeDateStr?: string | null;
+}
+
+export function useCalendarViewController(options?: UseCalendarViewControllerOptions) {
     const { trips, updateItineraryDay } = useTrips();
     const { activities, addActivity, updateActivity, deleteActivity, restoreActivity, reorderActivities } =
         useActivities();
@@ -153,6 +158,22 @@ export function useCalendarViewController() {
     }, [selectedTripId]);
 
     useEffect(() => {
+        if (options?.routeTripId == null) return;
+        setSelectedTripId(options.routeTripId);
+        setViewMode('day');
+    }, [options?.routeTripId]);
+
+    useEffect(() => {
+        if (options?.routeDateStr == null) return;
+        try {
+            const d = parseISO(options.routeDateStr);
+            if (!Number.isNaN(d.getTime())) setCurrentDate(d);
+        } catch {
+            /* ignore */
+        }
+    }, [options?.routeDateStr]);
+
+    useEffect(() => {
         if (!effectiveTrip) return;
         try {
             const tripStart = parseISO(effectiveTrip.startDate);
@@ -243,7 +264,6 @@ export function useCalendarViewController() {
                 } else {
                     reorderActivities(updates);
                 }
-                logEvent('Activities Reordered', { count: updates.length, source: 'calendar_day' });
             }
         },
         [activeScenario, reorderActivities, selectedTripId],
@@ -399,11 +419,6 @@ export function useCalendarViewController() {
         setSummaryError(null);
         setTripSummary(null);
 
-        logEvent('Trip Summary Requested', {
-            trip_name: selectedTrip.name,
-            activity_count: dayViewActivities.length,
-            date: currentDateStr,
-        });
         try {
             const parsed = await generateDaySummary({
                 trip: effectiveTrip ?? selectedTrip,
@@ -427,7 +442,6 @@ export function useCalendarViewController() {
         setOptimizationError(null);
         setOptimizedRoute(null);
 
-        logEvent('Route Optimization Requested', { date: currentDateStr, activity_count: dayViewActivities.length });
         try {
             const parsed = await generateOptimizedRoute({
                 trip: effectiveTrip ?? selectedTrip,
@@ -460,12 +474,6 @@ export function useCalendarViewController() {
         setDescriptionLoading(true);
         setDescriptionError(null);
         setPendingDescriptions(null);
-
-        logEvent('Activity Descriptions Requested', {
-            trip_name: selectedTrip.name,
-            activity_count: dayViewActivities.length,
-            date: currentDateStr,
-        });
 
         try {
             const parsed = await generateDayActivityDescriptions({
@@ -530,7 +538,6 @@ export function useCalendarViewController() {
             const next = current.filter((item) => item.activityId !== activityId);
             return next.length > 0 ? next : null;
         });
-        logEvent('Activity Description Declined', { activity_id: activityId, date: currentDateStr });
     };
 
     const applyPendingDescription = async (activityId: string, summary: string, tips: string[]) => {
@@ -549,27 +556,15 @@ export function useCalendarViewController() {
             const next = current.filter((item) => item.activityId !== activityId);
             return next.length > 0 ? next : null;
         });
-
-        logEvent('Activity Description Accepted', {
-            activity_id: activityId,
-            activity_title: activity.title,
-            date: currentDateStr,
-        });
     };
 
     const handleAcceptAllDescriptions = async () => {
         if (!pendingDescriptions || pendingDescriptions.length === 0) return;
 
-        const count = pendingDescriptions.length;
         await Promise.all(
             pendingDescriptions.map((item) => applyPendingDescription(item.activityId, item.summary, item.tips)),
         );
         setPendingDescriptions(null);
-
-        logEvent('All Activity Descriptions Accepted', {
-            count,
-            date: currentDateStr,
-        });
     };
 
     return {

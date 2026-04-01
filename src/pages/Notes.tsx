@@ -9,7 +9,6 @@ import DraggableList from '../components/DraggableList';
 import NoteEditor from '../components/NoteEditor';
 import NoteCard from '../components/NoteCard';
 import { useToast } from '../components/Toast';
-import { logEvent } from '../lib/amplitude';
 
 type NotesFilterMode = 'all' | 'general' | 'day';
 
@@ -84,7 +83,6 @@ const Notes: React.FC = () => {
                 updatedAt: now,
             } as Omit<import('../lib/types').Note, 'id' | 'userId' | 'tripMembers'>, selectedTrip?.members || []);
             setShowNewForm(false);
-            logEvent('Note Created', { trip_id: selectedTripId, format: data.format, image_count: data.images?.length ?? 0 });
         } catch (err) {
             console.error('Failed to add note:', err);
             setError(err instanceof Error ? err.message : 'Failed to save note. Check your connection and try again.');
@@ -96,7 +94,6 @@ const Notes: React.FC = () => {
         try {
             await updateNote(id, { ...data, updatedAt: new Date().toISOString() });
             setEditingNoteId(null);
-            logEvent('Note Updated', { note_id: id });
         } catch (err) {
             console.error('Failed to update note:', err);
             setError(err instanceof Error ? err.message : 'Failed to update note. Check your connection and try again.');
@@ -107,12 +104,10 @@ const Notes: React.FC = () => {
         setError(null);
         try {
             await deleteNote(note.id);
-            logEvent('Note Deleted', { note_id: note.id });
             const firstLine = note.content.split('\n')[0]?.trim() || 'Empty note';
             const snippet = firstLine.length > 40 ? `${firstLine.slice(0, 40)}...` : firstLine;
             showToast(`"${snippet}" deleted`, () => {
                 restoreNote(note);
-                logEvent('Note Delete Undone', { note_id: note.id });
             });
             if (editingNoteId === note.id) setEditingNoteId(null);
         } catch (err) {
@@ -128,7 +123,6 @@ const Notes: React.FC = () => {
             .filter((u, idx) => reordered[idx].order !== u.order);
         if (updates.length > 0) {
             reorderNotes(updates);
-            logEvent('Notes Reordered', { count: updates.length });
         }
     }, [reorderNotes, filterMode]);
 
@@ -136,12 +130,10 @@ const Notes: React.FC = () => {
         navigator.clipboard.writeText(content).then(() => {
             setCopiedId(id);
             showToast('Note copied to clipboard');
-            logEvent('Note Copied');
             setTimeout(() => setCopiedId(null), 2000);
         }).catch((err) => {
             console.error('Failed to copy note:', err);
             showToast('Could not copy note. Please copy manually.');
-            logEvent('Note Copy Failed');
         });
     }, [showToast]);
 

@@ -19,7 +19,6 @@ export default defineConfig({
             if (id.includes('firebase/storage')) return 'vendor-firebase-storage'
             if (id.includes('firebase/app')) return 'vendor-firebase-app'
             if (id.includes('date-fns')) return 'vendor-dates'
-            if (id.includes('@amplitude')) return 'vendor-amplitude'
             if (id.includes('lucide-react')) return 'vendor-lucide'
           }
         },

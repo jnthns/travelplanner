@@ -1,0 +1,61 @@
+---
+description: >
+  Project-specific overlay for TravelPlanner. Extends base.mdc with
+  Firestore, DaisyUI/Tailwind, and project file conventions.
+  Values here take precedence over base.mdc.
+globs: ["**/*.ts", "**/*.tsx"]
+alwaysApply: true
+---
+
+# Cursor Rules — TravelPlanner Overlay
+> Extends base.mdc. Only project-specific rules live here.
+
+---
+
+## Stack
+
+- React 19 + TypeScript + Vite
+- Firebase / Firestore
+- DaisyUI + Tailwind CSS (mobile-first)
+- date-fns for all date handling
+- `src/lib/persist.ts` → `useLocalStorageState` for local persistence
+
+---
+
+## Firestore Write Convention
+
+Always follow this sequence — no exceptions:
+
+```
+1. Build the payload object
+2. Pass through stripUndefined()  ← removes keys with value `undefined`
+3. Call setDoc / updateDoc / addDoc / batch.update
+```
+
+- Types: `src/lib/types.ts` → `Trip`, `Activity`, `TransportRoute`, `Note`, `ChatMessage`
+- Membership mutations must batch-update across:
+  `tripMembers`, `activities`, `notes`, `transportRoutes`, `chat_history`
+
+---
+
+## Styling
+
+- DaisyUI components + Tailwind utilities only
+- Theme via CSS custom properties: `var(--primary-color)`, `var(--border-color)`, `var(--text-secondary)`
+- Never hardcode hex/rgb in component files
+
+---
+
+## Local Persistence
+
+- Use `useLocalStorageState` from `src/lib/persist.ts` only
+- Do not access `localStorage` directly anywhere else in the codebase
+
+---
+
+## Project-Specific Checklist (appends to base post-finalise checklist)
+
+- [ ] `stripUndefined()` called before every Firestore write
+- [ ] Lazy-loaded components wrapped in `<Suspense>`
+- [ ] Dates stored as ISO strings, handled with `date-fns`
+- [ ] No direct `localStorage` access outside `persist.ts`

@@ -17,7 +17,6 @@ Personal travel itinerary planner. Users create trips, plan day-by-day activitie
 | Auth | Firebase Auth | Google OAuth + anonymous sign-in |
 | Storage | Firebase Storage | Images only, max 5MB, `notes/{userId}/{tripId}/...` |
 | AI | Google Gemini via Cloudflare Worker proxy | Never call Gemini directly from frontend |
-| Analytics | Amplitude | `logEvent()` from `src/lib/amplitude.ts` |
 | Icons | lucide-react | |
 | Dates | date-fns | All date strings ISO `YYYY-MM-DD` |
 | Markdown | marked | `Markdown.tsx` component |
@@ -56,15 +55,14 @@ Personal travel itinerary planner. Users create trips, plan day-by-day activitie
 3. Call `stripUndefined()` before writing to Firestore.
 4. Use date-fns; all date strings ISO `YYYY-MM-DD`.
 5. Use CSS custom properties from `theme.css` (e.g. `var(--primary-color)`).
-6. Use `logEvent(eventName, props)` for meaningful user interactions; event names Title Case.
-7. Import from `src/lib/persist.ts` for `useLocalStorageState` — not `src/hooks/useLocalStorageState.ts`.
-8. No barrel `index.ts` imports; import directly from the file.
-9. Vite base path is `/travelplanner/` — use for any URL construction.
-10. Avoid `const enum` and non-erasable TypeScript syntax (`erasableSyntaxOnly`).
+6. Import from `src/lib/persist.ts` for `useLocalStorageState` — not `src/hooks/useLocalStorageState.ts`.
+7. No barrel `index.ts` imports; import directly from the file.
+8. Vite base path is `/travelplanner/` — use for any URL construction.
+9. Avoid `const enum` and non-erasable TypeScript syntax (`erasableSyntaxOnly`).
 
 ## Environment Variables
 
-- **App**: `VITE_FIREBASE_*`, `VITE_AI_PROXY_URL`, `VITE_AMPLITUDE_API_KEY` (optional).
+- **App**: `VITE_FIREBASE_*`, `VITE_AI_PROXY_URL`.
 - **Worker** (Cloudflare): `GEMINI_API_KEY` or `GEMINI_API_KEYS`, `GOOGLE_PLACES_API_KEY` (set via `wrangler secret put GOOGLE_PLACES_API_KEY` — never committed).
 
 ## New APIs (Phase: Weather + Places)

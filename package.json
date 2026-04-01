@@ -11,10 +11,6 @@
     "seed:kansai-packing": "tsx --env-file=.env scripts/seed-kansai-packing.ts"
   },
   "dependencies": {
-    "@amplitude/analytics-browser": "^2.36.1",
-    "@amplitude/engagement-browser": "^1.0.8",
-    "@amplitude/experiment-js-client": "^1.20.3",
-    "@amplitude/plugin-session-replay-browser": "^1.25.18",
     "date-fns": "^4.1.0",
     "dompurify": "^3.3.3",
     "firebase": "^12.10.0",
