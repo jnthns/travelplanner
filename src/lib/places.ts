@@ -6,15 +6,10 @@
 import { getAuth } from 'firebase/auth';
 
 import { getCachedAiText } from './ai/cache';
-import { generateWithGemini } from './services/aiService';
+import { generateWithGemini } from './gemini';
+import { getProxyUrl } from './proxyUrl';
 
 const placeIdCache = new Map<string, string>(); // key: `${title}:${location}`
-
-function getProxyUrl(): string {
-  const url = import.meta.env.VITE_AI_PROXY_URL as string | undefined;
-  if (!url?.trim()) throw new Error('VITE_AI_PROXY_URL is not set.');
-  return url.replace(/\/+$/, '');
-}
 
 async function workerRequestHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };

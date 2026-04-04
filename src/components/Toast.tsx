@@ -11,7 +11,8 @@ interface ToastItem {
 }
 
 interface ToastContextValue {
-    showToast: (message: string, onUndo?: () => void) => void;
+    /** Optional third argument: duration in ms (default 5000). Use `undefined` for onUndo when passing duration only. */
+    showToast: (message: string, onUndo?: () => void, durationMs?: number) => void;
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -34,9 +35,10 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         });
     }, []);
 
-    const showToast = useCallback((message: string, onUndo?: () => void) => {
+    const showToast = useCallback((message: string, onUndo?: () => void, durationMs?: number) => {
         const id = ++idRef.current;
-        const timeoutId = setTimeout(() => dismiss(id), TOAST_DURATION);
+        const duration = durationMs ?? TOAST_DURATION;
+        const timeoutId = setTimeout(() => dismiss(id), duration);
         setToasts(prev => [...prev, { id, message, onUndo, timeoutId }]);
     }, [dismiss]);
 

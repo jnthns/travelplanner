@@ -583,17 +583,25 @@
     border-color: color-mix(in srgb, #34d399 35%, var(--border-light));
 }
 
+.action-btn-indigo {
+    background: color-mix(in srgb, #818cf8 16%, var(--surface-color));
+    color: #4338ca;
+    border-color: color-mix(in srgb, #818cf8 35%, var(--border-light));
+}
+
 /* Discord / Neon / Midnight: white text on tinted action buttons */
 .theme-dark-preset .action-btn-sky,
 .theme-dark-preset .action-btn-violet,
 .theme-dark-preset .action-btn-amber,
-.theme-dark-preset .action-btn-mint {
+.theme-dark-preset .action-btn-mint,
+.theme-dark-preset .action-btn-indigo {
     color: #fff;
 }
 .theme-dark-preset .action-btn-sky .action-btn-icon,
 .theme-dark-preset .action-btn-violet .action-btn-icon,
 .theme-dark-preset .action-btn-amber .action-btn-icon,
-.theme-dark-preset .action-btn-mint .action-btn-icon {
+.theme-dark-preset .action-btn-mint .action-btn-icon,
+.theme-dark-preset .action-btn-indigo .action-btn-icon {
     color: inherit;
 }
 
@@ -862,6 +870,12 @@
 
     .day-nav-wrapper {
         width: 100%;
+        position: sticky;
+        top: -1rem;
+        z-index: 20;
+        padding-top: 1rem;
+        background-color: var(--surface-color);
+        box-shadow: var(--shadow-sm);
     }
 
     .nav-controls {
@@ -986,6 +1000,16 @@
     flex-direction: column;
     gap: 0.3rem;
     color: var(--text-primary);
+}
+
+.gap-suggestion-window {
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+}
+
+.gap-suggestion-meta {
+    font-size: 0.8rem;
+    margin-top: 0.35rem;
 }
 
 .description-suggestion-tips li {

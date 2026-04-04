@@ -1,42 +1,14 @@
 import React, { useState } from 'react';
-import { NavLink, useLocation, matchPath } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { Calendar, CalendarDays, CloudSun, Map, Table, Wallet, StickyNote, Upload, Settings, LogOut, User, Bot, Backpack } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
-import { useTrips } from '../lib/store';
-import { getDefaultDayDateStr } from '../lib/tripDefaultDay';
+import { useDayNavHref } from '../lib/useDayNavHref';
 import './Sidebar.css';
-
-const CALENDAR_VIEW_KEY = 'travelplanner_calendar_view';
-
-function getCalendarSelectedTripId(): string | null {
-  try {
-    const raw = localStorage.getItem(CALENDAR_VIEW_KEY);
-    if (!raw) return null;
-    const p = JSON.parse(raw) as { selectedTripId?: string | null };
-    return p.selectedTripId ?? null;
-  } catch {
-    return null;
-  }
-}
 
 const Sidebar: React.FC = () => {
   const { user, signOut } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(true);
-  const location = useLocation();
-  const { trips } = useTrips();
-
-  const selectedTripId = getCalendarSelectedTripId();
-  const trip = selectedTripId ? trips.find((t) => t.id === selectedTripId) : undefined;
-
-  const dayHref =
-    !selectedTripId
-      ? '/spreadsheet'
-      : trip
-        ? `/trip/${selectedTripId}/day/${getDefaultDayDateStr(trip)}`
-        : `/trip/${selectedTripId}`;
-
-  const isDayActive =
-    matchPath({ path: '/trip/:tripId/day/:date', end: false }, location.pathname) != null;
+  const { dayHref, isDayActive, selectedTripId } = useDayNavHref();
 
   const toggleSidebarFromLogo = () => {
     setIsCollapsed((prev) => !prev);

@@ -69,6 +69,12 @@ npx wrangler deploy
 
 Set `GEMINI_API_KEYS` (comma-separated) or the legacy `GEMINI_API_KEY` secret in the Cloudflare dashboard.
 
+Required Cloudflare secrets (from `worker/`, use `wrangler secret put <NAME>` or the dashboard):
+
+- **`GEMINI_API_KEYS`** (comma-separated) or **`GEMINI_API_KEY`**
+- **`GOOGLE_PLACES_API_KEY`**
+- **`FIREBASE_PROJECT_ID`** — run `wrangler secret put FIREBASE_PROJECT_ID`; the value must match **`VITE_FIREBASE_PROJECT_ID`** in the frontend environment.
+
 Optional worker vars:
 
 - **`ALLOWED_ORIGINS`** — Comma-separated list of origins (e.g. `https://yourapp.pages.dev`). If set, browsers sending a `Origin` header must match; omit for local dev / open CORS (`*`).

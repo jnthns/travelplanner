@@ -1,9 +1,7 @@
-import React, { useRef, useState } from 'react';
+import React from 'react';
 import { Navigate, useParams, useNavigate, Link } from 'react-router-dom';
 import { format, isSameDay } from 'date-fns';
-import { toPng } from 'html-to-image';
-import { AlertTriangle, CalendarPlus, ImageDown, Info, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
-import { buildIcsForDay, downloadIcsFile } from '../lib/exportDayIcs';
+import { AlertTriangle, Info, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { CATEGORY_EMOJIS } from '../lib/types';
 import ActivityForm from '../components/ActivityForm';
 import DraggableList from '../components/DraggableList';
@@ -17,17 +15,10 @@ import { useTrips } from '../lib/store';
 import { getDefaultDayDateStr, isDateInTripRange } from '../lib/tripDefaultDay';
 import styles from './CalendarView.module.css';
 
-function sanitizeFilenameBase(name: string): string {
-    return name.replace(/[^\w-]+/g, '_').replace(/_+/g, '_').slice(0, 80) || 'trip';
-}
-
 const TripDayView: React.FC = () => {
     const { tripId, date: dateParam } = useParams<{ tripId: string; date: string }>();
     const navigate = useNavigate();
     const { trips, loading: tripsLoading } = useTrips();
-
-    const dayExportRef = useRef<HTMLDivElement>(null);
-    const [exportImageLoading, setExportImageLoading] = useState(false);
 
     const {
         updateItineraryDay,
@@ -86,6 +77,12 @@ const TripDayView: React.FC = () => {
         dismissPendingDescription,
         applyPendingDescription,
         handleAcceptAllDescriptions,
+        fillGapsLoading,
+        fillGapsError,
+        gapSuggestions,
+        handleFillGaps,
+        acceptGapSuggestion,
+        dismissGapSuggestion,
         hasDaySummaryContent,
         getNearbyPlacesLabel,
         updateScenarioTripSnapshot,
@@ -116,40 +113,6 @@ const TripDayView: React.FC = () => {
         const fallback = getDefaultDayDateStr(tripFromStore);
         return <Navigate to={`/trip/${tripId}/day/${fallback}`} replace />;
     }
-
-    const handleExportDayIcs = () => {
-        if (!selectedTrip || !selectedTripId) return;
-        const ics = buildIcsForDay({
-            tripName: selectedTrip.name,
-            dateStr: currentDateStr,
-            activities: dayViewActivities,
-        });
-        const base = sanitizeFilenameBase(selectedTrip.name);
-        downloadIcsFile(`${base}-${currentDateStr}.ics`, ics);
-    };
-
-    const handleExportDayImage = async () => {
-        const el = dayExportRef.current;
-        if (!el || !selectedTrip) return;
-        setExportImageLoading(true);
-        try {
-            const dataUrl = await toPng(el, {
-                pixelRatio: 2,
-                cacheBust: true,
-                backgroundColor: getComputedStyle(document.body).backgroundColor || '#ffffff',
-                filter: (node) => !(node instanceof HTMLElement && node.classList.contains('no-export')),
-            });
-            const a = document.createElement('a');
-            a.href = dataUrl;
-            a.download = `${sanitizeFilenameBase(selectedTrip.name)}-${currentDateStr}.png`;
-            a.click();
-        } catch (e) {
-            console.error(e);
-            showToast('Could not create image. Try again or use a shorter day.');
-        } finally {
-            setExportImageLoading(false);
-        }
-    };
 
     const goToDay = (day: Date, dateStr: string, conflictCount: number) => {
         navigate(`/trip/${tripId}/day/${dateStr}`);
@@ -237,37 +200,7 @@ const TripDayView: React.FC = () => {
             </div>
 
             <div className={styles['day-detail-view']}>
-                {selectedTrip && (
-                    <div
-                        className={`${styles['day-export-toolbar']} no-export`}
-                        style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}
-                    >
-                        <button type="button" className="btn btn-ghost btn-sm" onClick={handleExportDayIcs} title="Download .ics for this day">
-                            <CalendarPlus size={16} /> Export .ics
-                        </button>
-                        <button
-                            type="button"
-                            className="btn btn-ghost btn-sm"
-                            onClick={() => void handleExportDayImage()}
-                            disabled={exportImageLoading}
-                            title="Save the full day view as a PNG"
-                        >
-                            {exportImageLoading ? <Loader2 size={16} className="spin" /> : <ImageDown size={16} />}
-                            Export day image
-                        </button>
-                        <span className="text-sm text-subtle" style={{ margin: 0 }}>
-                            For multi-day trips, export each day separately.
-                        </span>
-                    </div>
-                )}
-                <div ref={dayExportRef} className={styles['day-export-capture']}>
-                    {selectedTrip && (
-                        <div className={styles['day-export-heading']} style={{ marginBottom: '0.75rem' }}>
-                            <h2 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)' }}>
-                                {selectedTrip.name} · {format(currentDate, 'EEEE, MMM d, yyyy')}
-                            </h2>
-                        </div>
-                    )}
+                <div className={styles['day-export-capture']}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <WeatherBadge
@@ -413,6 +346,21 @@ const TripDayView: React.FC = () => {
                                     'Optimize Route'
                                 )}
                             </button>
+                            <button
+                                type="button"
+                                className={`${styles['action-btn']} ${styles['action-btn-indigo']}`}
+                                onClick={() => void handleFillGaps()}
+                                disabled={fillGapsLoading || !dayViewActivities.some((a) => a.time)}
+                            >
+                                <span className={styles['action-btn-icon']}>⏱️</span>
+                                {fillGapsLoading ? (
+                                    <>
+                                        <Loader2 size={14} className="spin" /> Filling…
+                                    </>
+                                ) : (
+                                    'Fill gaps'
+                                )}
+                            </button>
                         </div>
                         {selectedTripId && addingActivityForDate !== currentDateStr && (
                             <button
@@ -429,6 +377,7 @@ const TripDayView: React.FC = () => {
                             {descriptionError && <p className="text-red-500 text-sm mt-2">{descriptionError}</p>}
                             {summaryError && <p className="text-red-500 text-sm mt-2">{summaryError}</p>}
                             {optimizationError && <p className="text-red-500 text-sm mt-2">{optimizationError}</p>}
+                            {fillGapsError && <p className="text-red-500 text-sm mt-2">{fillGapsError}</p>}
 
                             {pendingDescriptions && (
                                 <div className={`${styles['description-suggestion-card']} card`}>
@@ -471,6 +420,54 @@ const TripDayView: React.FC = () => {
                                                     </button>
                                                     <button type="button" className="btn btn-ghost btn-sm" onClick={() => dismissPendingDescription(item.activityId)}>
                                                         Decline
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {gapSuggestions && gapSuggestions.length > 0 && (
+                                <div className={`${styles['description-suggestion-card']} card`}>
+                                    <div className={styles['description-suggestion-header']}>
+                                        <div>
+                                            <h4 className={styles['trip-summary-header']}>Fill time gaps</h4>
+                                            <p className={styles['trip-summary-text']}>
+                                                Suggested activities for free windows of at least one hour. Times are local to your day.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className={styles['description-suggestion-list']}>
+                                        {gapSuggestions.map((row, idx) => (
+                                            <div
+                                                key={`${row.windowStart}-${row.windowEnd}-${idx}`}
+                                                className={styles['description-suggestion-item']}
+                                            >
+                                                <div className={styles['description-suggestion-copy']}>
+                                                    <p className={`${styles['trip-summary-text']} ${styles['gap-suggestion-window']}`}>
+                                                        {row.windowStart}–{row.windowEnd}
+                                                    </p>
+                                                    <p className={styles['description-suggestion-title']}>{row.suggestion.title}</p>
+                                                    <p className={styles['description-suggestion-summary']}>{row.suggestion.details}</p>
+                                                    <p className={`${styles['trip-summary-text']} ${styles['gap-suggestion-meta']}`}>
+                                                        {row.suggestion.time} · {row.suggestion.location}
+                                                    </p>
+                                                </div>
+                                                <div className={styles['description-suggestion-actions']}>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-primary btn-sm"
+                                                        onClick={() => acceptGapSuggestion(idx)}
+                                                    >
+                                                        Accept
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-ghost btn-sm"
+                                                        onClick={() => dismissGapSuggestion(idx)}
+                                                    >
+                                                        Dismiss
                                                     </button>
                                                 </div>
                                             </div>

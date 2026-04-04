@@ -31,7 +31,7 @@ AI and places integrations are intentionally split: frontend modules call a Clou
    **Status:** `CalendarView` → `src/pages/useCalendarViewController.ts` (page is mostly presentational). **`ImportItinerary`:** still monolithic; follow-up recommended (large `handleConfirm`, render-local `globalIdx` in preview).
 
 2. **Formalize integration boundaries with typed service interfaces**  
-   **Status:** `src/lib/services/aiService.ts` (re-exports `generateWithGemini`); `src/lib/services/placesService.ts` (re-exports places API). AI actions and `places.ts` consume `aiService`.
+   **Status:** Call sites import directly from `src/lib/gemini.ts` (`generateWithGemini`) and `src/lib/places.ts` (Places proxy helpers). Barrel files under `src/lib/services/` were removed.
 
 3. **Create a domain-layer map document (LLM-optimized)**  
    **Status:** `.cursor/LLM_DOMAIN_MAP.md`.

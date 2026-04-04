@@ -115,7 +115,6 @@ src/lib/ai/actions/importItinerary.ts
 src/lib/ai/actions/transport.ts
 src/lib/ai/cache.ts
 src/lib/aiUsage.ts
-src/lib/amplitude.ts
 src/lib/AuthContext.tsx
 src/lib/exportDayIcs.ts
 src/lib/exportTrip.ts
@@ -130,8 +129,8 @@ src/lib/planning/conflictTypes.ts
 src/lib/prefetchTripCache.ts
 src/lib/scenarios.ts
 src/lib/scenariosStorage.ts
-src/lib/services/aiService.ts
-src/lib/services/placesService.ts
+src/lib/gemini.ts
+src/lib/places.ts
 src/lib/settings.ts
 src/lib/store.ts
 src/lib/tripDefaultDay.ts
@@ -170,1448 +169,6 @@ worker/wrangler.jsonc
 
 <files>
 This section contains the contents of the repository's files.
-
-<file path=".agents/skills/react-components/examples/gold-standard-card.tsx">
-/**
- * Copyright 2026 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-import React from 'react';
-// Note for Agent: The '@' alias refers to the target project's src directory.
-// Ensure src/data/mockData.ts is created before generating this component.
-import { cardData } from '../data/mockData';
-
-/**
- * Gold Standard: ActivityCard
- * This file serves as the definitive reference for the agent.
- */
-interface ActivityCardProps {
-  readonly id: string;
-  readonly username: string;
-  readonly action: 'MERGED' | 'COMMIT';
-  readonly timestamp: string;
-  readonly avatarUrl: string;
-  readonly repoName: string;
-}
-
-export const ActivityCard: React.FC<ActivityCardProps> = ({
-  username,
-  action,
-  timestamp,
-  avatarUrl,
-  repoName,
-}) => {
-  const isMerged = action === 'MERGED';
-
-  return (
-    <div className="flex items-center justify-between gap-4 rounded-lg bg-surface-dark p-4 min-h-14 shadow-sm ring-1 ring-white/10">
-      <div className="flex items-center gap-4 overflow-hidden">
-        <div
-          className="aspect-square h-10 w-10 flex-shrink-0 rounded-full bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: `url(${avatarUrl})` }}
-          aria-label={`Avatar for ${username}`}
-        />
-
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm sm:text-base">
-          <a href="#" className="font-semibold text-primary hover:underline truncate">
-            {username}
-          </a>
-
-          <span className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-full ${isMerged ? 'bg-purple-500/30 text-purple-300' : 'bg-primary/30 text-primary'
-            }`}>
-            {action}
-          </span>
-
-          <span className="text-white/60">in</span>
-
-          <a href="#" className="text-primary hover:underline truncate">
-            {repoName}
-          </a>
-        </div>
-      </div>
-
-      <div className="shrink-0">
-        <p className="text-sm font-normal leading-normal text-white/50">
-          {timestamp}
-        </p>
-      </div>
-    </div>
-  );
-};
-
-export default ActivityCard;
-</file>
-
-<file path=".agents/skills/react-components/package.json">
-{
-  "name": "react-components",
-  "version": "1.0.0",
-  "description": "Design-to-code prompt to React components for Stitch MCP",
-  "type": "module",
-  "scripts": {
-    "validate": "node scripts/validate.js",
-    "fetch": "bash scripts/fetch-stitch.sh"
-  },
-  "dependencies": {
-    "@swc/core": "^1.3.100"
-  },
-  "engines": {
-    "node": ">=18.0.0"
-  }
-}
-</file>
-
-<file path=".agents/skills/react-components/README.md">
-# Stitch to React Components Skill
-
-## Install
-
-```bash
-npx skills add google-labs-code/stitch-skills --skill react:components --global
-```
-
-## Example Prompt
-
-```text
-Convert my Landing Page screen in my Podcast Stitch Project to a React component system.
-```
-
-## Skill Structure
-
-This repository follows the **Agent Skills** open standard. Each skill is self-contained with its own logic, validation scripts, and design tokens.
-
-```text
-skills/react-components/
-├── SKILL.md           — Core instructions & workflow
-├── package.json       — Validator dependencies
-├── scripts/           — Networking & AST validation
-├── resources/         — Style guides & API references
-└── examples/          — Gold-standard code samples
-```
-
-## How it Works
-
-When activated, the agent follows a high-fidelity engineering pipeline:
-
-1. **Retrieval**: Uses a system-level `curl` script to bypass TLS/SNI issues on Google Cloud Storage.
-2. **Mapping**: Cross-references Stitch metadata with the local `style-guide.json` to ensure token consistency.
-3. **Generation**: Scaffolds components using a strict Atomic Design pattern.
-4. **Validation**: Runs an automated AST check using `@swc/core` to prevent hardcoded hex values or missing interfaces.
-5. **Audit**: Performs a final self-correction check against a 20-point architecture checklist.
-</file>
-
-<file path=".agents/skills/react-components/resources/architecture-checklist.md">
-# Architecture Quality Gate
-
-### Structural integrity
-- [ ] Logic extracted to custom hooks in `src/hooks/`.
-- [ ] No monolithic files; strictly Atomic/Composite modularity.
-- [ ] All static text/URLs moved to `src/data/mockData.ts`.
-
-### Type safety and syntax
-- [ ] Props use `Readonly<T>` interfaces.
-- [ ] File is syntactically valid TypeScript (no red squiggles).
-- [ ] Placeholders from templates (e.g., `StitchComponent`) have been replaced with actual names.
-
-### Styling and theming
-- [ ] Dark mode (`dark:`) applied to all color classes.
-- [ ] No hardcoded hex values; use theme-mapped Tailwind classes.
-</file>
-
-<file path=".agents/skills/react-components/resources/component-template.tsx">
-/**
- * Copyright 2026 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-import React from 'react';
-
-// Use a valid identifier like 'StitchComponent' as the placeholder
-interface StitchComponentProps {
-  readonly children?: React.ReactNode;
-  readonly className?: string;
-}
-
-export const StitchComponent: React.FC<StitchComponentProps> = ({
-  children,
-  className = '',
-  ...props
-}) => {
-  return (
-    <div className={`relative ${className}`} {...props}>
-      {children}
-    </div>
-  );
-};
-
-export default StitchComponent;
-</file>
-
-<file path=".agents/skills/react-components/resources/stitch-api-reference.md">
-# Stitch API reference
-
-This document describes the data structures returned by the Stitch MCP server to ensure accurate component mapping.
-
-### Metadata schema
-When calling `get_screen`, the server returns a JSON object with these key properties:
-* **htmlCode**: Contains a `downloadUrl`. This is a signed URL that requires a system-level fetch (curl) to handle redirects and security handshakes.
-* **screenshot**: Includes a `downloadUrl` for the visual design. Use this to verify layout intent that might not be obvious in the raw HTML.
-* **deviceType**: Usually set to `DESKTOP`. All generated components should prioritize the corresponding viewport (2560px width) as the base layout.
-
-### Technical mapping rules
-1. **Element tracking**: Preserve `data-stitch-id` attributes as comments in the TSX to allow for future design synchronization.
-2. **Asset handling**: Treat background images in the HTML as dynamic data. Extract the URLs into `mockData.ts` rather than hardcoding them into the component styles.
-3. **Style extraction**: The HTML `<head>` contains a localized `tailwind.config`. This config must be merged with the local project theme to ensure colors like `primary` and `background-dark` render correctly.
-</file>
-
-<file path=".agents/skills/react-components/resources/style-guide.json">
-{
-  "theme": {
-    "colors": {
-      "primary": "#19e66f",
-      "background": {
-        "light": "#f6f8f7",
-        "dark": "#112118",
-        "elevated": "#1A1A1A"
-      },
-      "accent": {
-        "purple": "#8A2BE2",
-        "lavender": "#D0A9F5"
-      }
-    },
-    "typography": {
-      "display": [
-        "Space Grotesk",
-        "sans-serif"
-      ],
-      "icons": "Material Symbols Outlined"
-    },
-    "spacing": {
-      "header-h": "72px",
-      "container-max": "960px"
-    }
-  }
-}
-</file>
-
-<file path=".agents/skills/react-components/scripts/fetch-stitch.sh">
-#!/bin/bash
-# Copyright 2026 Google LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-URL=$1
-OUTPUT=$2
-if [ -z "$URL" ] || [ -z "$OUTPUT" ]; then
-  echo "Usage: $0 <url> <output_path>"
-  exit 1
-fi
-echo "Initiating high-reliability fetch for Stitch HTML..."
-curl -L -f -sS --connect-timeout 10 --compressed "$URL" -o "$OUTPUT"
-if [ $? -eq 0 ]; then
-  echo "✅ Successfully retrieved HTML at: $OUTPUT"
-  exit 0
-else
-  echo "❌ Error: Failed to retrieve content. Check TLS/SNI or URL expiration."
-  exit 1
-fi
-</file>
-
-<file path=".agents/skills/react-components/scripts/validate.js">
-/**
- * Copyright 2026 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-import swc from '@swc/core';
-import fs from 'node:fs';
-import path from 'node:path';
-
-const HEX_COLOR_REGEX = /#[0-9A-Fa-f]{6}/;
-
-async function validateComponent(filePath) {
-  const code = fs.readFileSync(filePath, 'utf-8');
-  const filename = path.basename(filePath);
-  try {
-    const ast = await swc.parse(code, { syntax: "typescript", tsx: true });
-    let hasInterface = false;
-    let tailwindIssues = [];
-
-    console.log("🔍 Scanning AST...");
-
-    const walk = (node) => {
-      if (!node) return;
-      if (node.type === 'TsInterfaceDeclaration' && node.id.value.endsWith('Props')) hasInterface = true;
-      if (node.type === 'JSXAttribute' && node.name.name === 'className') {
-        if (node.value?.value && HEX_COLOR_REGEX.test(node.value.value)) tailwindIssues.push(node.value.value);
-      }
-      for (const key in node) { if (node[key] && typeof node[key] === 'object') walk(node[key]); }
-    };
-    walk(ast);
-
-    console.log(`--- Validation for: ${filename} ---`);
-    if (hasInterface) {
-      console.log("✅ Props declaration found.");
-    } else {
-      console.error("❌ MISSING: Props interface (must end in 'Props').");
-    }
-
-    if (tailwindIssues.length === 0) {
-      console.log("✅ No hardcoded hex values found.");
-    } else {
-      console.error(`❌ STYLE: Found ${tailwindIssues.length} hardcoded hex codes.`);
-      tailwindIssues.forEach(hex => console.error(`   - ${hex}`));
-    }
-
-    if (hasInterface && tailwindIssues.length === 0) {
-      console.log("\n✨ COMPONENT VALID.");
-      process.exit(0);
-    } else {
-      console.error("\n🚫 VALIDATION FAILED.");
-      process.exit(1);
-    }
-  } catch (err) {
-    console.error("❌ PARSE ERROR:", err.message);
-    process.exit(1);
-  }
-}
-
-validateComponent(process.argv[2]);
-</file>
-
-<file path=".agents/skills/react-components/SKILL.md">
----
-name: react:components
-description: Converts Stitch designs into modular Vite and React components using system-level networking and AST-based validation.
-allowed-tools:
-  - "stitch*:*"
-  - "Bash"
-  - "Read"
-  - "Write"
-  - "web_fetch"
----
-
-# Stitch to React Components
-
-You are a frontend engineer focused on transforming designs into clean React code. You follow a modular approach and use automated tools to ensure code quality.
-
-## Retrieval and networking
-1. **Namespace discovery**: Run `list_tools` to find the Stitch MCP prefix. Use this prefix (e.g., `stitch:`) for all subsequent calls.
-2. **Metadata fetch**: Call `[prefix]:get_screen` to retrieve the design JSON.
-3. **Check for existing designs**: Before downloading, check if `.stitch/designs/{page}.html` and `.stitch/designs/{page}.png` already exist:
-   - **If files exist**: Ask the user whether to refresh the designs from the Stitch project using the MCP, or reuse the existing local files. Only re-download if the user confirms.
-   - **If files do not exist**: Proceed to step 4.
-4. **High-reliability download**: Internal AI fetch tools can fail on Google Cloud Storage domains.
-   - **HTML**: `bash scripts/fetch-stitch.sh "[htmlCode.downloadUrl]" ".stitch/designs/{page}.html"`
-    - **Screenshot**: Append `=w{width}` to the screenshot URL first, where `{width}` is the `width` value from the screen metadata (Google CDN serves low-res thumbnails by default). Then run: `bash scripts/fetch-stitch.sh "[screenshot.downloadUrl]=w{width}" ".stitch/designs/{page}.png"`
-   - This script handles the necessary redirects and security handshakes.
-5. **Visual audit**: Review the downloaded screenshot (`.stitch/designs/{page}.png`) to confirm design intent and layout details.
-
-## Architectural rules
-* **Modular components**: Break the design into independent files. Avoid large, single-file outputs.
-* **Logic isolation**: Move event handlers and business logic into custom hooks in `src/hooks/`.
-* **Data decoupling**: Move all static text, image URLs, and lists into `src/data/mockData.ts`.
-* **Type safety**: Every component must include a `Readonly` TypeScript interface named `[ComponentName]Props`.
-* **Project specific**: Focus on the target project's needs and constraints. Leave Google license headers out of the generated React components.
-* **Style mapping**:
-    * Extract the `tailwind.config` from the HTML `<head>`.
-    * Sync these values with `resources/style-guide.json`.
-    * Use theme-mapped Tailwind classes instead of arbitrary hex codes.
-
-## Execution steps
-1. **Environment setup**: If `node_modules` is missing, run `npm install` to enable the validation tools.
-2. **Data layer**: Create `src/data/mockData.ts` based on the design content.
-3. **Component drafting**: Use `resources/component-template.tsx` as a base. Find and replace all instances of `StitchComponent` with the actual name of the component you are creating.
-4. **Application wiring**: Update the project entry point (like `App.tsx`) to render the new components.
-5. **Quality check**:
-    * Run `npm run validate <file_path>` for each component.
-    * Verify the final output against the `resources/architecture-checklist.md`.
-    * Start the dev server with `npm run dev` to verify the live result.
-
-## Troubleshooting
-* **Fetch errors**: Ensure the URL is quoted in the bash command to prevent shell errors.
-* **Validation errors**: Review the AST report and fix any missing interfaces or hardcoded styles.
-</file>
-
-<file path=".cursor/rules/base.mdc">
----
-description: >
-  Project-agnostic prompt discipline and coding standards for TypeScript/React
-  projects. Enforces structured debugging, constrained edits, and autonomous
-  execution. Drop into any repo's .cursor/rules/ and extend with a
-  project-specific overlay file.
-globs: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"]
-alwaysApply: true
----
-
-# Cursor Rules — Base Standard
-> Project-agnostic. Extend with a project-specific overlay in the same rules directory.
-> Overlay values always win over this file.
-
----
-
-## ⚡ Vibe-Coding Contract
-
-Two modes exist. Select based on prompt type — do not ask the user which mode to use.
-
-### Mode A — Autonomous
-_Trigger: clear goal + file(s) named + no diagnostic ambiguity._
-
-- Ship **complete, runnable output** — no partial scaffolds, no `// ... rest of implementation`.
-- One file per response unless the task explicitly spans multiple files.
-- When refactoring, show the **full updated file**, not a diff.
-- Add a one-line comment at the top of every new file: `// Purpose: …`
-- If something is ambiguous, make the most reasonable choice and leave a
-  `// ASSUMPTION: …` comment — do not stop to ask.
-
-### Mode B — Diagnostic
-_Trigger: prompt contains a symptom, broken behavior, or a hypothesis —
-keywords like "seems like," "I think," "not working," "blank," "broken,"
-"loading too slow," or any behavior mismatch._
-
-- **Do not write code until diagnosis is complete.**
-- Restate the prompt in structured form and confirm before proceeding:
-
-```
-## Restatement
-Context:     [files involved, what they do, relevant deps]
-Expected:    [desired behavior]
-Actual:      [current behavior]
-Hypothesis:  [user's or yours — always labeled as hypothesis]
-Goal:        [specific outcome]
-Constraints: [what not to touch]
-```
-
-- If the user's hypothesis is wrong, say so **first**, then give your own diagnosis.
-- Never implement a fix built on an incorrect hypothesis.
-
----
-
-## 🔍 Context Gate (Mode B only)
-
-If a diagnostic prompt is missing any of the following, ask for it before proceeding.
-One question per missing element — do not infer silently.
-
-| Required          | Example                                        |
-|-------------------|------------------------------------------------|
-| File(s) affected  | `@ComponentName.tsx`, `@useHookName.ts`        |
-| Expected behavior | "Should render data on first paint"            |
-| Actual behavior   | "Blank screen / stale data / console error"    |
-| Constraints       | "Don't change the hook's return signature"     |
-
----
-
-## 📋 Plan Before Code
-
-For any change touching more than one file or one logical concern:
-
-1. Output a **numbered plan** — what changes, in which file, and why.
-2. Wait for explicit approval: `"looks good"`, `"proceed"`, `"go"`.
-3. Only then write code.
-
-Never auto-proceed on multi-file changes.
-
----
-
-## 🔒 Constraint Enforcement
-
-- **Scope creep is a bug.** Flag cross-concern improvements before touching them.
-- **No new dependencies** without flagging: `"This needs [package] — confirm?"`
-- **Preserve API contracts.** Hook signatures, prop interfaces, and exported
-  function shapes are frozen unless explicitly told otherwise.
-- **One concern per diff.** Bug fix ≠ cleanup ≠ refactor. Keep them separate.
-
----
-
-## ⏱ Async / Hook Diagnostic Checklist
-
-Run this before diagnosing any timing, blank render, or stale data issue:
-
-- [ ] Component renders before async data resolves? (missing `loading` guard)
-- [ ] Hook return value accessed before defined? (undefined access on first render)
-- [ ] Missing `useEffect` dependency causing stale closure?
-- [ ] `Suspense` or `ErrorBoundary` absent where needed?
-- [ ] Hook called conditionally? (Rules of Hooks violation)
-- [ ] StrictMode double-render exposing a side effect?
-
-Surface findings before writing any code.
-
----
-
-## ✅ Pre-Finalise Checklist
-
-Run silently before every output:
-
-- [ ] No `any` without a `// reason:` comment
-- [ ] Exported functions have explicit return types
-- [ ] No hardcoded colour values — use design tokens / CSS vars
-- [ ] Loading and error states handled
-- [ ] Fix works on **first render**, not just after re-render
-- [ ] Change scoped only to what was asked
-- [ ] No new deps introduced silently
-- [ ] Types verified — no regressions introduced
-
-_Project-specific checks (Firestore writes, Amplitude events, etc.)
-belong in the overlay file, not here._
-
----
-
-## 📊 Confidence Signal (Mode B — append to every diagnostic response)
-
-```
-Confidence: [High / Medium / Low]
-Reason:     [e.g. "full hook not visible" or "well-established React pattern"]
-If wrong:   [next thing to check or rule out]
-```
-
----
-
-## TypeScript
-
-- All production code is TypeScript — avoid `.js` files.
-- Explicit return types on all **exported** functions.
-- No `any` without a `// reason:` comment. Prefer `unknown` + narrowing.
-- Optional chaining (`?.`) and nullish coalescing (`??`) over manual null checks.
-- Prefer `interface` over `type` for object shapes.
-- Avoid `enum` — use `const` maps or union string literals.
-- Boolean names: `isLoading`, `hasError`, `canSubmit`, `isVisible`.
-
----
-
-## React
-
-- Functional components and hooks only — no class components.
-- `React.lazy` for route-level components; wrap in `<Suspense fallback={…}>`.
-- No inline styles — use CSS custom properties or your project's styling system.
-- Never hardcode color values in component files.
-- Images: WebP format, explicit `width`/`height`, `loading="lazy"`.
-
----
-
-## Imports & File Structure
-
-- Import from the defining file directly — no barrel `index.ts` re-exports.
-- One concern per file: component, helpers, types, or constants — not mixed.
-- Directory names: `lowercase-with-dashes`.
-- Named exports for utilities and hooks; default exports for page/route components.
-
----
-
-## Dates
-
-- Store and pass dates as ISO strings: `YYYY-MM-DD` or `YYYY-MM-DDTHH:mm:ssZ`.
-- Use a date library (`date-fns` preferred) for all parsing, formatting,
-  and arithmetic — no inline `new Date()` arithmetic.
-
----
-
-## Performance
-
-- Dynamic-import non-critical components (`React.lazy` / `import()`).
-- Audit bundle size and Web Vitals (LCP, CLS, FID) before marking work done.
-- No premature optimisation — profile before adding memoisation.
-
----
-
-## How to Extend This File
-
-Create a second `.mdc` file in `.cursor/rules/` named after your project
-(e.g. `signal.mdc`, `travelplanner.mdc`). Overlay values always take precedence.
-
-Recommended overlay sections:
-- Project name and stack summary
-- Data layer conventions (Firestore, Supabase, Prisma, etc.)
-- Analytics / event tracking conventions
-- State management patterns
-- Auth patterns
-- CI / lint / test requirements
-- Project-specific file structure and type locations
-- Agent file ownership (for parallel worktree workflows)
-</file>
-
-<file path=".cursor/rules/travelplanner-overlay.mdc">
----
-description: >
-  Project-specific overlay for TravelPlanner. Extends base.mdc with
-  Firestore, Amplitude, DaisyUI/Tailwind, and project file conventions.
-  Values here take precedence over base.mdc.
-globs: ["**/*.ts", "**/*.tsx"]
-alwaysApply: true
----
-
-# Cursor Rules — TravelPlanner Overlay
-> Extends base.mdc. Only project-specific rules live here.
-
----
-
-## Stack
-
-- React 19 + TypeScript + Vite
-- Firebase / Firestore
-- DaisyUI + Tailwind CSS (mobile-first)
-- date-fns for all date handling
-- Amplitude for analytics
-- `src/lib/persist.ts` → `useLocalStorageState` for local persistence
-
----
-
-## Firestore Write Convention
-
-Always follow this sequence — no exceptions:
-
-```
-1. Build the payload object
-2. Pass through stripUndefined()  ← removes keys with value `undefined`
-3. Call setDoc / updateDoc / addDoc / batch.update
-```
-
-- Types: `src/lib/types.ts` → `Trip`, `Activity`, `TransportRoute`, `Note`, `ChatMessage`
-- Membership mutations must batch-update across:
-  `tripMembers`, `activities`, `notes`, `transportRoutes`, `chat_history`
-
----
-
-## Analytics
-
-- Import `logEvent` from `src/lib/amplitude.ts`
-- Event names in Title Case: `"Activity Created"`, `"Collaborator Added"`
-- Every new user action gets an Amplitude event — don't skip instrumentation
-
----
-
-## Styling
-
-- DaisyUI components + Tailwind utilities only
-- Theme via CSS custom properties: `var(--primary-color)`, `var(--border-color)`, `var(--text-secondary)`
-- Never hardcode hex/rgb in component files
-
----
-
-## Local Persistence
-
-- Use `useLocalStorageState` from `src/lib/persist.ts` only
-- Do not access `localStorage` directly anywhere else in the codebase
-
----
-
-## Project-Specific Checklist (appends to base post-finalise checklist)
-
-- [ ] `stripUndefined()` called before every Firestore write
-- [ ] Amplitude event fired for new user actions
-- [ ] Lazy-loaded components wrapped in `<Suspense>`
-- [ ] Dates stored as ISO strings, handled with `date-fns`
-- [ ] No direct `localStorage` access outside `persist.ts`
-</file>
-
-<file path="src/lib/tripDefaultDay.ts">
-import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
-
-/** Whether `dateStr` (yyyy-MM-dd) falls within the trip's start/end (inclusive, local day bounds). */
-export function isDateInTripRange(dateStr: string, trip: { startDate: string; endDate: string }): boolean {
-    try {
-        const d = parseISO(dateStr);
-        const start = startOfDay(parseISO(trip.startDate));
-        const end = endOfDay(parseISO(trip.endDate));
-        if (Number.isNaN(d.getTime()) || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return false;
-        return d >= start && d <= end;
-    } catch {
-        return false;
-    }
-}
-
-/** If today falls within the trip (local calendar days), return today as yyyy-MM-dd; otherwise trip.startDate. */
-export function getDefaultDayDateStr(trip: { startDate: string; endDate: string }): string {
-    const start = startOfDay(parseISO(trip.startDate));
-    const end = endOfDay(parseISO(trip.endDate));
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-        return trip.startDate;
-    }
-    const today = new Date();
-    if (isWithinInterval(today, { start, end })) {
-        return format(today, 'yyyy-MM-dd');
-    }
-    return trip.startDate;
-}
-</file>
-
-<file path="src/pages/TripDayView.tsx">
-import React, { useRef, useState } from 'react';
-import { Navigate, useParams, useNavigate, Link } from 'react-router-dom';
-import { format, isSameDay } from 'date-fns';
-import { toPng } from 'html-to-image';
-import { AlertTriangle, CalendarPlus, ImageDown, Info, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
-import { buildIcsForDay, downloadIcsFile } from '../lib/exportDayIcs';
-import { CATEGORY_EMOJIS } from '../lib/types';
-import ActivityForm from '../components/ActivityForm';
-import DraggableList from '../components/DraggableList';
-import Markdown from '../components/Markdown';
-import { logEvent } from '../lib/amplitude';
-import ScenarioSwitcher from '../components/ScenarioSwitcher';
-import WeatherBadge from '../components/WeatherBadge';
-import NearbyRestaurants from '../components/NearbyRestaurants';
-import ActivityReviews from '../components/ActivityReviews';
-import { useCalendarViewController } from './useCalendarViewController';
-import { useTrips } from '../lib/store';
-import { getDefaultDayDateStr, isDateInTripRange } from '../lib/tripDefaultDay';
-import styles from './CalendarView.module.css';
-
-function sanitizeFilenameBase(name: string): string {
-    return name.replace(/[^\w-]+/g, '_').replace(/_+/g, '_').slice(0, 80) || 'trip';
-}
-
-const TripDayView: React.FC = () => {
-    const { tripId, date: dateParam } = useParams<{ tripId: string; date: string }>();
-    const navigate = useNavigate();
-    const { trips, loading: tripsLoading } = useTrips();
-
-    const dayExportRef = useRef<HTMLDivElement>(null);
-    const [exportImageLoading, setExportImageLoading] = useState(false);
-
-    const {
-        updateItineraryDay,
-        activities,
-        updateActivity,
-        deleteActivity,
-        restoreActivity,
-        reorderActivities,
-        showToast,
-        appSettings,
-        currentDate,
-        setCurrentDate,
-        selectedTripId,
-        selectedTrip,
-        addingActivityForDate,
-        setAddingActivityForDate,
-        editingActivityId,
-        setEditingActivityId,
-        tripSummary,
-        setTripSummary,
-        summaryLoading,
-        summaryError,
-        optimizationLoading,
-        optimizationError,
-        optimizedRoute,
-        setOptimizedRoute,
-        descriptionLoading,
-        descriptionError,
-        pendingDescriptions,
-        setPendingDescriptions,
-        showNearbyRestaurantsForActivityId,
-        setShowNearbyRestaurantsForActivityId,
-        reviewsActivityId,
-        setReviewsActivityId,
-        conflictsExpandedDate,
-        setConflictsExpandedDate,
-        weatherByDate,
-        weatherLoading,
-        activeScenario,
-        effectiveTrip,
-        hasLocationForDate,
-        effectiveActivities,
-        currentDateStr,
-        currentDayLocations,
-        effectiveRoutes,
-        tripDays,
-        handleReorderActivities,
-        getActivityColor,
-        dayViewActivities,
-        planningConflicts,
-        conflictCountsByDate,
-        handleSaveActivity,
-        handleGenerateSummary,
-        handleOptimizeRoute,
-        handleGenerateDescriptions,
-        dismissPendingDescription,
-        applyPendingDescription,
-        handleAcceptAllDescriptions,
-        hasDaySummaryContent,
-        getNearbyPlacesLabel,
-        updateScenarioTripSnapshot,
-        getEffectiveDayLocations,
-        reorderScenarioActivities,
-        removeScenarioActivity,
-    } = useCalendarViewController({ routeTripId: tripId ?? null, routeDateStr: dateParam ?? null });
-
-    const tripFromStore = tripId ? trips.find((t) => t.id === tripId) : undefined;
-
-    if (!tripId || !dateParam) {
-        return <Navigate to="/spreadsheet" replace />;
-    }
-
-    if (tripsLoading) {
-        return (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-                <Loader2 size={28} className="spin" style={{ color: 'var(--primary-color)' }} />
-            </div>
-        );
-    }
-
-    if (!tripFromStore) {
-        return <Navigate to="/spreadsheet" replace />;
-    }
-
-    if (!isDateInTripRange(dateParam, tripFromStore)) {
-        const fallback = getDefaultDayDateStr(tripFromStore);
-        return <Navigate to={`/trip/${tripId}/day/${fallback}`} replace />;
-    }
-
-    const handleExportDayIcs = () => {
-        if (!selectedTrip || !selectedTripId) return;
-        const ics = buildIcsForDay({
-            tripName: selectedTrip.name,
-            dateStr: currentDateStr,
-            activities: dayViewActivities,
-        });
-        const base = sanitizeFilenameBase(selectedTrip.name);
-        downloadIcsFile(`${base}-${currentDateStr}.ics`, ics);
-        logEvent('Calendar Day Exported ICS', { date: currentDateStr, activity_count: dayViewActivities.length });
-    };
-
-    const handleExportDayImage = async () => {
-        const el = dayExportRef.current;
-        if (!el || !selectedTrip) return;
-        setExportImageLoading(true);
-        try {
-            const dataUrl = await toPng(el, {
-                pixelRatio: 2,
-                cacheBust: true,
-                backgroundColor: getComputedStyle(document.body).backgroundColor || '#ffffff',
-                filter: (node) => !(node instanceof HTMLElement && node.classList.contains('no-export')),
-            });
-            const a = document.createElement('a');
-            a.href = dataUrl;
-            a.download = `${sanitizeFilenameBase(selectedTrip.name)}-${currentDateStr}.png`;
-            a.click();
-            logEvent('Calendar Day Exported PNG', { date: currentDateStr });
-        } catch (e) {
-            console.error(e);
-            showToast('Could not create image. Try again or use a shorter day.');
-        } finally {
-            setExportImageLoading(false);
-        }
-    };
-
-    const goToDay = (day: Date, dateStr: string, conflictCount: number) => {
-        navigate(`/trip/${tripId}/day/${dateStr}`);
-        setCurrentDate(day);
-        if (conflictCount > 0) {
-            setConflictsExpandedDate((prev) => (prev === dateStr ? null : dateStr));
-        } else {
-            setConflictsExpandedDate(null);
-        }
-    };
-
-    return (
-        <div className="page-container animate-fade-in">
-            <header className="page-header">
-                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem' }}>
-                    <div>
-                        <h1>Day</h1>
-                        <p>
-                            {selectedTrip ? (
-                                <>
-                                    {selectedTrip.name} · {format(currentDate, 'EEEE, MMM d, yyyy')}
-                                </>
-                            ) : (
-                                'Trip day'
-                            )}
-                        </p>
-                    </div>
-                    <Link to="/calendar" className="btn btn-ghost btn-sm">
-                        Calendar overview
-                    </Link>
-                </div>
-            </header>
-
-            <div className={styles['calendar-controls']}>
-                {selectedTrip && (
-                    <ScenarioSwitcher trip={selectedTrip} activities={effectiveActivities} routes={effectiveRoutes} />
-                )}
-
-                {selectedTrip && tripDays.length > 0 && (
-                    <div className={styles['day-nav-wrapper']}>
-                        <div className={styles['day-pills']}>
-                            {tripDays.map((day, idx) => {
-                                const ds = format(day, 'yyyy-MM-dd');
-                                const count = conflictCountsByDate[ds] || 0;
-                                return (
-                                    <button
-                                        key={idx}
-                                        type="button"
-                                        className={`${styles['day-pill']} ${isSameDay(day, currentDate) ? styles['active'] : ''} ${isSameDay(day, new Date()) ? styles['today'] : ''}`}
-                                        onClick={() => goToDay(day, ds, count)}
-                                        title={format(day, 'EEEE, MMM d')}
-                                    >
-                                        <span className={styles['day-pill-num']}>{format(day, 'd')}</span>
-                                        <span className={styles['day-pill-dow']}>{format(day, 'EEE')}</span>
-                                        {appSettings.showPlanningChecks && count > 0 && (
-                                            <span className={styles['issue-badge']}>{count}</span>
-                                        )}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                        {appSettings.showPlanningChecks && conflictsExpandedDate && (() => {
-                            const expanded = planningConflicts.filter((c) => c.date === conflictsExpandedDate);
-                            if (expanded.length === 0) return null;
-                            return (
-                                <div className={styles['inline-conflicts']}>
-                                    {expanded.map((c) => (
-                                        <div key={c.id} className={styles['inline-conflict-item']}>
-                                            <span
-                                                className={`${styles['inline-conflict-icon']} ${c.severity === 'info' ? styles['info'] : ''}`}
-                                            >
-                                                {c.severity === 'warning' ? <AlertTriangle size={13} /> : <Info size={13} />}
-                                            </span>
-                                            <span>
-                                                <span className={styles['inline-conflict-title']}>{c.title}</span>
-                                                {c.message}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            );
-                        })()}
-                    </div>
-                )}
-            </div>
-
-            <div className={styles['day-detail-view']}>
-                {selectedTrip && (
-                    <div
-                        className={`${styles['day-export-toolbar']} no-export`}
-                        style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}
-                    >
-                        <button type="button" className="btn btn-ghost btn-sm" onClick={handleExportDayIcs} title="Download .ics for this day">
-                            <CalendarPlus size={16} /> Export .ics
-                        </button>
-                        <button
-                            type="button"
-                            className="btn btn-ghost btn-sm"
-                            onClick={() => void handleExportDayImage()}
-                            disabled={exportImageLoading}
-                            title="Save the full day view as a PNG"
-                        >
-                            {exportImageLoading ? <Loader2 size={16} className="spin" /> : <ImageDown size={16} />}
-                            Export day image
-                        </button>
-                        <span className="text-sm text-subtle" style={{ margin: 0 }}>
-                            For multi-day trips, export each day separately.
-                        </span>
-                    </div>
-                )}
-                <div ref={dayExportRef} className={styles['day-export-capture']}>
-                    {selectedTrip && (
-                        <div className={styles['day-export-heading']} style={{ marginBottom: '0.75rem' }}>
-                            <h2 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)' }}>
-                                {selectedTrip.name} · {format(currentDate, 'EEEE, MMM d, yyyy')}
-                            </h2>
-                        </div>
-                    )}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <WeatherBadge
-                                day={weatherByDate.get(currentDateStr)?.[0]}
-                                hasLocation={hasLocationForDate(currentDateStr)}
-                                loading={weatherLoading}
-                                tempUnit={appSettings.temperatureUnit}
-                                compact={false}
-                            />
-                        </div>
-                    </div>
-                    <div className={`${styles['day-accommodation-card']} card`}>
-                        <div className={styles['acc-card-header']} style={{ alignItems: 'baseline' }}>
-                            <div className={styles['acc-card-icon']}>📅</div>
-                            <div className={styles['acc-card-info']}>
-                                <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
-                                    {format(currentDate, 'EEEE, MMM d')}
-                                </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                                    <div>
-                                        <label htmlFor="day-location-input-tripday" className={styles['acc-label']}>
-                                            City
-                                        </label>
-                                        <input
-                                            id="day-location-input-tripday"
-                                            type="text"
-                                            className={`${styles['acc-name-input']} ${styles['input-transparent']}`}
-                                            placeholder="e.g. Tokyo or Tokyo, Kyoto"
-                                            defaultValue={currentDayLocations.join(', ')}
-                                            key={`day-loc-${selectedTripId}-${activeScenario?.id ?? 'live'}-${currentDateStr}`}
-                                            onBlur={(e) => {
-                                                const raw = e.target.value;
-                                                const parsed = raw.split(',').map((s) => s.trim()).filter(Boolean);
-                                                const prev = getEffectiveDayLocations(
-                                                    effectiveTrip?.itinerary?.[currentDateStr],
-                                                    effectiveTrip?.dayLocations?.[currentDateStr],
-                                                );
-                                                if (parsed.join(', ') === prev.join(', ')) return;
-                                                if (!selectedTripId) return;
-                                                const updates =
-                                                    parsed.length === 0
-                                                        ? { location: '', locations: [] as string[] }
-                                                        : parsed.length === 1
-                                                          ? { location: parsed[0], locations: [parsed[0]] }
-                                                          : { location: parsed[0], locations: parsed };
-                                                if (activeScenario) {
-                                                    updateScenarioTripSnapshot(selectedTripId, activeScenario.id, (trip) => ({
-                                                        ...trip,
-                                                        itinerary: {
-                                                            ...(trip.itinerary || {}),
-                                                            [currentDateStr]: { ...(trip.itinerary?.[currentDateStr] || {}), ...updates },
-                                                        },
-                                                    }));
-                                                } else {
-                                                    updateItineraryDay(selectedTripId, currentDateStr, updates);
-                                                }
-                                            }}
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-                                            }}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className={styles['acc-label']}>Accommodation</label>
-                                        <input
-                                            type="text"
-                                            className={`${styles['acc-name-input']} ${styles['input-transparent']}`}
-                                            placeholder="Hotel / Ryokan / Airbnb"
-                                            defaultValue={effectiveTrip?.itinerary?.[currentDateStr]?.accommodation?.name ?? ''}
-                                            key={`acc-name-inline-${selectedTripId}-${activeScenario?.id ?? 'live'}-${currentDateStr}`}
-                                            onBlur={(e) => {
-                                                const val = e.target.value.trim();
-                                                const current = effectiveTrip?.itinerary?.[currentDateStr]?.accommodation;
-                                                if (val !== (current?.name ?? '')) {
-                                                    if (selectedTripId && activeScenario) {
-                                                        updateScenarioTripSnapshot(selectedTripId, activeScenario.id, (trip) => ({
-                                                            ...trip,
-                                                            itinerary: {
-                                                                ...(trip.itinerary || {}),
-                                                                [currentDateStr]: {
-                                                                    ...(trip.itinerary?.[currentDateStr] || {}),
-                                                                    accommodation: { ...current, name: val },
-                                                                },
-                                                            },
-                                                        }));
-                                                    } else {
-                                                        updateItineraryDay(selectedTripId!, currentDateStr, {
-                                                            accommodation: { ...current, name: val },
-                                                        });
-                                                    }
-                                                }
-                                            }}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div className={`${styles['planning-action-row']} no-export`}>
-                        <div className={styles['planning-action-row__left']}>
-                            <button
-                                type="button"
-                                className={`${styles['action-btn']} ${styles['action-btn-violet']}`}
-                                onClick={handleGenerateDescriptions}
-                                disabled={descriptionLoading || dayViewActivities.length === 0}
-                            >
-                                <span className={styles['action-btn-icon']}>✨</span>
-                                {descriptionLoading ? (
-                                    <>
-                                        <Loader2 size={14} className="spin" /> Describing…
-                                    </>
-                                ) : (
-                                    'Describe Day'
-                                )}
-                            </button>
-                            <button
-                                type="button"
-                                className={`${styles['action-btn']} ${styles['action-btn-amber']}`}
-                                onClick={handleGenerateSummary}
-                                disabled={summaryLoading || dayViewActivities.length === 0}
-                            >
-                                <span className={styles['action-btn-icon']}>📝</span>
-                                {summaryLoading ? (
-                                    <>
-                                        <Loader2 size={14} className="spin" /> Generating…
-                                    </>
-                                ) : (
-                                    'AI Summary'
-                                )}
-                            </button>
-                            <button
-                                type="button"
-                                className={`${styles['action-btn']} ${styles['action-btn-mint']}`}
-                                onClick={handleOptimizeRoute}
-                                disabled={optimizationLoading || dayViewActivities.length <= 1}
-                            >
-                                <span className={styles['action-btn-icon']}>🗺️</span>
-                                {optimizationLoading ? (
-                                    <>
-                                        <Loader2 size={14} className="spin" /> Optimizing…
-                                    </>
-                                ) : (
-                                    'Optimize Route'
-                                )}
-                            </button>
-                        </div>
-                        {selectedTripId && addingActivityForDate !== currentDateStr && (
-                            <button
-                                type="button"
-                                className={`${styles['action-btn']} ${styles['action-btn-sky']}`}
-                                onClick={() => setAddingActivityForDate(currentDateStr)}
-                            >
-                                <Plus size={18} /> Add activity
-                            </button>
-                        )}
-                    </div>
-                    {selectedTripId && dayViewActivities.length > 0 && hasDaySummaryContent && (
-                        <div className={`${styles['day-summary-section']} no-export`}>
-                            {descriptionError && <p className="text-red-500 text-sm mt-2">{descriptionError}</p>}
-                            {summaryError && <p className="text-red-500 text-sm mt-2">{summaryError}</p>}
-                            {optimizationError && <p className="text-red-500 text-sm mt-2">{optimizationError}</p>}
-
-                            {pendingDescriptions && (
-                                <div className={`${styles['description-suggestion-card']} card`}>
-                                    <div className={styles['description-suggestion-header']}>
-                                        <div>
-                                            <h4 className={styles['trip-summary-header']}>Suggested Activity Descriptions</h4>
-                                            <p className={styles['trip-summary-text']}>
-                                                Gemini drafted every activity in one request with a short description plus local tips and recommendations.
-                                            </p>
-                                        </div>
-                                        <div className={styles['description-suggestion-actions']}>
-                                            <button type="button" className="btn btn-primary btn-sm" onClick={() => void handleAcceptAllDescriptions()}>
-                                                Accept all
-                                            </button>
-                                            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setPendingDescriptions(null)}>
-                                                Dismiss all
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div className={styles['description-suggestion-list']}>
-                                        {pendingDescriptions.map((item) => (
-                                            <div key={item.activityId} className={styles['description-suggestion-item']}>
-                                                <div className={styles['description-suggestion-copy']}>
-                                                    <p className={styles['description-suggestion-title']}>{item.title}</p>
-                                                    <p className={styles['description-suggestion-summary']}>{item.summary}</p>
-                                                    <ul className={styles['description-suggestion-tips']}>
-                                                        {item.tips.map((tip, index) => (
-                                                            <li key={`${item.activityId}-${index}`}>{tip}</li>
-                                                        ))}
-                                                    </ul>
-                                                </div>
-                                                <div className={styles['description-suggestion-actions']}>
-                                                    <button
-                                                        type="button"
-                                                        className="btn btn-primary btn-sm"
-                                                        onClick={() => void applyPendingDescription(item.activityId, item.summary, item.tips)}
-                                                    >
-                                                        Accept
-                                                    </button>
-                                                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => dismissPendingDescription(item.activityId)}>
-                                                        Decline
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {tripSummary && (
-                                <div className="trip-summary-card card" style={{ padding: '1rem', marginTop: '0.75rem' }}>
-                                    <h4 className={styles['trip-summary-header']}>AI Trip Summary</h4>
-                                    <p className={styles['trip-summary-text']}>{tripSummary.summary}</p>
-                                    {tripSummary.highlights.length > 0 && (
-                                        <ul className={styles['trip-summary-highlights']}>
-                                            {tripSummary.highlights.map((h, i) => (
-                                                <li key={i}>{h}</li>
-                                            ))}
-                                        </ul>
-                                    )}
-                                    <button type="button" className="btn btn-ghost btn-sm" style={{ marginTop: '0.5rem' }} onClick={() => setTripSummary(null)}>
-                                        Dismiss
-                                    </button>
-                                </div>
-                            )}
-
-                            {optimizedRoute && (
-                                <div
-                                    className="trip-summary-card card"
-                                    style={{
-                                        padding: '1rem',
-                                        marginTop: '0.75rem',
-                                        border: '2px solid var(--primary-color)',
-                                        background: 'color-mix(in srgb, var(--primary-color) 12%, var(--surface-color))',
-                                        borderRadius: 'var(--radius-md)',
-                                    }}
-                                >
-                                    <h4 className={styles['trip-summary-header']}>AI Route Suggestion</h4>
-                                    <p className={styles['trip-summary-text']}>{optimizedRoute.recommendation}</p>
-                                    <ul className={styles['trip-summary-highlights']} style={{ marginTop: '0.5rem' }}>
-                                        {optimizedRoute.optimizedOrder.map((id) => {
-                                            const act = activities.find((a) => a.id === id);
-                                            return act ? (
-                                                <li key={id}>
-                                                    {act.title} {act.time ? `(${act.time})` : ''}
-                                                </li>
-                                            ) : null;
-                                        })}
-                                    </ul>
-                                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                                        <button
-                                            type="button"
-                                            className="btn btn-primary btn-sm"
-                                            onClick={() => {
-                                                const reorderedActivities = optimizedRoute.optimizedOrder
-                                                    .map((id) => dayViewActivities.find((activity) => activity.id === id))
-                                                    .filter((activity): activity is (typeof dayViewActivities)[number] => Boolean(activity));
-                                                if (selectedTripId && activeScenario) {
-                                                    reorderScenarioActivities(selectedTripId, activeScenario.id, reorderedActivities);
-                                                } else {
-                                                    const updates = optimizedRoute.optimizedOrder.map((id, idx) => ({ id, order: idx }));
-                                                    reorderActivities(updates);
-                                                }
-                                                setOptimizedRoute(null);
-                                                logEvent('Route Optimized List Applied');
-                                            }}
-                                        >
-                                            Apply Order
-                                        </button>
-                                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setOptimizedRoute(null)}>
-                                            Dismiss
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                    {selectedTripId && addingActivityForDate === currentDateStr && (
-                        <div className="no-export">
-                            <ActivityForm
-                                tripId={selectedTripId}
-                                date={currentDateStr}
-                                nextOrder={dayViewActivities.length}
-                                defaultCurrency={selectedTrip?.defaultCurrency}
-                                onSave={(data) => handleSaveActivity(data, currentDateStr)}
-                                onCancel={() => setAddingActivityForDate(null)}
-                            />
-                        </div>
-                    )}
-                    {dayViewActivities.length === 0 && !addingActivityForDate && (
-                        <p className={styles['no-activities-cal']}>No activities planned for this day.</p>
-                    )}
-                    <DraggableList
-                        items={dayViewActivities}
-                        keyFn={(a) => a.id}
-                        onReorder={handleReorderActivities}
-                        disabled={editingActivityId !== null}
-                        renderItem={(act) =>
-                            editingActivityId === act.id ? (
-                                <div className="no-export">
-                                    <ActivityForm
-                                        tripId={act.tripId}
-                                        date={act.date}
-                                        existingActivity={act}
-                                        nextOrder={act.order}
-                                        defaultCurrency={effectiveTrip?.defaultCurrency}
-                                        onSave={handleSaveActivity}
-                                        onCancel={() => setEditingActivityId(null)}
-                                        onDelete={() => {
-                                            if (selectedTripId && activeScenario) {
-                                                removeScenarioActivity(selectedTripId, activeScenario.id, act.id);
-                                            } else {
-                                                deleteActivity(act.id);
-                                            }
-                                            setEditingActivityId(null);
-                                            logEvent('Activity Deleted', { activity_title: act.title, category: act.category, source: 'calendar_day' });
-                                            if (!activeScenario) {
-                                                showToast(`"${act.title}" deleted`, () => {
-                                                    restoreActivity(act);
-                                                    logEvent('Activity Delete Undone', { activity_title: act.title });
-                                                });
-                                            }
-                                        }}
-                                    />
-                                </div>
-                            ) : (
-                                <div className={`${styles['day-detail-activity']} card`} style={{ ['--activity-color' as string]: getActivityColor(act) }}>
-                                    <div className={styles['detail-header']}>
-                                        <span className={styles['detail-emoji']}>{CATEGORY_EMOJIS[act.category || 'other']}</span>
-                                        <div>
-                                            <h4>{act.title}</h4>
-                                            {act.time && <span className={styles['detail-time']}>{act.time}</span>}
-                                        </div>
-                                        <div className={`${styles['detail-actions']} no-export`}>
-                                            {(act.location || currentDayLocations[0]) && (
-                                                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setReviewsActivityId(act.id)} aria-label="Reviews">
-                                                    📋 Reviews
-                                                </button>
-                                            )}
-                                            {(act.location || currentDayLocations[0]) && (
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-ghost btn-sm"
-                                                    onClick={() => setShowNearbyRestaurantsForActivityId(act.id)}
-                                                    aria-label={getNearbyPlacesLabel(act.category).button}
-                                                >
-                                                    {getNearbyPlacesLabel(act.category).button}
-                                                </button>
-                                            )}
-                                            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingActivityId(act.id)} aria-label="Edit">
-                                                <Pencil size={16} />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className="btn btn-ghost btn-sm"
-                                                onClick={() => {
-                                                    if (selectedTripId && activeScenario) {
-                                                        removeScenarioActivity(selectedTripId, activeScenario.id, act.id);
-                                                    } else {
-                                                        deleteActivity(act.id);
-                                                    }
-                                                    logEvent('Activity Deleted', { activity_title: act.title, category: act.category, source: 'calendar_card' });
-                                                    if (!activeScenario) {
-                                                        showToast(`"${act.title}" deleted`, () => {
-                                                            restoreActivity(act);
-                                                            logEvent('Activity Delete Undone', { activity_title: act.title });
-                                                        });
-                                                    }
-                                                }}
-                                                aria-label="Delete"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                    {act.details && <Markdown className={styles['detail-desc']}>{act.details}</Markdown>}
-                                    {act.location && <p className={styles['detail-location']}>📍 {act.location}</p>}
-                                    {act.cost != null && (
-                                        <p className={styles['detail-cost']}>
-                                            💰 {act.currency || '$'}
-                                            {act.cost.toFixed(2)}
-                                        </p>
-                                    )}
-                                    {act.notes && <Markdown className={styles['detail-notes']}>{act.notes}</Markdown>}
-                                    {reviewsActivityId === act.id && (
-                                        <div className="no-export" style={{ marginTop: '0.75rem' }}>
-                                            <ActivityReviews
-                                                activityTitle={act.title}
-                                                activityLocation={act.location || currentDayLocations[0]}
-                                                onClose={() => setReviewsActivityId(null)}
-                                            />
-                                        </div>
-                                    )}
-                                    {showNearbyRestaurantsForActivityId === act.id && (
-                                        <div className="no-export" style={{ marginTop: '0.75rem' }}>
-                                            <NearbyRestaurants
-                                                location={(act.location || currentDayLocations[0]) ?? ''}
-                                                category={act.category}
-                                                title={act.title}
-                                                label={getNearbyPlacesLabel(act.category).panel}
-                                                onClose={() => setShowNearbyRestaurantsForActivityId(null)}
-                                                onAddToNote={(text) => {
-                                                    const newNotes = act.notes ? act.notes.trimEnd() + '\n\n' + text : text;
-                                                    updateActivity(act.id, { notes: newNotes });
-                                                    setShowNearbyRestaurantsForActivityId(null);
-                                                    showToast('Added to activity note');
-                                                }}
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-                            )
-                        }
-                    />
-                </div>
-            </div>
-        </div>
-    );
-};
-
-export default TripDayView;
-</file>
-
-<file path="src/pages/TripDefaultRedirect.tsx">
-import React from 'react';
-import { Navigate, useParams } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
-import { useTrips } from '../lib/store';
-import { getDefaultDayDateStr } from '../lib/tripDefaultDay';
-
-/** Redirects /trip/:tripId → /trip/:tripId/day/:defaultDate */
-const TripDefaultRedirect: React.FC = () => {
-    const { tripId } = useParams<{ tripId: string }>();
-    const { trips, loading } = useTrips();
-
-    if (!tripId) {
-        return <Navigate to="/spreadsheet" replace />;
-    }
-
-    if (loading) {
-        return (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-                <Loader2 size={28} className="spin" style={{ color: 'var(--primary-color)' }} />
-            </div>
-        );
-    }
-
-    const trip = trips.find((t) => t.id === tripId);
-    if (!trip) {
-        return <Navigate to="/spreadsheet" replace />;
-    }
-
-    const dateStr = getDefaultDayDateStr(trip);
-    return <Navigate to={`/trip/${tripId}/day/${dateStr}`} replace />;
-};
-
-export default TripDefaultRedirect;
-</file>
 
 <file path=".agent/skills/gemini-api-dev/SKILL.md">
 ---
@@ -2541,6 +1098,412 @@ When generating CLI commands using the `run_command` tool, observe these strict 
 Always format CLI commands assuming `pwsh` or `powershell.exe` as the interpreter.
 </file>
 
+<file path=".agents/skills/react-components/examples/gold-standard-card.tsx">
+/**
+ * Copyright 2026 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import React from 'react';
+// Note for Agent: The '@' alias refers to the target project's src directory.
+// Ensure src/data/mockData.ts is created before generating this component.
+import { cardData } from '../data/mockData';
+
+/**
+ * Gold Standard: ActivityCard
+ * This file serves as the definitive reference for the agent.
+ */
+interface ActivityCardProps {
+  readonly id: string;
+  readonly username: string;
+  readonly action: 'MERGED' | 'COMMIT';
+  readonly timestamp: string;
+  readonly avatarUrl: string;
+  readonly repoName: string;
+}
+
+export const ActivityCard: React.FC<ActivityCardProps> = ({
+  username,
+  action,
+  timestamp,
+  avatarUrl,
+  repoName,
+}) => {
+  const isMerged = action === 'MERGED';
+
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-lg bg-surface-dark p-4 min-h-14 shadow-sm ring-1 ring-white/10">
+      <div className="flex items-center gap-4 overflow-hidden">
+        <div
+          className="aspect-square h-10 w-10 flex-shrink-0 rounded-full bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: `url(${avatarUrl})` }}
+          aria-label={`Avatar for ${username}`}
+        />
+
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm sm:text-base">
+          <a href="#" className="font-semibold text-primary hover:underline truncate">
+            {username}
+          </a>
+
+          <span className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-full ${isMerged ? 'bg-purple-500/30 text-purple-300' : 'bg-primary/30 text-primary'
+            }`}>
+            {action}
+          </span>
+
+          <span className="text-white/60">in</span>
+
+          <a href="#" className="text-primary hover:underline truncate">
+            {repoName}
+          </a>
+        </div>
+      </div>
+
+      <div className="shrink-0">
+        <p className="text-sm font-normal leading-normal text-white/50">
+          {timestamp}
+        </p>
+      </div>
+    </div>
+  );
+};
+
+export default ActivityCard;
+</file>
+
+<file path=".agents/skills/react-components/package.json">
+{
+  "name": "react-components",
+  "version": "1.0.0",
+  "description": "Design-to-code prompt to React components for Stitch MCP",
+  "type": "module",
+  "scripts": {
+    "validate": "node scripts/validate.js",
+    "fetch": "bash scripts/fetch-stitch.sh"
+  },
+  "dependencies": {
+    "@swc/core": "^1.3.100"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+</file>
+
+<file path=".agents/skills/react-components/README.md">
+# Stitch to React Components Skill
+
+## Install
+
+```bash
+npx skills add google-labs-code/stitch-skills --skill react:components --global
+```
+
+## Example Prompt
+
+```text
+Convert my Landing Page screen in my Podcast Stitch Project to a React component system.
+```
+
+## Skill Structure
+
+This repository follows the **Agent Skills** open standard. Each skill is self-contained with its own logic, validation scripts, and design tokens.
+
+```text
+skills/react-components/
+├── SKILL.md           — Core instructions & workflow
+├── package.json       — Validator dependencies
+├── scripts/           — Networking & AST validation
+├── resources/         — Style guides & API references
+└── examples/          — Gold-standard code samples
+```
+
+## How it Works
+
+When activated, the agent follows a high-fidelity engineering pipeline:
+
+1. **Retrieval**: Uses a system-level `curl` script to bypass TLS/SNI issues on Google Cloud Storage.
+2. **Mapping**: Cross-references Stitch metadata with the local `style-guide.json` to ensure token consistency.
+3. **Generation**: Scaffolds components using a strict Atomic Design pattern.
+4. **Validation**: Runs an automated AST check using `@swc/core` to prevent hardcoded hex values or missing interfaces.
+5. **Audit**: Performs a final self-correction check against a 20-point architecture checklist.
+</file>
+
+<file path=".agents/skills/react-components/resources/architecture-checklist.md">
+# Architecture Quality Gate
+
+### Structural integrity
+- [ ] Logic extracted to custom hooks in `src/hooks/`.
+- [ ] No monolithic files; strictly Atomic/Composite modularity.
+- [ ] All static text/URLs moved to `src/data/mockData.ts`.
+
+### Type safety and syntax
+- [ ] Props use `Readonly<T>` interfaces.
+- [ ] File is syntactically valid TypeScript (no red squiggles).
+- [ ] Placeholders from templates (e.g., `StitchComponent`) have been replaced with actual names.
+
+### Styling and theming
+- [ ] Dark mode (`dark:`) applied to all color classes.
+- [ ] No hardcoded hex values; use theme-mapped Tailwind classes.
+</file>
+
+<file path=".agents/skills/react-components/resources/component-template.tsx">
+/**
+ * Copyright 2026 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import React from 'react';
+
+// Use a valid identifier like 'StitchComponent' as the placeholder
+interface StitchComponentProps {
+  readonly children?: React.ReactNode;
+  readonly className?: string;
+}
+
+export const StitchComponent: React.FC<StitchComponentProps> = ({
+  children,
+  className = '',
+  ...props
+}) => {
+  return (
+    <div className={`relative ${className}`} {...props}>
+      {children}
+    </div>
+  );
+};
+
+export default StitchComponent;
+</file>
+
+<file path=".agents/skills/react-components/resources/stitch-api-reference.md">
+# Stitch API reference
+
+This document describes the data structures returned by the Stitch MCP server to ensure accurate component mapping.
+
+### Metadata schema
+When calling `get_screen`, the server returns a JSON object with these key properties:
+* **htmlCode**: Contains a `downloadUrl`. This is a signed URL that requires a system-level fetch (curl) to handle redirects and security handshakes.
+* **screenshot**: Includes a `downloadUrl` for the visual design. Use this to verify layout intent that might not be obvious in the raw HTML.
+* **deviceType**: Usually set to `DESKTOP`. All generated components should prioritize the corresponding viewport (2560px width) as the base layout.
+
+### Technical mapping rules
+1. **Element tracking**: Preserve `data-stitch-id` attributes as comments in the TSX to allow for future design synchronization.
+2. **Asset handling**: Treat background images in the HTML as dynamic data. Extract the URLs into `mockData.ts` rather than hardcoding them into the component styles.
+3. **Style extraction**: The HTML `<head>` contains a localized `tailwind.config`. This config must be merged with the local project theme to ensure colors like `primary` and `background-dark` render correctly.
+</file>
+
+<file path=".agents/skills/react-components/resources/style-guide.json">
+{
+  "theme": {
+    "colors": {
+      "primary": "#19e66f",
+      "background": {
+        "light": "#f6f8f7",
+        "dark": "#112118",
+        "elevated": "#1A1A1A"
+      },
+      "accent": {
+        "purple": "#8A2BE2",
+        "lavender": "#D0A9F5"
+      }
+    },
+    "typography": {
+      "display": [
+        "Space Grotesk",
+        "sans-serif"
+      ],
+      "icons": "Material Symbols Outlined"
+    },
+    "spacing": {
+      "header-h": "72px",
+      "container-max": "960px"
+    }
+  }
+}
+</file>
+
+<file path=".agents/skills/react-components/scripts/fetch-stitch.sh">
+#!/bin/bash
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+URL=$1
+OUTPUT=$2
+if [ -z "$URL" ] || [ -z "$OUTPUT" ]; then
+  echo "Usage: $0 <url> <output_path>"
+  exit 1
+fi
+echo "Initiating high-reliability fetch for Stitch HTML..."
+curl -L -f -sS --connect-timeout 10 --compressed "$URL" -o "$OUTPUT"
+if [ $? -eq 0 ]; then
+  echo "✅ Successfully retrieved HTML at: $OUTPUT"
+  exit 0
+else
+  echo "❌ Error: Failed to retrieve content. Check TLS/SNI or URL expiration."
+  exit 1
+fi
+</file>
+
+<file path=".agents/skills/react-components/scripts/validate.js">
+/**
+ * Copyright 2026 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import swc from '@swc/core';
+import fs from 'node:fs';
+import path from 'node:path';
+
+const HEX_COLOR_REGEX = /#[0-9A-Fa-f]{6}/;
+
+async function validateComponent(filePath) {
+  const code = fs.readFileSync(filePath, 'utf-8');
+  const filename = path.basename(filePath);
+  try {
+    const ast = await swc.parse(code, { syntax: "typescript", tsx: true });
+    let hasInterface = false;
+    let tailwindIssues = [];
+
+    console.log("🔍 Scanning AST...");
+
+    const walk = (node) => {
+      if (!node) return;
+      if (node.type === 'TsInterfaceDeclaration' && node.id.value.endsWith('Props')) hasInterface = true;
+      if (node.type === 'JSXAttribute' && node.name.name === 'className') {
+        if (node.value?.value && HEX_COLOR_REGEX.test(node.value.value)) tailwindIssues.push(node.value.value);
+      }
+      for (const key in node) { if (node[key] && typeof node[key] === 'object') walk(node[key]); }
+    };
+    walk(ast);
+
+    console.log(`--- Validation for: ${filename} ---`);
+    if (hasInterface) {
+      console.log("✅ Props declaration found.");
+    } else {
+      console.error("❌ MISSING: Props interface (must end in 'Props').");
+    }
+
+    if (tailwindIssues.length === 0) {
+      console.log("✅ No hardcoded hex values found.");
+    } else {
+      console.error(`❌ STYLE: Found ${tailwindIssues.length} hardcoded hex codes.`);
+      tailwindIssues.forEach(hex => console.error(`   - ${hex}`));
+    }
+
+    if (hasInterface && tailwindIssues.length === 0) {
+      console.log("\n✨ COMPONENT VALID.");
+      process.exit(0);
+    } else {
+      console.error("\n🚫 VALIDATION FAILED.");
+      process.exit(1);
+    }
+  } catch (err) {
+    console.error("❌ PARSE ERROR:", err.message);
+    process.exit(1);
+  }
+}
+
+validateComponent(process.argv[2]);
+</file>
+
+<file path=".agents/skills/react-components/SKILL.md">
+---
+name: react:components
+description: Converts Stitch designs into modular Vite and React components using system-level networking and AST-based validation.
+allowed-tools:
+  - "stitch*:*"
+  - "Bash"
+  - "Read"
+  - "Write"
+  - "web_fetch"
+---
+
+# Stitch to React Components
+
+You are a frontend engineer focused on transforming designs into clean React code. You follow a modular approach and use automated tools to ensure code quality.
+
+## Retrieval and networking
+1. **Namespace discovery**: Run `list_tools` to find the Stitch MCP prefix. Use this prefix (e.g., `stitch:`) for all subsequent calls.
+2. **Metadata fetch**: Call `[prefix]:get_screen` to retrieve the design JSON.
+3. **Check for existing designs**: Before downloading, check if `.stitch/designs/{page}.html` and `.stitch/designs/{page}.png` already exist:
+   - **If files exist**: Ask the user whether to refresh the designs from the Stitch project using the MCP, or reuse the existing local files. Only re-download if the user confirms.
+   - **If files do not exist**: Proceed to step 4.
+4. **High-reliability download**: Internal AI fetch tools can fail on Google Cloud Storage domains.
+   - **HTML**: `bash scripts/fetch-stitch.sh "[htmlCode.downloadUrl]" ".stitch/designs/{page}.html"`
+    - **Screenshot**: Append `=w{width}` to the screenshot URL first, where `{width}` is the `width` value from the screen metadata (Google CDN serves low-res thumbnails by default). Then run: `bash scripts/fetch-stitch.sh "[screenshot.downloadUrl]=w{width}" ".stitch/designs/{page}.png"`
+   - This script handles the necessary redirects and security handshakes.
+5. **Visual audit**: Review the downloaded screenshot (`.stitch/designs/{page}.png`) to confirm design intent and layout details.
+
+## Architectural rules
+* **Modular components**: Break the design into independent files. Avoid large, single-file outputs.
+* **Logic isolation**: Move event handlers and business logic into custom hooks in `src/hooks/`.
+* **Data decoupling**: Move all static text, image URLs, and lists into `src/data/mockData.ts`.
+* **Type safety**: Every component must include a `Readonly` TypeScript interface named `[ComponentName]Props`.
+* **Project specific**: Focus on the target project's needs and constraints. Leave Google license headers out of the generated React components.
+* **Style mapping**:
+    * Extract the `tailwind.config` from the HTML `<head>`.
+    * Sync these values with `resources/style-guide.json`.
+    * Use theme-mapped Tailwind classes instead of arbitrary hex codes.
+
+## Execution steps
+1. **Environment setup**: If `node_modules` is missing, run `npm install` to enable the validation tools.
+2. **Data layer**: Create `src/data/mockData.ts` based on the design content.
+3. **Component drafting**: Use `resources/component-template.tsx` as a base. Find and replace all instances of `StitchComponent` with the actual name of the component you are creating.
+4. **Application wiring**: Update the project entry point (like `App.tsx`) to render the new components.
+5. **Quality check**:
+    * Run `npm run validate <file_path>` for each component.
+    * Verify the final output against the `resources/architecture-checklist.md`.
+    * Start the dev server with `npm run dev` to verify the live result.
+
+## Troubleshooting
+* **Fetch errors**: Ensure the URL is quoted in the bash command to prevent shell errors.
+* **Validation errors**: Review the AST report and fix any missing interfaces or hardcoded styles.
+</file>
+
 <file path=".cursor/LLM_DOMAIN_MAP.md">
 ---
 schema_version: 1
@@ -2549,8 +1512,8 @@ primary_stack: react19_typescript_vite_firebase_firestore_cloudflare_worker_gemi
 llm_instructions: |
   Use this file to resolve entity→collection→code paths. Dates YYYY-MM-DD.
   Firestore writes must strip undefined (see store.ts stripUndefined).
-  AI calls only via generateWithGemini through src/lib/services/aiService.ts (proxy).
-  Places only via worker proxy (src/lib/places.ts or placesService).
+  AI calls only via generateWithGemini through src/lib/gemini.ts (proxy).
+  Places only via worker proxy (src/lib/places.ts).
 entities:
   - name: Trip
     typescript_type: Trip
@@ -2614,13 +1577,13 @@ entities:
 
 integrations:
   ai_generation:
-    facade_file: src/lib/services/aiService.ts
+    facade_file: src/lib/gemini.ts
     implementation: src/lib/gemini.ts
     worker_route: POST /generate
     env_frontend: VITE_AI_PROXY_URL
   google_places:
     client_file: src/lib/places.ts
-    facade_file: src/lib/services/placesService.ts
+    facade_file: src/lib/places.ts
     worker_routes: [POST /places/nearby, POST /places/details]
   weather:
     client_file: src/lib/weather.ts
@@ -2638,6 +1601,202 @@ large_ui_pages:
 refactor_notes:
   calendar_controller: src/pages/useCalendarViewController.ts
   import_itinerary_controller: pending_extract_high_risk
+</file>
+
+<file path=".cursor/rules/base.mdc">
+---
+description: >
+  Project-agnostic prompt discipline and coding standards for TypeScript/React
+  projects. Enforces structured debugging, constrained edits, and autonomous
+  execution. Drop into any repo's .cursor/rules/ and extend with a
+  project-specific overlay file.
+globs: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"]
+alwaysApply: true
+---
+
+# Cursor Rules — Base Standard
+> Project-agnostic. Extend with a project-specific overlay in the same rules directory.
+> Overlay values always win over this file.
+
+---
+
+## ⚡ Vibe-Coding Contract
+
+Two modes exist. Select based on prompt type — do not ask the user which mode to use.
+
+### Mode A — Autonomous
+_Trigger: clear goal + file(s) named + no diagnostic ambiguity._
+
+- Ship **complete, runnable output** — no partial scaffolds, no `// ... rest of implementation`.
+- One file per response unless the task explicitly spans multiple files.
+- When refactoring, show the **full updated file**, not a diff.
+- Add a one-line comment at the top of every new file: `// Purpose: …`
+- If something is ambiguous, make the most reasonable choice and leave a
+  `// ASSUMPTION: …` comment — do not stop to ask.
+
+### Mode B — Diagnostic
+_Trigger: prompt contains a symptom, broken behavior, or a hypothesis —
+keywords like "seems like," "I think," "not working," "blank," "broken,"
+"loading too slow," or any behavior mismatch._
+
+- **Do not write code until diagnosis is complete.**
+- Restate the prompt in structured form and confirm before proceeding:
+
+```
+## Restatement
+Context:     [files involved, what they do, relevant deps]
+Expected:    [desired behavior]
+Actual:      [current behavior]
+Hypothesis:  [user's or yours — always labeled as hypothesis]
+Goal:        [specific outcome]
+Constraints: [what not to touch]
+```
+
+- If the user's hypothesis is wrong, say so **first**, then give your own diagnosis.
+- Never implement a fix built on an incorrect hypothesis.
+
+---
+
+## 🔍 Context Gate (Mode B only)
+
+If a diagnostic prompt is missing any of the following, ask for it before proceeding.
+One question per missing element — do not infer silently.
+
+| Required          | Example                                        |
+|-------------------|------------------------------------------------|
+| File(s) affected  | `@ComponentName.tsx`, `@useHookName.ts`        |
+| Expected behavior | "Should render data on first paint"            |
+| Actual behavior   | "Blank screen / stale data / console error"    |
+| Constraints       | "Don't change the hook's return signature"     |
+
+---
+
+## 📋 Plan Before Code
+
+For any change touching more than one file or one logical concern:
+
+1. Output a **numbered plan** — what changes, in which file, and why.
+2. Wait for explicit approval: `"looks good"`, `"proceed"`, `"go"`.
+3. Only then write code.
+
+Never auto-proceed on multi-file changes.
+
+---
+
+## 🔒 Constraint Enforcement
+
+- **Scope creep is a bug.** Flag cross-concern improvements before touching them.
+- **No new dependencies** without flagging: `"This needs [package] — confirm?"`
+- **Preserve API contracts.** Hook signatures, prop interfaces, and exported
+  function shapes are frozen unless explicitly told otherwise.
+- **One concern per diff.** Bug fix ≠ cleanup ≠ refactor. Keep them separate.
+
+---
+
+## ⏱ Async / Hook Diagnostic Checklist
+
+Run this before diagnosing any timing, blank render, or stale data issue:
+
+- [ ] Component renders before async data resolves? (missing `loading` guard)
+- [ ] Hook return value accessed before defined? (undefined access on first render)
+- [ ] Missing `useEffect` dependency causing stale closure?
+- [ ] `Suspense` or `ErrorBoundary` absent where needed?
+- [ ] Hook called conditionally? (Rules of Hooks violation)
+- [ ] StrictMode double-render exposing a side effect?
+
+Surface findings before writing any code.
+
+---
+
+## ✅ Pre-Finalise Checklist
+
+Run silently before every output:
+
+- [ ] No `any` without a `// reason:` comment
+- [ ] Exported functions have explicit return types
+- [ ] No hardcoded colour values — use design tokens / CSS vars
+- [ ] Loading and error states handled
+- [ ] Fix works on **first render**, not just after re-render
+- [ ] Change scoped only to what was asked
+- [ ] No new deps introduced silently
+- [ ] Types verified — no regressions introduced
+
+_Project-specific checks (Firestore writes, etc.)
+belong in the overlay file, not here._
+
+---
+
+## 📊 Confidence Signal (Mode B — append to every diagnostic response)
+
+```
+Confidence: [High / Medium / Low]
+Reason:     [e.g. "full hook not visible" or "well-established React pattern"]
+If wrong:   [next thing to check or rule out]
+```
+
+---
+
+## TypeScript
+
+- All production code is TypeScript — avoid `.js` files.
+- Explicit return types on all **exported** functions.
+- No `any` without a `// reason:` comment. Prefer `unknown` + narrowing.
+- Optional chaining (`?.`) and nullish coalescing (`??`) over manual null checks.
+- Prefer `interface` over `type` for object shapes.
+- Avoid `enum` — use `const` maps or union string literals.
+- Boolean names: `isLoading`, `hasError`, `canSubmit`, `isVisible`.
+
+---
+
+## React
+
+- Functional components and hooks only — no class components.
+- `React.lazy` for route-level components; wrap in `<Suspense fallback={…}>`.
+- No inline styles — use CSS custom properties or your project's styling system.
+- Never hardcode color values in component files.
+- Images: WebP format, explicit `width`/`height`, `loading="lazy"`.
+
+---
+
+## Imports & File Structure
+
+- Import from the defining file directly — no barrel `index.ts` re-exports.
+- One concern per file: component, helpers, types, or constants — not mixed.
+- Directory names: `lowercase-with-dashes`.
+- Named exports for utilities and hooks; default exports for page/route components.
+
+---
+
+## Dates
+
+- Store and pass dates as ISO strings: `YYYY-MM-DD` or `YYYY-MM-DDTHH:mm:ssZ`.
+- Use a date library (`date-fns` preferred) for all parsing, formatting,
+  and arithmetic — no inline `new Date()` arithmetic.
+
+---
+
+## Performance
+
+- Dynamic-import non-critical components (`React.lazy` / `import()`).
+- Audit bundle size and Web Vitals (LCP, CLS, FID) before marking work done.
+- No premature optimisation — profile before adding memoisation.
+
+---
+
+## How to Extend This File
+
+Create a second `.mdc` file in `.cursor/rules/` named after your project
+(e.g. `signal.mdc`, `travelplanner.mdc`). Overlay values always take precedence.
+
+Recommended overlay sections:
+- Project name and stack summary
+- Data layer conventions (Firestore, Supabase, Prisma, etc.)
+- Analytics / event tracking conventions
+- State management patterns
+- Auth patterns
+- CI / lint / test requirements
+- Project-specific file structure and type locations
+- Agent file ownership (for parallel worktree workflows)
 </file>
 
 <file path=".cursor/rules/github-diagram.mdc">
@@ -2802,572 +1961,68 @@ The target reader is a senior engineer deciding whether to adopt this library or
 - If the repo is genuinely well-designed, say that clearly and explain why
 </file>
 
-<file path=".cursor/rules/project-context.mdc">
----
-description: TravelPlanner (sabb) project context — tech stack, Gemini/AI rules, data models, Firestore, env vars, and critical conventions.
-alwaysApply: true
----
-
-# Project Context — TravelPlanner
-
-Personal travel itinerary planner. Users create trips, plan day-by-day activities, track transport, manage budgets, take notes, and receive AI-powered suggestions. Supports real-time collaboration via trip sharing.
-
-## Tech Stack
-
-| Layer | Technology | Notes |
-|-------|------------|-------|
-| Frontend | React 19 + TypeScript + Vite | Strict TS, `verbatimModuleSyntax`, `noUnusedLocals` |
-| Routing | react-router-dom v7 | Base path: `/travelplanner/` |
-| Database | Firebase Firestore | Real-time `onSnapshot`; persistent multi-tab cache |
-| Auth | Firebase Auth | Google OAuth + anonymous sign-in |
-| Storage | Firebase Storage | Images only, max 5MB, `notes/{userId}/{tripId}/...` |
-| AI | Google Gemini via Cloudflare Worker proxy | Never call Gemini directly from frontend |
-| Analytics | Amplitude | `logEvent()` from `src/lib/amplitude.ts` |
-| Icons | lucide-react | |
-| Dates | date-fns | All date strings ISO `YYYY-MM-DD` |
-| Markdown | marked | `Markdown.tsx` component |
-| Deploy | GitHub Pages (frontend) + Cloudflare Workers (AI proxy) | |
-
-## Gemini / AI — Critical Rules
-
-- **SDK**: Use `@google/genai` (JS/TS). Do NOT use deprecated `@google/generative-ai`.
-- **Models**: `gemini-3-flash-preview` (default), `gemini-3.1-pro-preview` (complex), `gemini-3-pro-image-preview` (images). Never reference `gemini-2.5-*`, `gemini-2.0-*`, or `gemini-1.5-*`.
-- **All AI calls** go through `generateWithGemini()` in `src/lib/gemini.ts`, which POSTs to the Cloudflare Worker proxy at `VITE_AI_PROXY_URL`. Never call Gemini APIs directly from the frontend.
-- Proxy body: `{ prompt, systemInstruction?, responseMimeType?, responseSchema? }`. For structured output use `responseMimeType: 'application/json'` and `responseSchema`.
-- `generateWithGemini` handles deduplication, 1200ms call spacing, 429 retry with exponential backoff (max 3).
-
-## Data Models (summary)
-
-- **Trip**: `id`, `userId`, `members`, `sharedWithEmails`, `name`, `startDate`, `endDate`, `defaultCurrency?`, `color?`, `_pendingWrite?`.
-- **Activity**: `id`, `tripId`, `userId`, `tripMembers`, `date` (YYYY-MM-DD), `title`, `details?`, `time?`, `location?`, `category`, `cost?`, `currency?`, `order`, `_pendingWrite?`.
-- **TransportRoute**: `id`, `tripId`, `userId`, `tripMembers`, `date`, `type`, `from`, `to`, `departureTime?`, `arrivalTime?`, `bookingRef?`, `cost?`, `currency?`, `notes?`.
-- **Note**: `id`, `tripId`, `userId`, `tripMembers`, `content`, `format`, `order`, `date?`, `images?`, `createdAt`, `updatedAt`.
-- **ChatMessage**: `id`, `tripId`, `userId`, `tripMembers`, `role`, `content`, `createdAt`.
-
-`tripMembers` is denormalized on child docs for Firestore security rules. When adding/removing collaborators (ShareModal), batch-update `tripMembers` on activities, notes, transportRoutes, chat_history.
-
-## Firestore Collections
-
-| Collection | Access |
-|------------|--------|
-| `trips` | `members` array-contains OR `userId == uid` |
-| `activities`, `transportRoutes`, `notes`, `chat_history` | `tripMembers` array-contains OR `userId == uid` |
-| `users` | Read: authenticated; Write: own doc only |
-
-## Conventions (critical)
-
-1. Use TypeScript strict mode; handle null/undefined; no implicit any.
-2. Never call Gemini directly — use `generateWithGemini()` from `src/lib/gemini.ts`.
-3. Call `stripUndefined()` before writing to Firestore.
-4. Use date-fns; all date strings ISO `YYYY-MM-DD`.
-5. Use CSS custom properties from `theme.css` (e.g. `var(--primary-color)`).
-6. Use `logEvent(eventName, props)` for meaningful user interactions; event names Title Case.
-7. Import from `src/lib/persist.ts` for `useLocalStorageState` — not `src/hooks/useLocalStorageState.ts`.
-8. No barrel `index.ts` imports; import directly from the file.
-9. Vite base path is `/travelplanner/` — use for any URL construction.
-10. Avoid `const enum` and non-erasable TypeScript syntax (`erasableSyntaxOnly`).
-
-## Environment Variables
-
-- **App**: `VITE_FIREBASE_*`, `VITE_AI_PROXY_URL`, `VITE_AMPLITUDE_API_KEY` (optional).
-- **Worker** (Cloudflare): `GEMINI_API_KEY` or `GEMINI_API_KEYS`, `GOOGLE_PLACES_API_KEY` (set via `wrangler secret put GOOGLE_PLACES_API_KEY` — never committed).
-
-## New APIs (Phase: Weather + Places)
-
-- **Open-Meteo**: No key required. Call directly from `src/lib/weather.ts`. Geocode + weather caches are module-level (session).
-- **Google Places API (New)**: All calls proxied via Cloudflare Worker routes `/places/nearby` and `/places/details`. Never call `places.googleapis.com` from the frontend.
-- **Places field mask discipline**: Only request the fields you actually render to control SKU cost.
-- **Google attribution**: `reviewSummary.disclosureText` MUST be displayed wherever Google's AI summary is shown.
-
-## Common Pitfalls
-
-- Do not write Firestore docs with `undefined` values — always `stripUndefined()` first.
-- Do not use deprecated Gemini model IDs.
-- Do not call Gemini API directly from frontend.
-</file>
-
-<file path=".cursor/rules/rules.md">
----
-project: TravelPlanner (sabb)
-version: 0.0.0
-last_updated: 2026-03-10
----
-
-# Project Frontmatter — TravelPlanner
-
-## Purpose
-A personal travel itinerary planner. Users create trips, plan day-by-day activities, track transport, manage budgets, take notes, and receive AI-powered suggestions. Supports real-time collaboration via trip sharing.
-
----
-
-## Tech Stack (authoritative — do not guess from training data)
-
-| Layer | Technology | Notes |
-|---|---|---|
-| Frontend | React 19 + TypeScript + Vite | Strict TS, `verbatimModuleSyntax`, `noUnusedLocals` |
-| Routing | react-router-dom v7 | Base path: `/travelplanner/` |
-| Database | Firebase Firestore | Real-time `onSnapshot` listeners; persistent multi-tab cache |
-| Auth | Firebase Auth | Google OAuth + anonymous sign-in |
-| Storage | Firebase Storage | Images only, max 5MB, scoped to `notes/{userId}/{tripId}/...` |
-| AI | Google Gemini via Cloudflare Worker proxy | Never call Gemini directly from frontend |
-| Analytics | Amplitude | `logEvent()` from `src/lib/amplitude.ts` |
-| Icons | lucide-react | |
-| Dates | date-fns | All date strings are ISO `YYYY-MM-DD` |
-| Markdown | marked | Used in `Markdown.tsx` component |
-| Deploy | GitHub Pages (frontend) + Cloudflare Workers (AI proxy) | |
-
----
-
-## Gemini / AI — Critical Rules
-
-- **SDK**: `@google/genai` (JS/TS). Do NOT use the deprecated `@google/generative-ai`.
-- **Current models**: `gemini-3-flash-preview` (default), `gemini-3.1-pro-preview` (complex), `gemini-3-pro-image-preview` (images).
-- **NEVER** reference `gemini-2.5-*`, `gemini-2.0-*`, or `gemini-1.5-*` — these are deprecated.
-- **All AI calls go through** `generateWithGemini()` in `src/lib/gemini.ts`, which POSTs to the Cloudflare Worker proxy at `VITE_AI_PROXY_URL`. Never call Gemini APIs directly from the frontend.
-- The proxy URL is `/generate` (POST). Body: `{ prompt, systemInstruction?, responseMimeType?, responseSchema? }`.
-- `generateWithGemini` handles: single-flight deduplication, 1200ms call spacing, 429 retry with exponential backoff (max 3 retries).
-- For structured output, pass `responseMimeType: 'application/json'` and `responseSchema`.
-
----
-
-## Data Models
-
-### Trip
-```ts
-interface Trip {
-  id: string;
-  userId: string;           // owner UID
-  members: string[];        // all member UIDs (including owner)
-  sharedWithEmails: string[];
-  name: string;
-  startDate: string;        // ISO YYYY-MM-DD
-  endDate: string;          // ISO YYYY-MM-DD
-  defaultCurrency?: string;
-  color?: string;           // from TRIP_COLORS
-  _pendingWrite?: boolean;  // Firestore optimistic flag
-}
-```
-
-### Activity
-```ts
-interface Activity {
-  id: string;
-  tripId: string;
-  userId: string;
-  tripMembers: string[];    // denormalized for Firestore security rules
-  date: string;             // ISO YYYY-MM-DD
-  title: string;
-  details?: string;
-  time?: string;            // HH:MM
-  location?: string;
-  category: ActivityCategory; // 'food' | 'transport' | 'accommodation' | 'sightseeing' | 'other' | ...
-  cost?: number;
-  currency?: string;
-  order: number;            // sort order within the day
-  _pendingWrite?: boolean;
-}
-```
-
-### TransportRoute
-```ts
-interface TransportRoute {
-  id: string;
-  tripId: string;
-  userId: string;
-  tripMembers: string[];
-  date: string;
-  type: string;             // 'flight' | 'train' | 'bus' | 'car' | 'ferry' | 'other'
-  from: string;
-  to: string;
-  departureTime?: string;
-  arrivalTime?: string;
-  bookingRef?: string;
-  cost?: number;
-  currency?: string;
-  notes?: string;
-}
-```
-
-### Note
-```ts
-interface Note {
-  id: string;
-  tripId: string;
-  userId: string;
-  tripMembers: string[];
-  title: string;
-  content: string;
-  imageUrls?: string[];
-  updatedAt: string;
-}
-```
-
-### ChatMessage
-```ts
-interface ChatMessage {
-  id: string;
-  tripId: string;
-  role: 'user' | 'model';
-  text: string;
-  timestamp: string;
-}
-```
-
----
-
-## Firestore Collections
-
-| Collection | Access Rule |
-|---|---|
-| `trips` | `members` array-contains OR `userId == uid` |
-| `activities` | `tripMembers` array-contains OR `userId == uid` |
-| `transportRoutes` | `tripMembers` array-contains OR `userId == uid` |
-| `notes` | `tripMembers` array-contains OR `userId == uid` |
-| `chat_history` | `tripMembers` array-contains OR `userId == uid` |
-| `users` | Read: authenticated; Write: own doc only |
-
-**Important**: `tripMembers` is a **denormalized** array on child docs (activities, notes, routes) required to satisfy Firestore security rules without cross-collection `get()` calls. When adding a collaborator via `ShareModal`, all child docs must be batch-updated.
-
----
-
-## Project Structure
-```
-src/
-  components/        # Reusable UI: ActivityForm, TripForm, Sidebar, ShareModal, Toast, DraggableList, SwipeableItem, Markdown, OnlineStatus, AutoTextarea
-  design-system/     # themes.ts — ThemePreset, ThemeTokens, applyTheme(), THEME_PRESETS
-  hooks/             # useLocalStorageState (in hooks/ AND lib/persist.ts — use lib/persist.ts)
-  lib/
-    types.ts         # All shared types + CATEGORY_EMOJIS, CATEGORY_COLORS, TRIP_COLORS
-    store.ts         # Firestore hooks: useTrips, useActivities, useTransportRoutes, useNotes, useChatMessages
-    AuthContext.tsx   # useAuth() → { user, loading, signInWithGoogle, signInAnonymously, signOut }
-    firebase.ts      # db, auth, storage, googleProvider exports
-    gemini.ts        # generateWithGemini() — the ONLY way to call AI
-    amplitude.ts     # logEvent(), identifyUser(), trackExposure()
-    persist.ts       # useLocalStorageState (preferred over hooks/ version)
-    upload.ts        # Firebase Storage image upload helpers
-  pages/
-    SpreadsheetView  # Default view; day × time-slot grid (morning/afternoon/evening/unscheduled)
-    CalendarView     # Day/week/month/trip views
-    Transportation   # TransportRoutes CRUD
-    Budget           # Cost summary across activities + routes
-    Notes            # Trip notes with image attachments
-    Assistant        # AI chat per trip (uses chat_history collection)
-    ImportItinerary  # Paste raw text → Gemini parses → preview → save
-    Login            # Auth gate
-    Settings         # Theme, display preferences
-  App.tsx            # Router, AuthProvider, ToastProvider, lazy-loaded pages
-  theme.css          # CSS custom properties (design tokens)
-worker/
-  src/index.ts       # Cloudflare Worker — proxies /generate → Gemini API
-```
-
----
-
-## Routing
-
-Base: `/travelplanner/`
-
-| Path | Page |
-|---|---|
-| `/spreadsheet` | SpreadsheetView (default) |
-| `/calendar` | CalendarView |
-| `/transportation` | Transportation |
-| `/budget` | Budget |
-| `/notes` | Notes |
-| `/import` | ImportItinerary |
-| `/assistant` | Assistant |
-| `/settings` | Settings |
-| `*` | Redirect → `/spreadsheet` |
-
-All pages are lazy-loaded via `React.lazy`.
-
----
-
-## Auth Patterns
-
-- `useAuth()` — primary hook, throws if outside `AuthProvider`
-- User is Firebase `User | null`
-- Anonymous users: supported but cannot share trips (no email)
-- User profile upserted to `users/{uid}` on sign-in (non-anonymous only)
-- Auth gate: `AuthGate` component wraps all routes in `App.tsx`
-
----
-
-## State & Persistence
-
-- **Server state**: Firestore via `onSnapshot` hooks in `store.ts`. All mutations are async (`addDoc`, `updateDoc`, `deleteDoc`, `setDoc`).
-- **Local state**: `useLocalStorageState` from `src/lib/persist.ts` for UI preferences (selected trip, view mode, etc.)
-- **Optimistic UI**: Firestore's `hasPendingWrites` surfaced as `_pendingWrite` flag on entities. `OnlineStatus` component shows offline/reconnected banner.
-- **Undo**: Toast-based undo via `restoreTrip` / `restoreActivity` / `restoreRoute` (re-`setDoc` the deleted doc).
-
----
-
-## Theming
-
-- CSS custom properties defined in `theme.css`, overridden at runtime via `applyTheme()`.
-- Presets: `modern` (default), `y2k-retro`, `dark`, `sunset`, `ocean`, `pastel-glow`.
-- Custom color overrides per-preset stored in `localStorage` under key `travelplanner_theme_config`.
-- Dark mode: `getDarkTokens()` transforms any preset's tokens.
-- Compact layout: `body.compact-layout` CSS class toggle.
-
----
-
-## Conventions & Rules
-
-1. **TypeScript strict mode** — always handle null/undefined, no implicit any.
-2. **No direct Gemini calls** — always use `generateWithGemini()` from `src/lib/gemini.ts`.
-3. **No form elements** — use event handlers (`onClick`, `onChange`) not `<form>` with native submit where conflicts may arise.
-4. **stripUndefined()** — always call before writing to Firestore to avoid Firestore undefined field errors.
-5. **tripMembers denormalization** — when mutating trip membership, batch-update child collections (activities, notes, transportRoutes, chat_history).
-6. **Date strings** — always ISO `YYYY-MM-DD`; use `date-fns` for all manipulation.
-7. **CSS** — use CSS custom properties from `theme.css` (e.g., `var(--primary-color)`), not hardcoded values.
-8. **Analytics** — `logEvent(eventName, props)` for all meaningful user interactions. Event names are Title Case strings.
-9. **Error handling** — surface errors to UI state; never swallow silently except in non-critical paths (e.g., analytics init).
-10. **Import paths** — no barrel `index.ts` files; import directly from the file.
-
----
-
-## Environment Variables
-```
-VITE_FIREBASE_API_KEY
-VITE_FIREBASE_AUTH_DOMAIN
-VITE_FIREBASE_PROJECT_ID
-VITE_FIREBASE_STORAGE_BUCKET
-VITE_FIREBASE_MESSAGING_SENDER_ID
-VITE_FIREBASE_APP_ID
-VITE_AI_PROXY_URL          # Required for all AI features (Cloudflare Worker URL)
-VITE_AMPLITUDE_API_KEY     # Optional; analytics silently disabled if missing
-```
-
-Worker (set in Cloudflare dashboard, not .env):
-```
-GEMINI_API_KEY
-```
-
----
-
-## Common Pitfalls for Agents
-
-- Do not import from `src/hooks/useLocalStorageState.ts` — use `src/lib/persist.ts` instead (canonical version).
-- Do not write to Firestore with `undefined` values — always `stripUndefined()` first.
-- Do not use deprecated Gemini model IDs (`gemini-2.x`, `gemini-1.5-*`).
-- Do not call the Gemini API directly — route through `generateWithGemini()`.
-- The Vite base path is `/travelplanner/` — account for this in any URL construction.
-- `useLocalStorageState` in `persist.ts` returns `[value, setValue] as const` (tuple). The one in `hooks/` returns `[T, Dispatch<SetStateAction<T>>]` — they differ slightly.
-- TypeScript config uses `erasableSyntaxOnly` — avoid `const enum` and other non-erasable TS syntax.
-</file>
-
-<file path=".cursor/rules/vibe-coding-rules.mdc">
+<file path=".cursor/rules/travelplanner-overlay.mdc">
 ---
 description: >
-  Full-stack TypeScript standards for TravelPlanner — React, Vite, Firestore,
-  DaisyUI/Tailwind, and date-fns. Enforces type safety, performance, and
-  project-specific patterns. Includes prompt discipline protocol for debugging,
-  diagnosis, and constrained multi-file changes. Optimised for vibe-coding with Cursor.
+  Project-specific overlay for TravelPlanner. Extends base.mdc with
+  Firestore, DaisyUI/Tailwind, and project file conventions.
+  Values here take precedence over base.mdc.
 globs: ["**/*.ts", "**/*.tsx"]
 alwaysApply: true
 ---
 
-# Cursor Vibe-Coding Rules — TravelPlanner
+# Cursor Rules — TravelPlanner Overlay
+> Extends base.mdc. Only project-specific rules live here.
 
 ---
 
-## ⚡ Vibe-Coding Contract
+## Stack
 
-Two modes exist. Cursor selects the correct mode based on the prompt type.
+- React 19 + TypeScript + Vite
+- Firebase / Firestore
+- DaisyUI + Tailwind CSS (mobile-first)
+- date-fns for all date handling
+- `src/lib/persist.ts` → `useLocalStorageState` for local persistence
 
-### Mode A — Autonomous (well-specified tasks)
-Use when the prompt includes: a clear goal, the file(s) to touch, and no diagnostic ambiguity.
+---
 
-- Prefer **complete, runnable output** over partial scaffolds.
-- Never omit logic with `// ... rest of implementation` — write it out.
-- One file per response unless the task explicitly spans multiple files.
-- When refactoring, show the **full updated file**, not a diff.
-- Add a one-line comment at the top of every new file describing its purpose.
-- If something is ambiguous, **make the most reasonable choice and leave a `// ASSUMPTION:` comment** — don't stop to ask.
+## Firestore Write Convention
 
-### Mode B — Diagnostic (bugs, blank renders, async issues, unclear symptoms)
-Use when the prompt describes a symptom, a broken behavior, or contains a hypothesis.
-
-- **Do not write code until diagnosis is complete.**
-- Restate the prompt in structured form, then confirm before proceeding:
+Always follow this sequence — no exceptions:
 
 ```
-## Restatement
-Context:    [files involved, what they do, relevant deps]
-Expected:   [desired behavior]
-Actual:     [current behavior]
-Hypothesis: [user's or your own — always labeled as hypothesis]
-Goal:       [specific outcome]
-Constraints: [what not to touch]
+1. Build the payload object
+2. Pass through stripUndefined()  ← removes keys with value `undefined`
+3. Call setDoc / updateDoc / addDoc / batch.update
 ```
 
-- If the user's hypothesis is wrong, **say so first**, then give your own diagnosis.
-- Never silently implement a fix built on an incorrect hypothesis.
-
-> Rule of thumb: if the prompt contains the words "seems like," "I think," "not working,"
-> "blank," "broken," or describes a behavior mismatch — use Mode B.
+- Types: `src/lib/types.ts` → `Trip`, `Activity`, `TransportRoute`, `Note`, `ChatMessage`
+- Membership mutations must batch-update across:
+  `tripMembers`, `activities`, `notes`, `transportRoutes`, `chat_history`
 
 ---
 
-## 🔍 Context Gate (Mode B only)
+## Styling
 
-If a bug/diagnostic prompt is missing any of the following, ask for it before proceeding:
-
-| Required         | Example                                      |
-|------------------|----------------------------------------------|
-| File(s) affected | `@Dashboard.tsx`, `@useProjectData.ts`       |
-| Expected behavior| "Should render table on first paint"         |
-| Actual behavior  | "Blank screen on first load"                 |
-| Constraints      | "Don't modify the hook signature"            |
-
-Ask one question per missing element. Do not infer silently.
+- DaisyUI components + Tailwind utilities only
+- Theme via CSS custom properties: `var(--primary-color)`, `var(--border-color)`, `var(--text-secondary)`
+- Never hardcode hex/rgb in component files
 
 ---
 
-## 📋 Plan Before Code (multi-file changes)
+## Local Persistence
 
-For any change touching more than one file or one logical concern:
-
-1. Output a **numbered plan** (what you'll change and why)
-2. Wait for explicit approval (`"looks good"`, `"proceed"`, `"go"`)
-3. Only then write code
-
-**Never auto-proceed on multi-file changes.**
+- Use `useLocalStorageState` from `src/lib/persist.ts` only
+- Do not access `localStorage` directly anywhere else in the codebase
 
 ---
 
-## 🔒 Constraint Enforcement
+## Project-Specific Checklist (appends to base post-finalise checklist)
 
-- **Scope creep is a bug.** If fixing X would be cleaner with a refactor of Y, flag it — don't just do it.
-- **No new dependencies** without flagging: `"This would require adding [package] — confirm?"`
-- **Preserve API contracts.** Hook signatures, prop interfaces, and exported function shapes are frozen unless explicitly told otherwise.
-- **One concern per diff.** Debugging fix ≠ cleanup ≠ refactor. Separate them.
-
----
-
-## ⏱ Async / Hook Issue Checklist (run before diagnosing timing bugs)
-
-- [ ] Is the component rendering before async data resolves? (missing `loading` guard)
-- [ ] Is the hook's return value accessed before it's defined? (undefined access)
-- [ ] Is there a missing `useEffect` dependency causing a stale closure?
-- [ ] Is `Suspense` or `ErrorBoundary` absent where it should exist?
-- [ ] Is the hook called conditionally? (Rules of Hooks violation)
-- [ ] Is a double-render in StrictMode exposing a side effect?
-
-Surface findings from this checklist in your diagnosis before proposing a fix.
-
----
-
-## ✅ Post-Fix Checklist (run silently before finalising any output)
-
-- [ ] No `any` without a `// reason:` comment
-- [ ] No hardcoded colours — CSS vars only
-- [ ] No `undefined` passed to Firestore — `stripUndefined()` called
-- [ ] Exported functions have return types
-- [ ] Dates are ISO strings, manipulated via `date-fns`
-- [ ] New user actions emit an Amplitude event
+- [ ] `stripUndefined()` called before every Firestore write
 - [ ] Lazy-loaded components wrapped in `<Suspense>`
-- [ ] Loading and error states handled
-- [ ] Fix works on first render, not just after re-render
-- [ ] Change is scoped only to what was asked
-
----
-
-## 📊 Confidence Signal (Mode B — end every diagnostic response with this)
-
-```
-Confidence: [High / Medium / Low]
-Reason: [e.g., "couldn't see full hook implementation" or "well-established pattern"]
-If wrong: [what to check next if this fix doesn't work]
-```
-
----
-
-## TypeScript
-
-- All code is TypeScript — no `.js` files.
-- Explicit return types on **exported** functions.
-- Avoid `any`; use `unknown` + narrowing, or add a `// reason:` comment.
-- Optional chaining (`?.`) and nullish coalescing (`??`) over manual null checks.
-- Prefer `interface` over `type` for object shapes (extendable, mergeable).
-- Avoid `enum`; use `const` maps or union string literals instead.
-- Use descriptive boolean names: `isLoading`, `hasError`, `canSubmit`.
-
-<example type="valid">
-export function formatDate(iso: string): string {
-  return format(parseISO(iso), 'MMM d, yyyy');
-}
-</example>
-
-<example type="invalid">
-function formatDate(iso: string) {        // ❌ missing return type
-  return format(parseISO(iso), 'MMM d, yyyy');
-}
-</example>
-
----
-
-## React
-
-- Functional components + hooks only — no classes.
-- `React.lazy` for all route-level components (see `App.tsx` pattern).
-- Wrap async/lazy components in `<Suspense fallback={…}>`.
-- Theme via CSS custom properties only — **never hardcode hex/rgb**:
-  `var(--primary-color)`, `var(--border-color)`, `var(--text-secondary)`.
-- Style with **DaisyUI components + Tailwind utilities** — mobile-first.
-- Optimise images: WebP, explicit `width`/`height`, `loading="lazy"`.
-
----
-
-## Imports & File Structure
-
-- Import from the defining file directly — no barrel `index.ts` re-exports.
-- Use `useLocalStorageState` from `src/lib/persist.ts` **only**.
-- One concern per file: component, helpers, types, or static content — not mixed.
-- Directory names: `lowercase-with-dashes` (e.g. `components/auth-wizard`).
-- Named exports for functions; default exports for page/route components only.
-
----
-
-## Firestore
-
-Always follow this write sequence — no exceptions:
-
-```
-1. Build the payload object.
-2. Pass through stripUndefined() — removes all keys with value `undefined`.
-3. Call setDoc / updateDoc / addDoc / batch.update.
-```
-
-- Types live in `src/lib/types.ts`: `Trip`, `Activity`, `TransportRoute`,
-  `Note`, `ChatMessage`.
-- When mutating trip membership, batch-update across:
-  `tripMembers`, `activities`, `notes`, `transportRoutes`, `chat_history`.
-
----
-
-## Dates
-
-- Store and pass all dates as ISO strings: `YYYY-MM-DD`.
-- Use `date-fns` for all parsing, formatting, and arithmetic
-  (`parseISO`, `format`, `isWithinInterval`, etc.).
-
----
-
-## Analytics
-
-- Log meaningful user actions via `logEvent(eventName, props)` from
-  `src/lib/amplitude.ts`.
-- Event names in Title Case: `"Activity Created"`, `"Collaborator Added"`.
-
----
-
-## Performance
-
-- Dynamic import non-critical components (`React.lazy` / Vite `import()`).
-- Vite build: configure manual `chunks` in `rollupOptions` for code splitting.
-- Audit Web Vitals (LCP, CLS, FID) with Lighthouse before marking work done.
+- [ ] Dates stored as ISO strings, handled with `date-fns`
+- [ ] No direct `localStorage` access outside `persist.ts`
 </file>
 
 <file path=".cursor/skills/amhuppert-my-ai-resources-cursor-rules/SKILL.md">
@@ -4116,7 +2771,7 @@ AI and places integrations are intentionally split: frontend modules call a Clou
    **Status:** `CalendarView` → `src/pages/useCalendarViewController.ts` (page is mostly presentational). **`ImportItinerary`:** still monolithic; follow-up recommended (large `handleConfirm`, render-local `globalIdx` in preview).
 
 2. **Formalize integration boundaries with typed service interfaces**  
-   **Status:** `src/lib/services/aiService.ts` (re-exports `generateWithGemini`); `src/lib/services/placesService.ts` (re-exports places API). AI actions and `places.ts` consume `aiService`.
+   **Status:** `src/lib/gemini.ts` defines `generateWithGemini`; `src/lib/places.ts` defines Places helpers. AI actions import from `gemini.ts`; UI imports from `places.ts`. (Removed `src/lib/services/*` barrels.)
 
 3. **Create a domain-layer map document (LLM-optimized)**  
    **Status:** `.cursor/LLM_DOMAIN_MAP.md`.
@@ -4164,7 +2819,6 @@ flowchart TD
   end
 
   OM[Open-Meteo API]
-  AMP[Amplitude]
 
   U --> APP
   APP --> PAGES
@@ -4183,7 +2837,6 @@ flowchart TD
   W --> GP
 
   WEATHER --> OM
-  APP --> AMP
 </file>
 
 <file path="eslint.config.js">
@@ -4344,29 +2997,6 @@ export default defineConfig([
 
 <file path="public/vite.svg">
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="31.88" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 257"><defs><linearGradient id="IconifyId1813088fe1fbc01fb466" x1="-.828%" x2="57.636%" y1="7.652%" y2="78.411%"><stop offset="0%" stop-color="#41D1FF"></stop><stop offset="100%" stop-color="#BD34FE"></stop></linearGradient><linearGradient id="IconifyId1813088fe1fbc01fb467" x1="43.376%" x2="50.316%" y1="2.242%" y2="89.03%"><stop offset="0%" stop-color="#FFEA83"></stop><stop offset="8.333%" stop-color="#FFDD35"></stop><stop offset="100%" stop-color="#FFA800"></stop></linearGradient></defs><path fill="url(#IconifyId1813088fe1fbc01fb466)" d="M255.153 37.938L134.897 252.976c-2.483 4.44-8.862 4.466-11.382.048L.875 37.958c-2.746-4.814 1.371-10.646 6.827-9.67l120.385 21.517a6.537 6.537 0 0 0 2.322-.004l117.867-21.483c5.438-.991 9.574 4.796 6.877 9.62Z"></path><path fill="url(#IconifyId1813088fe1fbc01fb467)" d="M185.432.063L96.44 17.501a3.268 3.268 0 0 0-2.634 3.014l-5.474 92.456a3.268 3.268 0 0 0 3.997 3.378l24.777-5.718c2.318-.535 4.413 1.507 3.936 3.838l-7.361 36.047c-.495 2.426 1.782 4.5 4.151 3.78l15.304-4.649c2.372-.72 4.652 1.36 4.15 3.788l-11.698 56.621c-.732 3.542 3.979 5.473 5.943 2.437l1.313-2.028l72.516-144.72c1.215-2.423-.88-5.186-3.54-4.672l-25.505 4.922c-2.396.462-4.435-1.77-3.759-4.114l16.646-57.705c.677-2.35-1.37-4.583-3.769-4.113Z"></path></svg>
-</file>
-
-<file path="skills-lock.json">
-{
-  "version": 1,
-  "skills": {
-    "gemini-api-dev": {
-      "source": "google-gemini/gemini-skills",
-      "sourceType": "github",
-      "computedHash": "d521744b97bfe7847e7abc7b80e447fb1a5edc30d49f94b390db41318e1bdc4b"
-    },
-    "gemini-interactions-api": {
-      "source": "google-gemini/gemini-skills",
-      "sourceType": "github",
-      "computedHash": "dd9eb2f0595ea631b87932026ee8c4556d63b13fcb97fb564b78bd59f2b1eee6"
-    },
-    "react:components": {
-      "source": "google-labs-code/stitch-skills",
-      "sourceType": "github",
-      "computedHash": "5e786773a89012ae15b01b5c11942db30b09f935929283d8eb8a30b2da5fabf7"
-    }
-  }
-}
 </file>
 
 <file path="src/components/AutoTextarea.tsx">
@@ -4776,194 +3406,6 @@ export default function NoteCard({
         </div>
     );
 }
-</file>
-
-<file path="src/components/NoteEditor.tsx">
-import React, { useRef, useState } from 'react';
-import { AlignLeft, ImagePlus, List, ListOrdered, Loader2, Trash2, X } from 'lucide-react';
-import type { Note } from '../lib/types';
-import { NOTE_COLORS } from '../lib/types';
-import { uploadNoteImage } from '../lib/upload';
-import { logEvent } from '../lib/amplitude';
-
-const FORMAT_OPTIONS: { value: Note['format']; label: string; icon: React.ReactNode }[] = [
-    { value: 'freeform', label: 'Freeform', icon: <AlignLeft size={14} /> },
-    { value: 'bullet', label: 'Bullets', icon: <List size={14} /> },
-    { value: 'numbered', label: 'Numbered', icon: <ListOrdered size={14} /> },
-];
-
-export interface NoteEditorProps {
-    existingNote?: Note;
-    tripId?: string;
-    onSave: (data: { content: string; format: Note['format']; color?: string; images?: string[] }) => void;
-    onCancel: () => void;
-    onDelete?: () => void;
-}
-
-const NoteEditor: React.FC<NoteEditorProps> = ({ existingNote, tripId, onSave, onCancel, onDelete }) => {
-    const [content, setContent] = useState(existingNote?.content || '');
-    const [fmt, setFmt] = useState<Note['format']>(existingNote?.format || 'freeform');
-    const [color, setColor] = useState(existingNote?.color || '');
-    const [images, setImages] = useState<string[]>(existingNote?.images || []);
-    const [uploading, setUploading] = useState(false);
-    const [uploadError, setUploadError] = useState<string | null>(null);
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
-
-    const effectiveTripId = existingNote?.tripId || tripId || '';
-    const effectiveNoteId = existingNote?.id || 'new';
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        onSave({
-            content,
-            format: fmt,
-            color: color || undefined,
-            images: images.length > 0 ? images : undefined,
-        });
-    };
-
-    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files;
-        if (!files || files.length === 0) return;
-        setUploadError(null);
-        setUploading(true);
-
-        try {
-            const newUrls: string[] = [];
-            for (const file of Array.from(files)) {
-                const url = await uploadNoteImage(effectiveTripId, effectiveNoteId, file);
-                newUrls.push(url);
-            }
-            setImages(prev => [...prev, ...newUrls]);
-            logEvent('Note Image Uploaded', { count: newUrls.length });
-        } catch (err) {
-            console.error('Image upload failed:', err);
-            setUploadError(err instanceof Error ? err.message : 'Image upload failed.');
-        } finally {
-            setUploading(false);
-            if (fileInputRef.current) fileInputRef.current.value = '';
-        }
-    };
-
-    const removeImage = (index: number) => {
-        setImages(prev => prev.filter((_, i) => i !== index));
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (e.key !== 'Enter' || e.shiftKey) return;
-        if (fmt === 'freeform') return;
-
-        e.preventDefault();
-        const ta = textareaRef.current;
-        if (!ta) return;
-        const { selectionStart, selectionEnd } = ta;
-        const before = content.slice(0, selectionStart);
-        const after = content.slice(selectionEnd);
-        const newContent = before + '\n' + after;
-        setContent(newContent);
-        requestAnimationFrame(() => {
-            ta.selectionStart = ta.selectionEnd = selectionStart + 1;
-        });
-    };
-
-    return (
-        <form className="note-editor card animate-fade-in" onSubmit={handleSubmit}>
-            <div className="note-format-picker">
-                {FORMAT_OPTIONS.map(opt => (
-                    <button
-                        key={opt.value}
-                        type="button"
-                        className={`format-chip ${fmt === opt.value ? 'active' : ''}`}
-                        onClick={() => setFmt(opt.value)}
-                    >
-                        {opt.icon} {opt.label}
-                    </button>
-                ))}
-            </div>
-
-            <textarea
-                ref={textareaRef}
-                className="input-field note-content-input"
-                value={content}
-                onChange={e => setContent(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={fmt === 'bullet' ? 'Enter each item on a new line...' : fmt === 'numbered' ? 'Enter each step on a new line...' : 'Start typing...'}
-                rows={6}
-                autoFocus
-            />
-
-            {/* Image upload */}
-            <div className="note-image-section">
-                <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/gif,image/webp"
-                    multiple
-                    hidden
-                    onChange={handleFileSelect}
-                />
-                <button
-                    type="button"
-                    className="btn btn-outline btn-sm"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading}
-                >
-                    {uploading ? <><Loader2 size={14} className="spin" /> Uploading...</> : <><ImagePlus size={14} /> Add images</>}
-                </button>
-                {uploadError && <span className="note-upload-error">{uploadError}</span>}
-            </div>
-
-            {images.length > 0 && (
-                <div className="note-image-previews">
-                    {images.map((url, i) => (
-                        <div key={i} className="note-image-thumb">
-                            <img src={url} alt="" />
-                            <button type="button" className="note-image-remove" onClick={() => removeImage(i)} aria-label="Remove image">
-                                <X size={12} />
-                            </button>
-                        </div>
-                    ))}
-                </div>
-            )}
-
-            <div className="note-color-picker">
-                <button
-                    type="button"
-                    className={`note-color-swatch no-color ${!color ? 'active' : ''}`}
-                    onClick={() => setColor('')}
-                    aria-label="No color"
-                />
-                {NOTE_COLORS.map(c => (
-                    <button
-                        key={c}
-                        type="button"
-                        className={`note-color-swatch ${color === c ? 'active' : ''}`}
-                        style={{ backgroundColor: c }}
-                        onClick={() => setColor(c)}
-                        aria-label={`Color ${c}`}
-                    />
-                ))}
-            </div>
-
-            <div className="form-actions">
-                {onDelete && (
-                    <button type="button" className="btn btn-danger btn-sm" onClick={onDelete}>
-                        <Trash2 size={14} /> Delete
-                    </button>
-                )}
-                <div className="form-actions-right">
-                    <button type="button" className="btn btn-ghost" onClick={onCancel}>Cancel</button>
-                    <button type="submit" className="btn btn-primary" disabled={uploading}>
-                        {existingNote ? 'Save' : 'Add Note'}
-                    </button>
-                </div>
-            </div>
-        </form>
-    );
-};
-
-export default NoteEditor;
 </file>
 
 <file path="src/components/OnlineStatus.css">
@@ -6024,27 +4466,37 @@ export async function hydrateTripScenarioStore(): Promise<TripScenarioStore> {
 }
 </file>
 
-<file path="src/lib/services/aiService.ts">
-/**
- * AI generation facade. Import from here instead of `../gemini` in app/feature code
- * so proxy and throttling stay behind one module boundary.
- */
-export { DEFAULT_GEMINI_MODEL, generateWithGemini } from '../gemini';
-</file>
+> **Note:** Embedded snapshots of removed `src/lib/services/aiService.ts` and `placesService.ts` barrels were deleted from this doc. Import `generateWithGemini` / `DEFAULT_GEMINI_MODEL` from `src/lib/gemini.ts` and Places API from `src/lib/places.ts`.
 
-<file path="src/lib/services/placesService.ts">
-/**
- * Places facade. Re-exports `places.ts` so pages/components depend on `services/placesService`.
- */
-export type { ActivityCategory, PlaceDetails, PlaceProsCons, PlaceResult, PlaceReview } from '../places';
-export {
-    fetchNearbyPlaces,
-    fetchNearbyRestaurants,
-    fetchPlaceDetails,
-    generateProsCons,
-    getNearbyPlacesLabel,
-    resolvePlaceId,
-} from '../places';
+<file path="src/lib/tripDefaultDay.ts">
+import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
+
+/** Whether `dateStr` (yyyy-MM-dd) falls within the trip's start/end (inclusive, local day bounds). */
+export function isDateInTripRange(dateStr: string, trip: { startDate: string; endDate: string }): boolean {
+    try {
+        const d = parseISO(dateStr);
+        const start = startOfDay(parseISO(trip.startDate));
+        const end = endOfDay(parseISO(trip.endDate));
+        if (Number.isNaN(d.getTime()) || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return false;
+        return d >= start && d <= end;
+    } catch {
+        return false;
+    }
+}
+
+/** If today falls within the trip (local calendar days), return today as yyyy-MM-dd; otherwise trip.startDate. */
+export function getDefaultDayDateStr(trip: { startDate: string; endDate: string }): string {
+    const start = startOfDay(parseISO(trip.startDate));
+    const end = endOfDay(parseISO(trip.endDate));
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+        return trip.startDate;
+    }
+    const today = new Date();
+    if (isWithinInterval(today, { start, end })) {
+        return format(today, 'yyyy-MM-dd');
+    }
+    return trip.startDate;
+}
 </file>
 
 <file path="src/lib/tripEmoji.ts">
@@ -6740,426 +5192,731 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 );
 </file>
 
-<file path="src/pages/Weather.tsx">
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { format, parseISO } from 'date-fns';
-import { CloudSun, RefreshCw, ChevronDown, ChevronUp, Pencil, Check } from 'lucide-react';
+<file path="src/pages/TripDayView.tsx">
+import React, { useRef, useState } from 'react';
+import { Navigate, useParams, useNavigate, Link } from 'react-router-dom';
+import { format, isSameDay } from 'date-fns';
+import { toPng } from 'html-to-image';
+import { AlertTriangle, CalendarPlus, ImageDown, Info, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
+import { buildIcsForDay, downloadIcsFile } from '../lib/exportDayIcs';
+import { CATEGORY_EMOJIS } from '../lib/types';
+import ActivityForm from '../components/ActivityForm';
+import DraggableList from '../components/DraggableList';
+import Markdown from '../components/Markdown';
+import ScenarioSwitcher from '../components/ScenarioSwitcher';
+import WeatherBadge from '../components/WeatherBadge';
+import NearbyRestaurants from '../components/NearbyRestaurants';
+import ActivityReviews from '../components/ActivityReviews';
+import { useCalendarViewController } from './useCalendarViewController';
 import { useTrips } from '../lib/store';
-import { useWeatherForTrip, formatTemp, type WeatherRequestLog } from '../lib/weather';
-import { getDatesMissingLocation, getEffectiveDayLocations } from '../lib/itinerary';
-import { useSettings } from '../lib/settings';
-import { logEvent } from '../lib/amplitude';
-import type { TempUnit } from '../lib/weather';
+import { getDefaultDayDateStr, isDateInTripRange } from '../lib/tripDefaultDay';
+import styles from './CalendarView.module.css';
 
-const MAX_DEBUG_LOGS = 80;
-
-function formatTime(iso: string): string {
-  if (!iso) return '—';
-  try {
-    const d = parseISO(iso.replace('Z', ''));
-    if (isNaN(d.getTime())) return '—';
-    return format(d, 'HH:mm');
-  } catch {
-    return '—';
-  }
+function sanitizeFilenameBase(name: string): string {
+    return name.replace(/[^\w-]+/g, '_').replace(/_+/g, '_').slice(0, 80) || 'trip';
 }
 
-const Weather: React.FC = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const tripIdParam = searchParams.get('trip');
-  const { trips, updateItineraryDay } = useTrips();
-  const settings = useSettings();
-  const tempUnit = settings.temperatureUnit as TempUnit;
-  const hourlyStart = settings.hourlyForecastStartHour ?? 9;
-  const hourlyEnd = settings.hourlyForecastEndHour ?? 21;
+const TripDayView: React.FC = () => {
+    const { tripId, date: dateParam } = useParams<{ tripId: string; date: string }>();
+    const navigate = useNavigate();
+    const { trips, loading: tripsLoading } = useTrips();
 
-  const selectedTripId = tripIdParam && trips.some((t) => t.id === tripIdParam)
-    ? tripIdParam
-    : trips[0]?.id ?? null;
-  const selectedTrip = trips.find((t) => t.id === selectedTripId);
+    const dayExportRef = useRef<HTMLDivElement>(null);
+    const [exportImageLoading, setExportImageLoading] = useState(false);
 
-  const [requestLogs, setRequestLogs] = useState<WeatherRequestLog[]>([]);
-  const [debugOpen, setDebugOpen] = useState(false);
-  const [editingLocationDate, setEditingLocationDate] = useState<string | null>(null);
-  const [editLocationValue, setEditLocationValue] = useState('');
+    const {
+        updateItineraryDay,
+        activities,
+        updateActivity,
+        deleteActivity,
+        restoreActivity,
+        reorderActivities,
+        showToast,
+        appSettings,
+        currentDate,
+        setCurrentDate,
+        selectedTripId,
+        selectedTrip,
+        addingActivityForDate,
+        setAddingActivityForDate,
+        editingActivityId,
+        setEditingActivityId,
+        tripSummary,
+        setTripSummary,
+        summaryLoading,
+        summaryError,
+        optimizationLoading,
+        optimizationError,
+        optimizedRoute,
+        setOptimizedRoute,
+        descriptionLoading,
+        descriptionError,
+        pendingDescriptions,
+        setPendingDescriptions,
+        showNearbyRestaurantsForActivityId,
+        setShowNearbyRestaurantsForActivityId,
+        reviewsActivityId,
+        setReviewsActivityId,
+        conflictsExpandedDate,
+        setConflictsExpandedDate,
+        weatherByDate,
+        weatherLoading,
+        activeScenario,
+        effectiveTrip,
+        hasLocationForDate,
+        effectiveActivities,
+        currentDateStr,
+        currentDayLocations,
+        effectiveRoutes,
+        tripDays,
+        handleReorderActivities,
+        getActivityColor,
+        dayViewActivities,
+        planningConflicts,
+        conflictCountsByDate,
+        handleSaveActivity,
+        handleGenerateSummary,
+        handleOptimizeRoute,
+        handleGenerateDescriptions,
+        dismissPendingDescription,
+        applyPendingDescription,
+        handleAcceptAllDescriptions,
+        hasDaySummaryContent,
+        getNearbyPlacesLabel,
+        updateScenarioTripSnapshot,
+        getEffectiveDayLocations,
+        reorderScenarioActivities,
+        removeScenarioActivity,
+    } = useCalendarViewController({ routeTripId: tripId ?? null, routeDateStr: dateParam ?? null });
 
-  const onRequestLog = useCallback((entry: WeatherRequestLog) => {
-    setRequestLogs((prev) => [...prev.slice(-(MAX_DEBUG_LOGS - 1)), entry]);
-  }, []);
+    const tripFromStore = tripId ? trips.find((t) => t.id === tripId) : undefined;
 
-  useEffect(() => {
-    if (selectedTripId && selectedTripId !== tripIdParam) {
-      setSearchParams({ trip: selectedTripId }, { replace: true });
+    if (!tripId || !dateParam) {
+        return <Navigate to="/spreadsheet" replace />;
     }
-  }, [selectedTripId, tripIdParam, setSearchParams]);
 
-  const { weatherByDate, loading: weatherLoading, refetch } = useWeatherForTrip(selectedTrip ?? null, { onRequestLog });
-  const datesMissingLocation = getDatesMissingLocation(selectedTrip ?? null);
-  const [expandedDate, setExpandedDate] = useState<string | null>(null);
-  const tripDaysRef = useRef<string[]>([]);
-
-  const tripDays: string[] = React.useMemo(() => {
-    if (!selectedTrip) return [];
-    const out: string[] = [];
-    try {
-      const start = new Date(selectedTrip.startDate + 'T12:00:00Z');
-      const end = new Date(selectedTrip.endDate + 'T12:00:00Z');
-      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        out.push(d.toISOString().slice(0, 10));
-      }
-    } catch { /* ignore */ }
-    return out;
-  }, [selectedTrip?.id, selectedTrip?.startDate, selectedTrip?.endDate]);
-
-  useEffect(() => {
-    if (tripDays.length > 0 && expandedDate === null) {
-      setExpandedDate(tripDays[0]);
-    }
-    tripDaysRef.current = tripDays;
-  }, [tripDays.join(',')]);
-
-  useEffect(() => {
-    if (selectedTripId && tripDays.length > 0) {
-      logEvent('Weather Page Viewed', { trip_id: selectedTripId, total_days: tripDays.length });
-    }
-  }, [selectedTripId, tripDays.length]);
-
-  if (trips.length === 0) {
-    return (
-      <div className="page-container animate-fade-in">
-        <header className="page-header">
-          <h1>Weather</h1>
-          <p>Create a trip first to see weather forecasts.</p>
-        </header>
-      </div>
-    );
-  }
-
-  return (
-    <div className="page-container animate-fade-in">
-      <header className="page-header" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <CloudSun size={28} style={{ color: 'var(--primary-color)' }} />
-          <div>
-            <h1 style={{ margin: 0 }}>Weather</h1>
-            <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Forecast for your trip</p>
-          </div>
-        </div>
-        <select
-          className="input-field"
-          value={selectedTripId ?? ''}
-          onChange={(e) => {
-            const id = e.target.value || null;
-            setSearchParams(id ? { trip: id } : {}, { replace: true });
-          }}
-          style={{ minWidth: '200px' }}
-        >
-          {trips.map((t) => (
-            <option key={t.id} value={t.id}>{t.name}</option>
-          ))}
-        </select>
-        <button
-          type="button"
-          className="btn btn-ghost"
-          onClick={() => {
-            refetch();
-            logEvent('Weather Refreshed', { trip_id: selectedTripId ?? undefined });
-          }}
-          disabled={weatherLoading}
-          title="Sync latest weather"
-        >
-          <RefreshCw size={18} className={weatherLoading ? 'spin' : undefined} />
-          {weatherLoading ? ' Updating…' : ' Sync weather'}
-        </button>
-      </header>
-
-      {datesMissingLocation.length > 0 && (
-        <div
-          style={{
-            marginTop: '1rem',
-            padding: '0.75rem 1rem',
-            background: 'var(--border-light)',
-            borderRadius: 'var(--radius-md)',
-            fontSize: '0.9rem',
-            color: 'var(--text-secondary)',
-          }}
-        >
-          Add a city for {datesMissingLocation.length} day{datesMissingLocation.length === 1 ? '' : 's'} to see forecasts: set locations in Calendar or Spreadsheet.
-        </div>
-      )}
-
-      {weatherLoading ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
-          {tripDays.map((dateStr) => (
-            <div
-              key={dateStr}
-              style={{
-                height: '56px',
-                borderRadius: 'var(--radius-md)',
-                background: 'var(--border-light)',
-                animation: 'weather-shimmer 1.5s ease-in-out infinite',
-              }}
-            />
-          ))}
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
-          {tripDays.map((dateStr) => {
-            const days = weatherByDate.get(dateStr) ?? [];
-            const firstDay = days[0];
-            const isExpanded = expandedDate === dateStr;
-            const hasLocation = getEffectiveDayLocations(selectedTrip?.itinerary?.[dateStr], selectedTrip?.dayLocations?.[dateStr]).length > 0;
-            const canExpand = days.length > 0 || hasLocation;
-
-            return (
-              <div
-                key={dateStr}
-                className="card"
-                style={{
-                  padding: 0,
-                  overflow: 'hidden',
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!canExpand) return;
-                    if (isExpanded) {
-                      setExpandedDate(null);
-                    } else {
-                      setExpandedDate(dateStr);
-                      if (firstDay) logEvent('Weather Day Expanded', { trip_id: selectedTripId, date: dateStr, location: firstDay.location });
-                    }
-                  }}
-                  style={{
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '0.75rem 1rem',
-                    border: 'none',
-                    background: 'transparent',
-                    color: 'inherit',
-                    font: 'inherit',
-                    cursor: canExpand ? 'pointer' : 'default',
-                    textAlign: 'left',
-                  }}
-                >
-                  <span style={{ color: 'var(--text-primary)' }}>
-                    {format(parseISO(dateStr), 'EEE MMM d')}
-                    {' · '}
-                    <span style={{ color: 'var(--text-secondary)' }}>
-                      📍 {days.length > 0 ? days.map((d) => d.location).join(', ') : (getEffectiveDayLocations(selectedTrip?.itinerary?.[dateStr], selectedTrip?.dayLocations?.[dateStr]).join(', ') || '—')}
-                    </span>
-                  </span>
-                  {firstDay?.isForecastAvailable ? (
-                    <span>
-                      {firstDay.emoji} {formatTemp(firstDay.tempMinC, tempUnit)}–{formatTemp(firstDay.tempMaxC, tempUnit)}
-                    </span>
-                  ) : (
-                    <span style={{ color: 'var(--text-tertiary)' }}>—</span>
-                  )}
-                </button>
-
-                {isExpanded && (
-                  <div style={{ padding: '0 1rem 1rem', borderTop: '1px solid var(--border-color)' }}>
-                    {/* Per-day location edit: overwrites app-wide for this date */}
-                    <div style={{ marginTop: '0.75rem', marginBottom: '0.5rem' }}>
-                      {editingLocationDate === dateStr ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                          <input
-                            type="text"
-                            className="input-field"
-                            value={editLocationValue}
-                            onChange={(e) => setEditLocationValue(e.target.value)}
-                            placeholder="City or cities (comma-separated)"
-                            style={{ flex: '1 1 200px', minWidth: 0 }}
-                            autoFocus
-                          />
-                          <button
-                            type="button"
-                            className="btn btn-primary"
-                            onClick={() => {
-                              const raw = editLocationValue.trim();
-                              const locations = raw ? raw.split(',').map((s) => s.trim()).filter(Boolean) : [];
-                              if (selectedTripId && locations.length > 0) {
-                                updateItineraryDay(selectedTripId, dateStr, {
-                                  location: locations[0],
-                                  locations,
-                                });
-                                logEvent('Weather Day Location Updated', { trip_id: selectedTripId, date: dateStr });
-                              }
-                              setEditingLocationDate(null);
-                              setEditLocationValue('');
-                            }}
-                          >
-                            <Check size={16} /> Save
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-ghost"
-                            onClick={() => {
-                              setEditingLocationDate(null);
-                              setEditLocationValue('');
-                            }}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          className="btn btn-ghost"
-                          style={{ fontSize: '0.85rem' }}
-                          onClick={() => {
-                            const current = getEffectiveDayLocations(selectedTrip?.itinerary?.[dateStr], selectedTrip?.dayLocations?.[dateStr]).join(', ');
-                            setEditLocationValue(current);
-                            setEditingLocationDate(dateStr);
-                          }}
-                        >
-                          <Pencil size={14} /> Edit location for this day
-                        </button>
-                      )}
-                    </div>
-                    {days.length === 0 ? (
-                      <div style={{ paddingTop: '0.25rem', color: 'var(--text-tertiary)', fontSize: '0.9rem' }}>
-                        Add a location for this day to see forecast (use &quot;Edit location&quot; above or set in Calendar/Spreadsheet).
-                      </div>
-                    ) : (
-                      days.map((day, idx) => (
-                        <div key={day.location + idx} style={{ marginTop: idx > 0 ? '1.25rem' : '0.75rem' }}>
-                          <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>📍 {day.location}</div>
-                          {day.isForecastAvailable ? (
-                            <>
-                              <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.9rem' }}>
-                                <div style={{ fontWeight: 600 }}>{day.emoji ?? '🌡'} {day.weatherLabel ?? '—'}</div>
-                                <div>🌡 High {formatTemp(day.tempMaxC, tempUnit)} Low {formatTemp(day.tempMinC, tempUnit)}</div>
-                                <div>🌧 Precip: {(day.precipitationMm ?? 0).toFixed(1)}mm · {day.precipitationProbabilityMax ?? 0}% chance</div>
-                                <div>☀ UV Index: {day.uvIndexMax ?? '—'}</div>
-                                <div>🌅 Sunrise {formatTime(day.sunriseIso ?? '')}</div>
-                                <div>🌇 Sunset {formatTime(day.sunsetIso ?? '')}</div>
-                              </div>
-                              <div style={{ marginTop: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>Hourly</div>
-                              <div
-                                style={{
-                                  display: 'grid',
-                                  gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
-                                  gap: '0.35rem',
-                                  maxHeight: '280px',
-                                  overflowY: 'auto',
-                                  fontSize: '0.8rem',
-                                  color: 'var(--text-secondary)',
-                                }}
-                              >
-                                {(day.hours ?? []).filter((h) => h.hour >= hourlyStart && h.hour <= hourlyEnd).map((h) => (
-                                  <div
-                                    key={h.hour}
-                                    style={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: '0.35rem',
-                                      padding: '0.25rem 0.4rem',
-                                      background: 'var(--surface-color)',
-                                      borderRadius: 'var(--radius-sm)',
-                                    }}
-                                  >
-                                    <span style={{ color: 'var(--text-tertiary)', minWidth: '2.5rem' }}>
-                                      [{String(h.hour).padStart(2, '0')}:00]
-                                    </span>
-                                    <span>{h.emoji}</span>
-                                    <span>{formatTemp(h.tempC, tempUnit)}</span>
-                                    <span>{h.precipitationMm.toFixed(1)}mm {h.precipitationProbability}%</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </>
-                          ) : (
-                            <div style={{ color: 'var(--text-tertiary)', fontSize: '0.9rem' }}>
-                              Forecast not yet available
-                              {dateStr < format(new Date(), 'yyyy-MM-dd') && (
-                                <span style={{ display: 'block', marginTop: '0.25rem' }}>
-                                  Forecast is only available for the next 16 days from today.
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Temporary debug panel: Open-Meteo request attempts (remove later) */}
-      <div style={{ marginTop: '2rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
-        <button
-          type="button"
-          onClick={() => setDebugOpen((o) => !o)}
-          style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '0.5rem 0.75rem',
-            background: 'var(--surface-color)',
-            border: 'none',
-            font: 'inherit',
-            color: 'var(--text-secondary)',
-            cursor: 'pointer',
-            fontSize: '0.85rem',
-          }}
-        >
-          <span>Debug: Open-Meteo requests ({requestLogs.length})</span>
-          {debugOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-        </button>
-        {debugOpen && (
-          <div style={{ padding: '0.75rem', background: 'var(--bg-color)', maxHeight: '320px', overflowY: 'auto', fontSize: '0.8rem', fontFamily: 'monospace' }}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.5rem' }}>
-              <button
-                type="button"
-                className="btn btn-ghost"
-                style={{ fontSize: '0.75rem' }}
-                onClick={() => setRequestLogs([])}
-              >
-                Clear logs
-              </button>
+    if (tripsLoading) {
+        return (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+                <Loader2 size={28} className="spin" style={{ color: 'var(--primary-color)' }} />
             </div>
-            {requestLogs.length === 0 ? (
-              <div style={{ color: 'var(--text-tertiary)' }}>No requests yet. Select a trip with day locations and click Sync weather.</div>
-            ) : (
-              <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-                {requestLogs.map((log) => (
-                  <li
-                    key={log.id}
-                    style={{
-                      padding: '0.25rem 0',
-                      borderBottom: '1px solid var(--border-light)',
-                      color: log.ok ? 'var(--text-secondary)' : 'var(--error-color, #c00)',
-                    }}
-                  >
-                    <span style={{ color: 'var(--text-tertiary)', marginRight: '0.5rem' }}>{log.time.slice(11, 19)}</span>
-                    <span style={{ fontWeight: 600 }}>{log.type}</span>
-                    {log.location != null && <span> {log.location}</span>}
-                    {log.status != null && <span> HTTP {log.status}</span>}
-                    {log.message != null && <span> — {log.message}</span>}
-                    <div style={{ wordBreak: 'break-all', marginTop: '0.15rem', color: 'var(--text-tertiary)' }}>{log.url}</div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
+        );
+    }
+
+    if (!tripFromStore) {
+        return <Navigate to="/spreadsheet" replace />;
+    }
+
+    if (!isDateInTripRange(dateParam, tripFromStore)) {
+        const fallback = getDefaultDayDateStr(tripFromStore);
+        return <Navigate to={`/trip/${tripId}/day/${fallback}`} replace />;
+    }
+
+    const handleExportDayIcs = () => {
+        if (!selectedTrip || !selectedTripId) return;
+        const ics = buildIcsForDay({
+            tripName: selectedTrip.name,
+            dateStr: currentDateStr,
+            activities: dayViewActivities,
+        });
+        const base = sanitizeFilenameBase(selectedTrip.name);
+        downloadIcsFile(`${base}-${currentDateStr}.ics`, ics);
+    };
+
+    const handleExportDayImage = async () => {
+        const el = dayExportRef.current;
+        if (!el || !selectedTrip) return;
+        setExportImageLoading(true);
+        try {
+            const dataUrl = await toPng(el, {
+                pixelRatio: 2,
+                cacheBust: true,
+                backgroundColor: getComputedStyle(document.body).backgroundColor || '#ffffff',
+                filter: (node) => !(node instanceof HTMLElement && node.classList.contains('no-export')),
+            });
+            const a = document.createElement('a');
+            a.href = dataUrl;
+            a.download = `${sanitizeFilenameBase(selectedTrip.name)}-${currentDateStr}.png`;
+            a.click();
+        } catch (e) {
+            console.error(e);
+            showToast('Could not create image. Try again or use a shorter day.');
+        } finally {
+            setExportImageLoading(false);
+        }
+    };
+
+    const goToDay = (day: Date, dateStr: string, conflictCount: number) => {
+        navigate(`/trip/${tripId}/day/${dateStr}`);
+        setCurrentDate(day);
+        if (conflictCount > 0) {
+            setConflictsExpandedDate((prev) => (prev === dateStr ? null : dateStr));
+        } else {
+            setConflictsExpandedDate(null);
+        }
+    };
+
+    return (
+        <div className="page-container animate-fade-in">
+            <header className="page-header">
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem' }}>
+                    <div>
+                        <h1>Day</h1>
+                        <p>
+                            {selectedTrip ? (
+                                <>
+                                    {selectedTrip.name} · {format(currentDate, 'EEEE, MMM d, yyyy')}
+                                </>
+                            ) : (
+                                'Trip day'
+                            )}
+                        </p>
+                    </div>
+                    <Link to="/calendar" className="btn btn-ghost btn-sm">
+                        Calendar overview
+                    </Link>
+                </div>
+            </header>
+
+            <div className={styles['calendar-controls']}>
+                {selectedTrip && (
+                    <ScenarioSwitcher trip={selectedTrip} activities={effectiveActivities} routes={effectiveRoutes} />
+                )}
+
+                {selectedTrip && tripDays.length > 0 && (
+                    <div className={styles['day-nav-wrapper']}>
+                        <div className={styles['day-pills']}>
+                            {tripDays.map((day, idx) => {
+                                const ds = format(day, 'yyyy-MM-dd');
+                                const count = conflictCountsByDate[ds] || 0;
+                                return (
+                                    <button
+                                        key={idx}
+                                        type="button"
+                                        className={`${styles['day-pill']} ${isSameDay(day, currentDate) ? styles['active'] : ''} ${isSameDay(day, new Date()) ? styles['today'] : ''}`}
+                                        onClick={() => goToDay(day, ds, count)}
+                                        title={format(day, 'EEEE, MMM d')}
+                                    >
+                                        <span className={styles['day-pill-num']}>{format(day, 'd')}</span>
+                                        <span className={styles['day-pill-dow']}>{format(day, 'EEE')}</span>
+                                        {appSettings.showPlanningChecks && count > 0 && (
+                                            <span className={styles['issue-badge']}>{count}</span>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        {appSettings.showPlanningChecks && conflictsExpandedDate && (() => {
+                            const expanded = planningConflicts.filter((c) => c.date === conflictsExpandedDate);
+                            if (expanded.length === 0) return null;
+                            return (
+                                <div className={styles['inline-conflicts']}>
+                                    {expanded.map((c) => (
+                                        <div key={c.id} className={styles['inline-conflict-item']}>
+                                            <span
+                                                className={`${styles['inline-conflict-icon']} ${c.severity === 'info' ? styles['info'] : ''}`}
+                                            >
+                                                {c.severity === 'warning' ? <AlertTriangle size={13} /> : <Info size={13} />}
+                                            </span>
+                                            <span>
+                                                <span className={styles['inline-conflict-title']}>{c.title}</span>
+                                                {c.message}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            );
+                        })()}
+                    </div>
+                )}
+            </div>
+
+            <div className={styles['day-detail-view']}>
+                {selectedTrip && (
+                    <div
+                        className={`${styles['day-export-toolbar']} no-export`}
+                        style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}
+                    >
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={handleExportDayIcs} title="Download .ics for this day">
+                            <CalendarPlus size={16} /> Export .ics
+                        </button>
+                        <button
+                            type="button"
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => void handleExportDayImage()}
+                            disabled={exportImageLoading}
+                            title="Save the full day view as a PNG"
+                        >
+                            {exportImageLoading ? <Loader2 size={16} className="spin" /> : <ImageDown size={16} />}
+                            Export day image
+                        </button>
+                        <span className="text-sm text-subtle" style={{ margin: 0 }}>
+                            For multi-day trips, export each day separately.
+                        </span>
+                    </div>
+                )}
+                <div ref={dayExportRef} className={styles['day-export-capture']}>
+                    {selectedTrip && (
+                        <div className={styles['day-export-heading']} style={{ marginBottom: '0.75rem' }}>
+                            <h2 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)' }}>
+                                {selectedTrip.name} · {format(currentDate, 'EEEE, MMM d, yyyy')}
+                            </h2>
+                        </div>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <WeatherBadge
+                                day={weatherByDate.get(currentDateStr)?.[0]}
+                                hasLocation={hasLocationForDate(currentDateStr)}
+                                loading={weatherLoading}
+                                tempUnit={appSettings.temperatureUnit}
+                                compact={false}
+                            />
+                        </div>
+                    </div>
+                    <div className={`${styles['day-accommodation-card']} card`}>
+                        <div className={styles['acc-card-header']} style={{ alignItems: 'baseline' }}>
+                            <div className={styles['acc-card-icon']}>📅</div>
+                            <div className={styles['acc-card-info']}>
+                                <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
+                                    {format(currentDate, 'EEEE, MMM d')}
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                    <div>
+                                        <label htmlFor="day-location-input-tripday" className={styles['acc-label']}>
+                                            City
+                                        </label>
+                                        <input
+                                            id="day-location-input-tripday"
+                                            type="text"
+                                            className={`${styles['acc-name-input']} ${styles['input-transparent']}`}
+                                            placeholder="e.g. Tokyo or Tokyo, Kyoto"
+                                            defaultValue={currentDayLocations.join(', ')}
+                                            key={`day-loc-${selectedTripId}-${activeScenario?.id ?? 'live'}-${currentDateStr}`}
+                                            onBlur={(e) => {
+                                                const raw = e.target.value;
+                                                const parsed = raw.split(',').map((s) => s.trim()).filter(Boolean);
+                                                const prev = getEffectiveDayLocations(
+                                                    effectiveTrip?.itinerary?.[currentDateStr],
+                                                    effectiveTrip?.dayLocations?.[currentDateStr],
+                                                );
+                                                if (parsed.join(', ') === prev.join(', ')) return;
+                                                if (!selectedTripId) return;
+                                                const updates =
+                                                    parsed.length === 0
+                                                        ? { location: '', locations: [] as string[] }
+                                                        : parsed.length === 1
+                                                          ? { location: parsed[0], locations: [parsed[0]] }
+                                                          : { location: parsed[0], locations: parsed };
+                                                if (activeScenario) {
+                                                    updateScenarioTripSnapshot(selectedTripId, activeScenario.id, (trip) => ({
+                                                        ...trip,
+                                                        itinerary: {
+                                                            ...(trip.itinerary || {}),
+                                                            [currentDateStr]: { ...(trip.itinerary?.[currentDateStr] || {}), ...updates },
+                                                        },
+                                                    }));
+                                                } else {
+                                                    updateItineraryDay(selectedTripId, currentDateStr, updates);
+                                                }
+                                            }}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                                            }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className={styles['acc-label']}>Accommodation</label>
+                                        <input
+                                            type="text"
+                                            className={`${styles['acc-name-input']} ${styles['input-transparent']}`}
+                                            placeholder="Hotel / Ryokan / Airbnb"
+                                            defaultValue={effectiveTrip?.itinerary?.[currentDateStr]?.accommodation?.name ?? ''}
+                                            key={`acc-name-inline-${selectedTripId}-${activeScenario?.id ?? 'live'}-${currentDateStr}`}
+                                            onBlur={(e) => {
+                                                const val = e.target.value.trim();
+                                                const current = effectiveTrip?.itinerary?.[currentDateStr]?.accommodation;
+                                                if (val !== (current?.name ?? '')) {
+                                                    if (selectedTripId && activeScenario) {
+                                                        updateScenarioTripSnapshot(selectedTripId, activeScenario.id, (trip) => ({
+                                                            ...trip,
+                                                            itinerary: {
+                                                                ...(trip.itinerary || {}),
+                                                                [currentDateStr]: {
+                                                                    ...(trip.itinerary?.[currentDateStr] || {}),
+                                                                    accommodation: { ...current, name: val },
+                                                                },
+                                                            },
+                                                        }));
+                                                    } else {
+                                                        updateItineraryDay(selectedTripId!, currentDateStr, {
+                                                            accommodation: { ...current, name: val },
+                                                        });
+                                                    }
+                                                }
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className={`${styles['planning-action-row']} no-export`}>
+                        <div className={styles['planning-action-row__left']}>
+                            <button
+                                type="button"
+                                className={`${styles['action-btn']} ${styles['action-btn-violet']}`}
+                                onClick={handleGenerateDescriptions}
+                                disabled={descriptionLoading || dayViewActivities.length === 0}
+                            >
+                                <span className={styles['action-btn-icon']}>✨</span>
+                                {descriptionLoading ? (
+                                    <>
+                                        <Loader2 size={14} className="spin" /> Describing…
+                                    </>
+                                ) : (
+                                    'Describe Day'
+                                )}
+                            </button>
+                            <button
+                                type="button"
+                                className={`${styles['action-btn']} ${styles['action-btn-amber']}`}
+                                onClick={handleGenerateSummary}
+                                disabled={summaryLoading || dayViewActivities.length === 0}
+                            >
+                                <span className={styles['action-btn-icon']}>📝</span>
+                                {summaryLoading ? (
+                                    <>
+                                        <Loader2 size={14} className="spin" /> Generating…
+                                    </>
+                                ) : (
+                                    'AI Summary'
+                                )}
+                            </button>
+                            <button
+                                type="button"
+                                className={`${styles['action-btn']} ${styles['action-btn-mint']}`}
+                                onClick={handleOptimizeRoute}
+                                disabled={optimizationLoading || dayViewActivities.length <= 1}
+                            >
+                                <span className={styles['action-btn-icon']}>🗺️</span>
+                                {optimizationLoading ? (
+                                    <>
+                                        <Loader2 size={14} className="spin" /> Optimizing…
+                                    </>
+                                ) : (
+                                    'Optimize Route'
+                                )}
+                            </button>
+                        </div>
+                        {selectedTripId && addingActivityForDate !== currentDateStr && (
+                            <button
+                                type="button"
+                                className={`${styles['action-btn']} ${styles['action-btn-sky']}`}
+                                onClick={() => setAddingActivityForDate(currentDateStr)}
+                            >
+                                <Plus size={18} /> Add activity
+                            </button>
+                        )}
+                    </div>
+                    {selectedTripId && dayViewActivities.length > 0 && hasDaySummaryContent && (
+                        <div className={`${styles['day-summary-section']} no-export`}>
+                            {descriptionError && <p className="text-red-500 text-sm mt-2">{descriptionError}</p>}
+                            {summaryError && <p className="text-red-500 text-sm mt-2">{summaryError}</p>}
+                            {optimizationError && <p className="text-red-500 text-sm mt-2">{optimizationError}</p>}
+
+                            {pendingDescriptions && (
+                                <div className={`${styles['description-suggestion-card']} card`}>
+                                    <div className={styles['description-suggestion-header']}>
+                                        <div>
+                                            <h4 className={styles['trip-summary-header']}>Suggested Activity Descriptions</h4>
+                                            <p className={styles['trip-summary-text']}>
+                                                Gemini drafted every activity in one request with a short description plus local tips and recommendations.
+                                            </p>
+                                        </div>
+                                        <div className={styles['description-suggestion-actions']}>
+                                            <button type="button" className="btn btn-primary btn-sm" onClick={() => void handleAcceptAllDescriptions()}>
+                                                Accept all
+                                            </button>
+                                            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setPendingDescriptions(null)}>
+                                                Dismiss all
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className={styles['description-suggestion-list']}>
+                                        {pendingDescriptions.map((item) => (
+                                            <div key={item.activityId} className={styles['description-suggestion-item']}>
+                                                <div className={styles['description-suggestion-copy']}>
+                                                    <p className={styles['description-suggestion-title']}>{item.title}</p>
+                                                    <p className={styles['description-suggestion-summary']}>{item.summary}</p>
+                                                    <ul className={styles['description-suggestion-tips']}>
+                                                        {item.tips.map((tip, index) => (
+                                                            <li key={`${item.activityId}-${index}`}>{tip}</li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                                <div className={styles['description-suggestion-actions']}>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-primary btn-sm"
+                                                        onClick={() => void applyPendingDescription(item.activityId, item.summary, item.tips)}
+                                                    >
+                                                        Accept
+                                                    </button>
+                                                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => dismissPendingDescription(item.activityId)}>
+                                                        Decline
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {tripSummary && (
+                                <div className="trip-summary-card card" style={{ padding: '1rem', marginTop: '0.75rem' }}>
+                                    <h4 className={styles['trip-summary-header']}>AI Trip Summary</h4>
+                                    <p className={styles['trip-summary-text']}>{tripSummary.summary}</p>
+                                    {tripSummary.highlights.length > 0 && (
+                                        <ul className={styles['trip-summary-highlights']}>
+                                            {tripSummary.highlights.map((h, i) => (
+                                                <li key={i}>{h}</li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                    <button type="button" className="btn btn-ghost btn-sm" style={{ marginTop: '0.5rem' }} onClick={() => setTripSummary(null)}>
+                                        Dismiss
+                                    </button>
+                                </div>
+                            )}
+
+                            {optimizedRoute && (
+                                <div
+                                    className="trip-summary-card card"
+                                    style={{
+                                        padding: '1rem',
+                                        marginTop: '0.75rem',
+                                        border: '2px solid var(--primary-color)',
+                                        background: 'color-mix(in srgb, var(--primary-color) 12%, var(--surface-color))',
+                                        borderRadius: 'var(--radius-md)',
+                                    }}
+                                >
+                                    <h4 className={styles['trip-summary-header']}>AI Route Suggestion</h4>
+                                    <p className={styles['trip-summary-text']}>{optimizedRoute.recommendation}</p>
+                                    <ul className={styles['trip-summary-highlights']} style={{ marginTop: '0.5rem' }}>
+                                        {optimizedRoute.optimizedOrder.map((id) => {
+                                            const act = activities.find((a) => a.id === id);
+                                            return act ? (
+                                                <li key={id}>
+                                                    {act.title} {act.time ? `(${act.time})` : ''}
+                                                </li>
+                                            ) : null;
+                                        })}
+                                    </ul>
+                                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                                        <button
+                                            type="button"
+                                            className="btn btn-primary btn-sm"
+                                            onClick={() => {
+                                                const reorderedActivities = optimizedRoute.optimizedOrder
+                                                    .map((id) => dayViewActivities.find((activity) => activity.id === id))
+                                                    .filter((activity): activity is (typeof dayViewActivities)[number] => Boolean(activity));
+                                                if (selectedTripId && activeScenario) {
+                                                    reorderScenarioActivities(selectedTripId, activeScenario.id, reorderedActivities);
+                                                } else {
+                                                    const updates = optimizedRoute.optimizedOrder.map((id, idx) => ({ id, order: idx }));
+                                                    reorderActivities(updates);
+                                                }
+                                                setOptimizedRoute(null);
+                                            }}
+                                        >
+                                            Apply Order
+                                        </button>
+                                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setOptimizedRoute(null)}>
+                                            Dismiss
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    {selectedTripId && addingActivityForDate === currentDateStr && (
+                        <div className="no-export">
+                            <ActivityForm
+                                tripId={selectedTripId}
+                                date={currentDateStr}
+                                nextOrder={dayViewActivities.length}
+                                defaultCurrency={selectedTrip?.defaultCurrency}
+                                onSave={(data) => handleSaveActivity(data, currentDateStr)}
+                                onCancel={() => setAddingActivityForDate(null)}
+                            />
+                        </div>
+                    )}
+                    {dayViewActivities.length === 0 && !addingActivityForDate && (
+                        <p className={styles['no-activities-cal']}>No activities planned for this day.</p>
+                    )}
+                    <DraggableList
+                        items={dayViewActivities}
+                        keyFn={(a) => a.id}
+                        onReorder={handleReorderActivities}
+                        disabled={editingActivityId !== null}
+                        renderItem={(act) =>
+                            editingActivityId === act.id ? (
+                                <div className="no-export">
+                                    <ActivityForm
+                                        tripId={act.tripId}
+                                        date={act.date}
+                                        existingActivity={act}
+                                        nextOrder={act.order}
+                                        defaultCurrency={effectiveTrip?.defaultCurrency}
+                                        onSave={handleSaveActivity}
+                                        onCancel={() => setEditingActivityId(null)}
+                                        onDelete={() => {
+                                            if (selectedTripId && activeScenario) {
+                                                removeScenarioActivity(selectedTripId, activeScenario.id, act.id);
+                                            } else {
+                                                deleteActivity(act.id);
+                                            }
+                                            setEditingActivityId(null);
+                                            if (!activeScenario) {
+                                                showToast(`"${act.title}" deleted`, () => {
+                                                    restoreActivity(act);
+                                                });
+                                            }
+                                        }}
+                                    />
+                                </div>
+                            ) : (
+                                <div className={`${styles['day-detail-activity']} card`} style={{ ['--activity-color' as string]: getActivityColor(act) }}>
+                                    <div className={styles['detail-header']}>
+                                        <span className={styles['detail-emoji']}>{CATEGORY_EMOJIS[act.category || 'other']}</span>
+                                        <div>
+                                            <h4>{act.title}</h4>
+                                            {act.time && <span className={styles['detail-time']}>{act.time}</span>}
+                                        </div>
+                                        <div className={`${styles['detail-actions']} no-export`}>
+                                            {(act.location || currentDayLocations[0]) && (
+                                                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setReviewsActivityId(act.id)} aria-label="Reviews">
+                                                    📋 Reviews
+                                                </button>
+                                            )}
+                                            {(act.location || currentDayLocations[0]) && (
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-ghost btn-sm"
+                                                    onClick={() => setShowNearbyRestaurantsForActivityId(act.id)}
+                                                    aria-label={getNearbyPlacesLabel(act.category).button}
+                                                >
+                                                    {getNearbyPlacesLabel(act.category).button}
+                                                </button>
+                                            )}
+                                            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingActivityId(act.id)} aria-label="Edit">
+                                                <Pencil size={16} />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="btn btn-ghost btn-sm"
+                                                onClick={() => {
+                                                    if (selectedTripId && activeScenario) {
+                                                        removeScenarioActivity(selectedTripId, activeScenario.id, act.id);
+                                                    } else {
+                                                        deleteActivity(act.id);
+                                                    }
+                                                    if (!activeScenario) {
+                                                        showToast(`"${act.title}" deleted`, () => {
+                                                            restoreActivity(act);
+                                                        });
+                                                    }
+                                                }}
+                                                aria-label="Delete"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {act.details && <Markdown className={styles['detail-desc']}>{act.details}</Markdown>}
+                                    {act.location && <p className={styles['detail-location']}>📍 {act.location}</p>}
+                                    {act.cost != null && (
+                                        <p className={styles['detail-cost']}>
+                                            💰 {act.currency || '$'}
+                                            {act.cost.toFixed(2)}
+                                        </p>
+                                    )}
+                                    {act.notes && <Markdown className={styles['detail-notes']}>{act.notes}</Markdown>}
+                                    {reviewsActivityId === act.id && (
+                                        <div className="no-export" style={{ marginTop: '0.75rem' }}>
+                                            <ActivityReviews
+                                                activityTitle={act.title}
+                                                activityLocation={act.location || currentDayLocations[0]}
+                                                onClose={() => setReviewsActivityId(null)}
+                                            />
+                                        </div>
+                                    )}
+                                    {showNearbyRestaurantsForActivityId === act.id && (
+                                        <div className="no-export" style={{ marginTop: '0.75rem' }}>
+                                            <NearbyRestaurants
+                                                location={(act.location || currentDayLocations[0]) ?? ''}
+                                                category={act.category}
+                                                title={act.title}
+                                                label={getNearbyPlacesLabel(act.category).panel}
+                                                onClose={() => setShowNearbyRestaurantsForActivityId(null)}
+                                                onAddToNote={(text) => {
+                                                    const newNotes = act.notes ? act.notes.trimEnd() + '\n\n' + text : text;
+                                                    updateActivity(act.id, { notes: newNotes });
+                                                    setShowNearbyRestaurantsForActivityId(null);
+                                                    showToast('Added to activity note');
+                                                }}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            )
+                        }
+                    />
+                </div>
+            </div>
+        </div>
+    );
 };
 
-export default Weather;
+export default TripDayView;
+</file>
+
+<file path="src/pages/TripDefaultRedirect.tsx">
+import React from 'react';
+import { Navigate, useParams } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
+import { useTrips } from '../lib/store';
+import { getDefaultDayDateStr } from '../lib/tripDefaultDay';
+
+/** Redirects /trip/:tripId → /trip/:tripId/day/:defaultDate */
+const TripDefaultRedirect: React.FC = () => {
+    const { tripId } = useParams<{ tripId: string }>();
+    const { trips, loading } = useTrips();
+
+    if (!tripId) {
+        return <Navigate to="/spreadsheet" replace />;
+    }
+
+    if (loading) {
+        return (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+                <Loader2 size={28} className="spin" style={{ color: 'var(--primary-color)' }} />
+            </div>
+        );
+    }
+
+    const trip = trips.find((t) => t.id === tripId);
+    if (!trip) {
+        return <Navigate to="/spreadsheet" replace />;
+    }
+
+    const dateStr = getDefaultDayDateStr(trip);
+    return <Navigate to={`/trip/${tripId}/day/${dateStr}`} replace />;
+};
+
+export default TripDefaultRedirect;
 </file>
 
 <file path="tsconfig.app.json">
@@ -7276,6 +6033,559 @@ export default Weather;
 }
 </file>
 
+<file path=".cursor/rules/project-context.mdc">
+---
+description: TravelPlanner (sabb) project context — tech stack, Gemini/AI rules, data models, Firestore, env vars, and critical conventions.
+alwaysApply: true
+---
+
+# Project Context — TravelPlanner
+
+Personal travel itinerary planner. Users create trips, plan day-by-day activities, track transport, manage budgets, take notes, and receive AI-powered suggestions. Supports real-time collaboration via trip sharing.
+
+## Tech Stack
+
+| Layer | Technology | Notes |
+|-------|------------|-------|
+| Frontend | React 19 + TypeScript + Vite | Strict TS, `verbatimModuleSyntax`, `noUnusedLocals` |
+| Routing | react-router-dom v7 | Base path: `/travelplanner/` |
+| Database | Firebase Firestore | Real-time `onSnapshot`; persistent multi-tab cache |
+| Auth | Firebase Auth | Google OAuth + anonymous sign-in |
+| Storage | Firebase Storage | Images only, max 5MB, `notes/{userId}/{tripId}/...` |
+| AI | Google Gemini via Cloudflare Worker proxy | Never call Gemini directly from frontend |
+| Icons | lucide-react | |
+| Dates | date-fns | All date strings ISO `YYYY-MM-DD` |
+| Markdown | marked | `Markdown.tsx` component |
+| Deploy | GitHub Pages (frontend) + Cloudflare Workers (AI proxy) | |
+
+## Gemini / AI — Critical Rules
+
+- **SDK**: Use `@google/genai` (JS/TS). Do NOT use deprecated `@google/generative-ai`.
+- **Models**: `gemini-3-flash-preview` (default), `gemini-3.1-pro-preview` (complex), `gemini-3-pro-image-preview` (images). Never reference `gemini-2.5-*`, `gemini-2.0-*`, or `gemini-1.5-*`.
+- **All AI calls** go through `generateWithGemini()` in `src/lib/gemini.ts`, which POSTs to the Cloudflare Worker proxy at `VITE_AI_PROXY_URL`. Never call Gemini APIs directly from the frontend.
+- Proxy body: `{ prompt, systemInstruction?, responseMimeType?, responseSchema? }`. For structured output use `responseMimeType: 'application/json'` and `responseSchema`.
+- `generateWithGemini` handles deduplication, 1200ms call spacing, 429 retry with exponential backoff (max 3).
+
+## Data Models (summary)
+
+- **Trip**: `id`, `userId`, `members`, `sharedWithEmails`, `name`, `startDate`, `endDate`, `defaultCurrency?`, `color?`, `_pendingWrite?`.
+- **Activity**: `id`, `tripId`, `userId`, `tripMembers`, `date` (YYYY-MM-DD), `title`, `details?`, `time?`, `location?`, `category`, `cost?`, `currency?`, `order`, `_pendingWrite?`.
+- **TransportRoute**: `id`, `tripId`, `userId`, `tripMembers`, `date`, `type`, `from`, `to`, `departureTime?`, `arrivalTime?`, `bookingRef?`, `cost?`, `currency?`, `notes?`.
+- **Note**: `id`, `tripId`, `userId`, `tripMembers`, `content`, `format`, `order`, `date?`, `images?`, `createdAt`, `updatedAt`.
+- **ChatMessage**: `id`, `tripId`, `userId`, `tripMembers`, `role`, `content`, `createdAt`.
+
+`tripMembers` is denormalized on child docs for Firestore security rules. When adding/removing collaborators (ShareModal), batch-update `tripMembers` on activities, notes, transportRoutes, chat_history.
+
+## Firestore Collections
+
+| Collection | Access |
+|------------|--------|
+| `trips` | `members` array-contains OR `userId == uid` |
+| `activities`, `transportRoutes`, `notes`, `chat_history` | `tripMembers` array-contains OR `userId == uid` |
+| `users` | Read: authenticated; Write: own doc only |
+
+## Conventions (critical)
+
+1. Use TypeScript strict mode; handle null/undefined; no implicit any.
+2. Never call Gemini directly — use `generateWithGemini()` from `src/lib/gemini.ts`.
+3. Call `stripUndefined()` before writing to Firestore.
+4. Use date-fns; all date strings ISO `YYYY-MM-DD`.
+5. Use CSS custom properties from `theme.css` (e.g. `var(--primary-color)`).
+6. Import from `src/lib/persist.ts` for `useLocalStorageState` — not `src/hooks/useLocalStorageState.ts`.
+7. No barrel `index.ts` imports; import directly from the file.
+8. Vite base path is `/travelplanner/` — use for any URL construction.
+9. Avoid `const enum` and non-erasable TypeScript syntax (`erasableSyntaxOnly`).
+
+## Environment Variables
+
+- **App**: `VITE_FIREBASE_*`, `VITE_AI_PROXY_URL`.
+- **Worker** (Cloudflare): `GEMINI_API_KEY` or `GEMINI_API_KEYS`, `GOOGLE_PLACES_API_KEY` (set via `wrangler secret put GOOGLE_PLACES_API_KEY` — never committed).
+
+## New APIs (Phase: Weather + Places)
+
+- **Open-Meteo**: No key required. Call directly from `src/lib/weather.ts`. Geocode + weather caches are module-level (session).
+- **Google Places API (New)**: All calls proxied via Cloudflare Worker routes `/places/nearby` and `/places/details`. Never call `places.googleapis.com` from the frontend.
+- **Places field mask discipline**: Only request the fields you actually render to control SKU cost.
+- **Google attribution**: `reviewSummary.disclosureText` MUST be displayed wherever Google's AI summary is shown.
+
+## Common Pitfalls
+
+- Do not write Firestore docs with `undefined` values — always `stripUndefined()` first.
+- Do not use deprecated Gemini model IDs.
+- Do not call Gemini API directly from frontend.
+</file>
+
+<file path=".cursor/rules/rules.md">
+---
+project: TravelPlanner (sabb)
+version: 0.0.0
+last_updated: 2026-03-10
+---
+
+# Project Frontmatter — TravelPlanner
+
+## Purpose
+A personal travel itinerary planner. Users create trips, plan day-by-day activities, track transport, manage budgets, take notes, and receive AI-powered suggestions. Supports real-time collaboration via trip sharing.
+
+---
+
+## Tech Stack (authoritative — do not guess from training data)
+
+| Layer | Technology | Notes |
+|---|---|---|
+| Frontend | React 19 + TypeScript + Vite | Strict TS, `verbatimModuleSyntax`, `noUnusedLocals` |
+| Routing | react-router-dom v7 | Base path: `/travelplanner/` |
+| Database | Firebase Firestore | Real-time `onSnapshot` listeners; persistent multi-tab cache |
+| Auth | Firebase Auth | Google OAuth + anonymous sign-in |
+| Storage | Firebase Storage | Images only, max 5MB, scoped to `notes/{userId}/{tripId}/...` |
+| AI | Google Gemini via Cloudflare Worker proxy | Never call Gemini directly from frontend |
+| Icons | lucide-react | |
+| Dates | date-fns | All date strings are ISO `YYYY-MM-DD` |
+| Markdown | marked | Used in `Markdown.tsx` component |
+| Deploy | GitHub Pages (frontend) + Cloudflare Workers (AI proxy) | |
+
+---
+
+## Gemini / AI — Critical Rules
+
+- **SDK**: `@google/genai` (JS/TS). Do NOT use the deprecated `@google/generative-ai`.
+- **Current models**: `gemini-3-flash-preview` (default), `gemini-3.1-pro-preview` (complex), `gemini-3-pro-image-preview` (images).
+- **NEVER** reference `gemini-2.5-*`, `gemini-2.0-*`, or `gemini-1.5-*` — these are deprecated.
+- **All AI calls go through** `generateWithGemini()` in `src/lib/gemini.ts`, which POSTs to the Cloudflare Worker proxy at `VITE_AI_PROXY_URL`. Never call Gemini APIs directly from the frontend.
+- The proxy URL is `/generate` (POST). Body: `{ prompt, systemInstruction?, responseMimeType?, responseSchema? }`.
+- `generateWithGemini` handles: single-flight deduplication, 1200ms call spacing, 429 retry with exponential backoff (max 3 retries).
+- For structured output, pass `responseMimeType: 'application/json'` and `responseSchema`.
+
+---
+
+## Data Models
+
+### Trip
+```ts
+interface Trip {
+  id: string;
+  userId: string;           // owner UID
+  members: string[];        // all member UIDs (including owner)
+  sharedWithEmails: string[];
+  name: string;
+  startDate: string;        // ISO YYYY-MM-DD
+  endDate: string;          // ISO YYYY-MM-DD
+  defaultCurrency?: string;
+  color?: string;           // from TRIP_COLORS
+  _pendingWrite?: boolean;  // Firestore optimistic flag
+}
+```
+
+### Activity
+```ts
+interface Activity {
+  id: string;
+  tripId: string;
+  userId: string;
+  tripMembers: string[];    // denormalized for Firestore security rules
+  date: string;             // ISO YYYY-MM-DD
+  title: string;
+  details?: string;
+  time?: string;            // HH:MM
+  location?: string;
+  category: ActivityCategory; // 'food' | 'transport' | 'accommodation' | 'sightseeing' | 'other' | ...
+  cost?: number;
+  currency?: string;
+  order: number;            // sort order within the day
+  _pendingWrite?: boolean;
+}
+```
+
+### TransportRoute
+```ts
+interface TransportRoute {
+  id: string;
+  tripId: string;
+  userId: string;
+  tripMembers: string[];
+  date: string;
+  type: string;             // 'flight' | 'train' | 'bus' | 'car' | 'ferry' | 'other'
+  from: string;
+  to: string;
+  departureTime?: string;
+  arrivalTime?: string;
+  bookingRef?: string;
+  cost?: number;
+  currency?: string;
+  notes?: string;
+}
+```
+
+### Note
+```ts
+interface Note {
+  id: string;
+  tripId: string;
+  userId: string;
+  tripMembers: string[];
+  title: string;
+  content: string;
+  imageUrls?: string[];
+  updatedAt: string;
+}
+```
+
+### ChatMessage
+```ts
+interface ChatMessage {
+  id: string;
+  tripId: string;
+  role: 'user' | 'model';
+  text: string;
+  timestamp: string;
+}
+```
+
+---
+
+## Firestore Collections
+
+| Collection | Access Rule |
+|---|---|
+| `trips` | `members` array-contains OR `userId == uid` |
+| `activities` | `tripMembers` array-contains OR `userId == uid` |
+| `transportRoutes` | `tripMembers` array-contains OR `userId == uid` |
+| `notes` | `tripMembers` array-contains OR `userId == uid` |
+| `chat_history` | `tripMembers` array-contains OR `userId == uid` |
+| `users` | Read: authenticated; Write: own doc only |
+
+**Important**: `tripMembers` is a **denormalized** array on child docs (activities, notes, routes) required to satisfy Firestore security rules without cross-collection `get()` calls. When adding a collaborator via `ShareModal`, all child docs must be batch-updated.
+
+---
+
+## Project Structure
+```
+src/
+  components/        # Reusable UI: ActivityForm, TripForm, Sidebar, ShareModal, Toast, DraggableList, SwipeableItem, Markdown, OnlineStatus, AutoTextarea
+  design-system/     # themes.ts — ThemePreset, ThemeTokens, applyTheme(), THEME_PRESETS
+  hooks/             # useLocalStorageState (in hooks/ AND lib/persist.ts — use lib/persist.ts)
+  lib/
+    types.ts         # All shared types + CATEGORY_EMOJIS, CATEGORY_COLORS, TRIP_COLORS
+    store.ts         # Firestore hooks: useTrips, useActivities, useTransportRoutes, useNotes, useChatMessages
+    AuthContext.tsx   # useAuth() → { user, loading, signInWithGoogle, signInAnonymously, signOut }
+    firebase.ts      # db, auth, storage, googleProvider exports
+    gemini.ts        # generateWithGemini() — the ONLY way to call AI
+    persist.ts       # useLocalStorageState (preferred over hooks/ version)
+    upload.ts        # Firebase Storage image upload helpers
+  pages/
+    SpreadsheetView  # Default view; day × time-slot grid (morning/afternoon/evening/unscheduled)
+    CalendarView     # Day/week/month/trip views
+    Transportation   # TransportRoutes CRUD
+    Budget           # Cost summary across activities + routes
+    Notes            # Trip notes with image attachments
+    Assistant        # AI chat per trip (uses chat_history collection)
+    ImportItinerary  # Paste raw text → Gemini parses → preview → save
+    Login            # Auth gate
+    Settings         # Theme, display preferences
+  App.tsx            # Router, AuthProvider, ToastProvider, lazy-loaded pages
+  theme.css          # CSS custom properties (design tokens)
+worker/
+  src/index.ts       # Cloudflare Worker — proxies /generate → Gemini API
+```
+
+---
+
+## Routing
+
+Base: `/travelplanner/`
+
+| Path | Page |
+|---|---|
+| `/spreadsheet` | SpreadsheetView (default) |
+| `/calendar` | CalendarView |
+| `/transportation` | Transportation |
+| `/budget` | Budget |
+| `/notes` | Notes |
+| `/import` | ImportItinerary |
+| `/assistant` | Assistant |
+| `/settings` | Settings |
+| `*` | Redirect → `/spreadsheet` |
+
+All pages are lazy-loaded via `React.lazy`.
+
+---
+
+## Auth Patterns
+
+- `useAuth()` — primary hook, throws if outside `AuthProvider`
+- User is Firebase `User | null`
+- Anonymous users: supported but cannot share trips (no email)
+- User profile upserted to `users/{uid}` on sign-in (non-anonymous only)
+- Auth gate: `AuthGate` component wraps all routes in `App.tsx`
+
+---
+
+## State & Persistence
+
+- **Server state**: Firestore via `onSnapshot` hooks in `store.ts`. All mutations are async (`addDoc`, `updateDoc`, `deleteDoc`, `setDoc`).
+- **Local state**: `useLocalStorageState` from `src/lib/persist.ts` for UI preferences (selected trip, view mode, etc.)
+- **Optimistic UI**: Firestore's `hasPendingWrites` surfaced as `_pendingWrite` flag on entities. `OnlineStatus` component shows offline/reconnected banner.
+- **Undo**: Toast-based undo via `restoreTrip` / `restoreActivity` / `restoreRoute` (re-`setDoc` the deleted doc).
+
+---
+
+## Theming
+
+- CSS custom properties defined in `theme.css`, overridden at runtime via `applyTheme()`.
+- Presets: `modern` (default), `y2k-retro`, `dark`, `sunset`, `ocean`, `pastel-glow`.
+- Custom color overrides per-preset stored in `localStorage` under key `travelplanner_theme_config`.
+- Dark mode: `getDarkTokens()` transforms any preset's tokens.
+- Compact layout: `body.compact-layout` CSS class toggle.
+
+---
+
+## Conventions & Rules
+
+1. **TypeScript strict mode** — always handle null/undefined, no implicit any.
+2. **No direct Gemini calls** — always use `generateWithGemini()` from `src/lib/gemini.ts`.
+3. **No form elements** — use event handlers (`onClick`, `onChange`) not `<form>` with native submit where conflicts may arise.
+4. **stripUndefined()** — always call before writing to Firestore to avoid Firestore undefined field errors.
+5. **tripMembers denormalization** — when mutating trip membership, batch-update child collections (activities, notes, transportRoutes, chat_history).
+6. **Date strings** — always ISO `YYYY-MM-DD`; use `date-fns` for all manipulation.
+7. **CSS** — use CSS custom properties from `theme.css` (e.g., `var(--primary-color)`), not hardcoded values.
+8. **Error handling** — surface errors to UI state; never swallow silently except in clearly non-critical paths.
+9. **Import paths** — no barrel `index.ts` files; import directly from the file.
+
+---
+
+## Environment Variables
+```
+VITE_FIREBASE_API_KEY
+VITE_FIREBASE_AUTH_DOMAIN
+VITE_FIREBASE_PROJECT_ID
+VITE_FIREBASE_STORAGE_BUCKET
+VITE_FIREBASE_MESSAGING_SENDER_ID
+VITE_FIREBASE_APP_ID
+VITE_AI_PROXY_URL          # Required for all AI features (Cloudflare Worker URL)
+```
+
+Worker (set in Cloudflare dashboard, not .env):
+```
+GEMINI_API_KEY
+```
+
+---
+
+## Common Pitfalls for Agents
+
+- Do not import from `src/hooks/useLocalStorageState.ts` — use `src/lib/persist.ts` instead (canonical version).
+- Do not write to Firestore with `undefined` values — always `stripUndefined()` first.
+- Do not use deprecated Gemini model IDs (`gemini-2.x`, `gemini-1.5-*`).
+- Do not call the Gemini API directly — route through `generateWithGemini()`.
+- The Vite base path is `/travelplanner/` — account for this in any URL construction.
+- `useLocalStorageState` in `persist.ts` returns `[value, setValue] as const` (tuple). The one in `hooks/` returns `[T, Dispatch<SetStateAction<T>>]` — they differ slightly.
+- TypeScript config uses `erasableSyntaxOnly` — avoid `const enum` and other non-erasable TS syntax.
+</file>
+
+<file path=".cursor/rules/vibe-coding-rules.mdc">
+---
+description: >
+  Full-stack TypeScript standards for TravelPlanner — React, Vite, Firestore,
+  DaisyUI/Tailwind, and date-fns. Enforces type safety, performance, and
+  project-specific patterns. Includes prompt discipline protocol for debugging,
+  diagnosis, and constrained multi-file changes. Optimised for vibe-coding with Cursor.
+globs: ["**/*.ts", "**/*.tsx"]
+alwaysApply: true
+---
+
+# Cursor Vibe-Coding Rules — TravelPlanner
+
+---
+
+## ⚡ Vibe-Coding Contract
+
+Two modes exist. Cursor selects the correct mode based on the prompt type.
+
+### Mode A — Autonomous (well-specified tasks)
+Use when the prompt includes: a clear goal, the file(s) to touch, and no diagnostic ambiguity.
+
+- Prefer **complete, runnable output** over partial scaffolds.
+- Never omit logic with `// ... rest of implementation` — write it out.
+- One file per response unless the task explicitly spans multiple files.
+- When refactoring, show the **full updated file**, not a diff.
+- Add a one-line comment at the top of every new file describing its purpose.
+- If something is ambiguous, **make the most reasonable choice and leave a `// ASSUMPTION:` comment** — don't stop to ask.
+
+### Mode B — Diagnostic (bugs, blank renders, async issues, unclear symptoms)
+Use when the prompt describes a symptom, a broken behavior, or contains a hypothesis.
+
+- **Do not write code until diagnosis is complete.**
+- Restate the prompt in structured form, then confirm before proceeding:
+
+```
+## Restatement
+Context:    [files involved, what they do, relevant deps]
+Expected:   [desired behavior]
+Actual:     [current behavior]
+Hypothesis: [user's or your own — always labeled as hypothesis]
+Goal:       [specific outcome]
+Constraints: [what not to touch]
+```
+
+- If the user's hypothesis is wrong, **say so first**, then give your own diagnosis.
+- Never silently implement a fix built on an incorrect hypothesis.
+
+> Rule of thumb: if the prompt contains the words "seems like," "I think," "not working,"
+> "blank," "broken," or describes a behavior mismatch — use Mode B.
+
+---
+
+## 🔍 Context Gate (Mode B only)
+
+If a bug/diagnostic prompt is missing any of the following, ask for it before proceeding:
+
+| Required         | Example                                      |
+|------------------|----------------------------------------------|
+| File(s) affected | `@Dashboard.tsx`, `@useProjectData.ts`       |
+| Expected behavior| "Should render table on first paint"         |
+| Actual behavior  | "Blank screen on first load"                 |
+| Constraints      | "Don't modify the hook signature"            |
+
+Ask one question per missing element. Do not infer silently.
+
+---
+
+## 📋 Plan Before Code (multi-file changes)
+
+For any change touching more than one file or one logical concern:
+
+1. Output a **numbered plan** (what you'll change and why)
+2. Wait for explicit approval (`"looks good"`, `"proceed"`, `"go"`)
+3. Only then write code
+
+**Never auto-proceed on multi-file changes.**
+
+---
+
+## 🔒 Constraint Enforcement
+
+- **Scope creep is a bug.** If fixing X would be cleaner with a refactor of Y, flag it — don't just do it.
+- **No new dependencies** without flagging: `"This would require adding [package] — confirm?"`
+- **Preserve API contracts.** Hook signatures, prop interfaces, and exported function shapes are frozen unless explicitly told otherwise.
+- **One concern per diff.** Debugging fix ≠ cleanup ≠ refactor. Separate them.
+
+---
+
+## ⏱ Async / Hook Issue Checklist (run before diagnosing timing bugs)
+
+- [ ] Is the component rendering before async data resolves? (missing `loading` guard)
+- [ ] Is the hook's return value accessed before it's defined? (undefined access)
+- [ ] Is there a missing `useEffect` dependency causing a stale closure?
+- [ ] Is `Suspense` or `ErrorBoundary` absent where it should exist?
+- [ ] Is the hook called conditionally? (Rules of Hooks violation)
+- [ ] Is a double-render in StrictMode exposing a side effect?
+
+Surface findings from this checklist in your diagnosis before proposing a fix.
+
+---
+
+## ✅ Post-Fix Checklist (run silently before finalising any output)
+
+- [ ] No `any` without a `// reason:` comment
+- [ ] No hardcoded colours — CSS vars only
+- [ ] No `undefined` passed to Firestore — `stripUndefined()` called
+- [ ] Exported functions have return types
+- [ ] Dates are ISO strings, manipulated via `date-fns`
+- [ ] Lazy-loaded components wrapped in `<Suspense>`
+- [ ] Loading and error states handled
+- [ ] Fix works on first render, not just after re-render
+- [ ] Change is scoped only to what was asked
+
+---
+
+## 📊 Confidence Signal (Mode B — end every diagnostic response with this)
+
+```
+Confidence: [High / Medium / Low]
+Reason: [e.g., "couldn't see full hook implementation" or "well-established pattern"]
+If wrong: [what to check next if this fix doesn't work]
+```
+
+---
+
+## TypeScript
+
+- All code is TypeScript — no `.js` files.
+- Explicit return types on **exported** functions.
+- Avoid `any`; use `unknown` + narrowing, or add a `// reason:` comment.
+- Optional chaining (`?.`) and nullish coalescing (`??`) over manual null checks.
+- Prefer `interface` over `type` for object shapes (extendable, mergeable).
+- Avoid `enum`; use `const` maps or union string literals instead.
+- Use descriptive boolean names: `isLoading`, `hasError`, `canSubmit`.
+
+<example type="valid">
+export function formatDate(iso: string): string {
+  return format(parseISO(iso), 'MMM d, yyyy');
+}
+</example>
+
+<example type="invalid">
+function formatDate(iso: string) {        // ❌ missing return type
+  return format(parseISO(iso), 'MMM d, yyyy');
+}
+</example>
+
+---
+
+## React
+
+- Functional components + hooks only — no classes.
+- `React.lazy` for all route-level components (see `App.tsx` pattern).
+- Wrap async/lazy components in `<Suspense fallback={…}>`.
+- Theme via CSS custom properties only — **never hardcode hex/rgb**:
+  `var(--primary-color)`, `var(--border-color)`, `var(--text-secondary)`.
+- Style with **DaisyUI components + Tailwind utilities** — mobile-first.
+- Optimise images: WebP, explicit `width`/`height`, `loading="lazy"`.
+
+---
+
+## Imports & File Structure
+
+- Import from the defining file directly — no barrel `index.ts` re-exports.
+- Use `useLocalStorageState` from `src/lib/persist.ts` **only**.
+- One concern per file: component, helpers, types, or static content — not mixed.
+- Directory names: `lowercase-with-dashes` (e.g. `components/auth-wizard`).
+- Named exports for functions; default exports for page/route components only.
+
+---
+
+## Firestore
+
+Always follow this write sequence — no exceptions:
+
+```
+1. Build the payload object.
+2. Pass through stripUndefined() — removes all keys with value `undefined`.
+3. Call setDoc / updateDoc / addDoc / batch.update.
+```
+
+- Types live in `src/lib/types.ts`: `Trip`, `Activity`, `TransportRoute`,
+  `Note`, `ChatMessage`.
+- When mutating trip membership, batch-update across:
+  `tripMembers`, `activities`, `notes`, `transportRoutes`, `chat_history`.
+
+---
+
+## Dates
+
+- Store and pass all dates as ISO strings: `YYYY-MM-DD`.
+- Use `date-fns` for all parsing, formatting, and arithmetic
+  (`parseISO`, `format`, `isWithinInterval`, etc.).
+
+---
+
+## Performance
+
+- Dynamic import non-critical components (`React.lazy` / Vite `import()`).
+- Vite build: configure manual `chunks` in `rollupOptions` for code splitting.
+- Audit Web Vitals (LCP, CLS, FID) with Lighthouse before marking work done.
+</file>
+
 <file path=".github/workflows/deploy.yml">
 # Simple workflow for deploying static content to GitHub Pages
 name: Deploy static content to Pages
@@ -7374,164 +6684,27 @@ dist-ssr
 !.env.example
 </file>
 
-<file path="src/components/ActivityReviews.tsx">
-import React, { useState, useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
-import { resolvePlaceId, fetchPlaceDetails, generateProsCons } from '../lib/services/placesService';
-import { logEvent } from '../lib/amplitude';
-import type { PlaceDetails, PlaceProsCons } from '../lib/services/placesService';
-
-export interface ActivityReviewsProps {
-  activityTitle: string;
-  activityLocation: string | undefined;
-  onClose: () => void;
+<file path="skills-lock.json">
+{
+  "version": 1,
+  "skills": {
+    "gemini-api-dev": {
+      "source": "google-gemini/gemini-skills",
+      "sourceType": "github",
+      "computedHash": "d521744b97bfe7847e7abc7b80e447fb1a5edc30d49f94b390db41318e1bdc4b"
+    },
+    "gemini-interactions-api": {
+      "source": "google-gemini/gemini-skills",
+      "sourceType": "github",
+      "computedHash": "dd9eb2f0595ea631b87932026ee8c4556d63b13fcb97fb564b78bd59f2b1eee6"
+    },
+    "react:components": {
+      "source": "google-labs-code/stitch-skills",
+      "sourceType": "github",
+      "computedHash": "5e786773a89012ae15b01b5c11942db30b09f935929283d8eb8a30b2da5fabf7"
+    }
+  }
 }
-
-const ActivityReviews: React.FC<ActivityReviewsProps> = ({
-  activityTitle,
-  activityLocation,
-  onClose,
-}) => {
-  const [step, setStep] = useState<'resolve' | 'details' | 'done' | 'error'>('resolve');
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [details, setDetails] = useState<PlaceDetails | null>(null);
-  const [prosCons, setProsCons] = useState<PlaceProsCons | null>(null);
-  const [prosConsLoading, setProsConsLoading] = useState(false);
-
-  const location = activityLocation ?? activityTitle;
-
-  useEffect(() => {
-    logEvent('Activity Reviews Opened', { activity_title: activityTitle, has_location: Boolean(activityLocation) });
-  }, [activityTitle, activityLocation]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const placeId = await resolvePlaceId(activityTitle, location);
-        if (cancelled) return;
-        if (!placeId) {
-          setStep('error');
-          setErrorMessage('No Google Places data found for this activity.');
-          logEvent('Activity Reviews Failed', { activity_title: activityTitle, step: 'resolve' });
-          return;
-        }
-
-        const d = await fetchPlaceDetails(placeId);
-        if (cancelled) return;
-        setDetails(d);
-        setStep('done');
-        logEvent('Activity Reviews Loaded', { place_name: d.name, rating: d.rating ?? undefined, review_count: d.ratingCount ?? undefined });
-
-        setProsConsLoading(true);
-        generateProsCons(d.name, d.reviews, placeId)
-          .then((pc) => { if (!cancelled) setProsCons(pc); })
-          .catch(() => { /* hide pros/cons on failure */ })
-          .finally(() => { if (!cancelled) setProsConsLoading(false); });
-      } catch (e) {
-        if (cancelled) return;
-        setStep('error');
-        setErrorMessage(e instanceof Error ? e.message : 'Failed to load reviews');
-        logEvent('Activity Reviews Failed', { activity_title: activityTitle, step: 'details' });
-      }
-    })();
-
-    return () => { cancelled = true; };
-  }, [activityTitle, location]);
-
-  if (step === 'resolve' || (step === 'done' && !details)) {
-    return (
-      <div style={{ padding: '1rem', minWidth: '320px', maxWidth: '420px', background: 'var(--surface-color)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-          <h3 style={{ margin: 0, fontSize: '1rem' }}>📋 Reviews</h3>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Close">×</button>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-          <Loader2 size={28} className="spin" style={{ color: 'var(--primary-color)' }} />
-        </div>
-      </div>
-    );
-  }
-
-  if (step === 'error') {
-    return (
-      <div style={{ padding: '1rem', minWidth: '320px', background: 'var(--surface-color)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-          <h3 style={{ margin: 0, fontSize: '1rem' }}>📋 Reviews</h3>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Close">×</button>
-        </div>
-        <p style={{ color: 'var(--text-secondary)', margin: 0 }}>{errorMessage}</p>
-      </div>
-    );
-  }
-
-  const d = details!;
-
-  return (
-    <div style={{ padding: '1rem', minWidth: '320px', maxWidth: '420px', background: 'var(--surface-color)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', maxHeight: '80vh', overflowY: 'auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-        <h3 style={{ margin: 0, fontSize: '1rem' }}>📋 Reviews</h3>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Close">×</button>
-      </div>
-
-      <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{d.name}</div>
-      {(d.rating != null || d.ratingCount != null) && (
-        <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-          ⭐ {d.rating?.toFixed(1) ?? '—'} {d.ratingCount != null ? `(${d.ratingCount.toLocaleString()} reviews)` : ''}
-        </div>
-      )}
-
-      <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)', margin: '0.75rem 0' }} />
-
-      <div style={{ fontSize: '0.85rem' }}>
-        <div style={{ fontWeight: 600, marginBottom: '0.35rem' }}>📋 Overview</div>
-        {d.reviewSummary && <p style={{ margin: 0, color: 'var(--text-secondary)' }}>{d.reviewSummary}</p>}
-        {d.reviewSummaryDisclosure && <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{d.reviewSummaryDisclosure}</p>}
-      </div>
-
-      <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)', margin: '0.75rem 0' }} />
-
-      {(prosConsLoading || prosCons) && (
-        <>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '0.85rem' }}>
-            <div>
-              <div style={{ fontWeight: 600, marginBottom: '0.35rem' }}>✅ Pros</div>
-              {prosConsLoading && !prosCons && <Loader2 size={14} className="spin" />}
-              {prosCons?.pros.map((p, i) => <div key={i} style={{ color: 'var(--text-secondary)' }}>• {p}</div>)}
-            </div>
-            <div>
-              <div style={{ fontWeight: 600, marginBottom: '0.35rem' }}>❌ Cons</div>
-              {prosConsLoading && !prosCons && <Loader2 size={14} className="spin" />}
-              {prosCons?.cons.map((c, i) => <div key={i} style={{ color: 'var(--text-secondary)' }}>• {c}</div>)}
-            </div>
-          </div>
-          {prosCons?.verdict && <p style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>💬 {prosCons.verdict}</p>}
-          <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)', margin: '0.75rem 0' }} />
-        </>
-      )}
-
-      <div style={{ fontWeight: 600, marginBottom: '0.35rem', fontSize: '0.85rem' }}>💬 Recent Reviews</div>
-      {d.reviews.slice(0, 5).map((r, i) => (
-        <div key={i} style={{ marginBottom: '0.6rem', padding: '0.5rem', background: 'var(--bg-color)', borderRadius: 'var(--radius-sm)', fontSize: '0.8rem' }}>
-          <div style={{ color: 'var(--text-tertiary)' }}>{r.authorName} · {r.relativeTime} · {r.rating}★</div>
-          <p style={{ margin: '0.25rem 0 0', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>{r.text}</p>
-        </div>
-      ))}
-
-      <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
-        Powered by Google
-        {d.reviewsUri && (
-          <a href={d.reviewsUri} target="_blank" rel="noopener noreferrer" style={{ marginLeft: '0.5rem', color: 'var(--primary-color)' }}>
-            See all reviews →
-          </a>
-        )}
-      </div>
-    </div>
-  );
-};
-
-export default ActivityReviews;
 </file>
 
 <file path="src/components/DraggableList.tsx">
@@ -7652,6 +6825,192 @@ const Markdown: React.FC<MarkdownProps> = ({ children, className }) => {
 };
 
 export default Markdown;
+</file>
+
+<file path="src/components/NoteEditor.tsx">
+import React, { useRef, useState } from 'react';
+import { AlignLeft, ImagePlus, List, ListOrdered, Loader2, Trash2, X } from 'lucide-react';
+import type { Note } from '../lib/types';
+import { NOTE_COLORS } from '../lib/types';
+import { uploadNoteImage } from '../lib/upload';
+
+const FORMAT_OPTIONS: { value: Note['format']; label: string; icon: React.ReactNode }[] = [
+    { value: 'freeform', label: 'Freeform', icon: <AlignLeft size={14} /> },
+    { value: 'bullet', label: 'Bullets', icon: <List size={14} /> },
+    { value: 'numbered', label: 'Numbered', icon: <ListOrdered size={14} /> },
+];
+
+export interface NoteEditorProps {
+    existingNote?: Note;
+    tripId?: string;
+    onSave: (data: { content: string; format: Note['format']; color?: string; images?: string[] }) => void;
+    onCancel: () => void;
+    onDelete?: () => void;
+}
+
+const NoteEditor: React.FC<NoteEditorProps> = ({ existingNote, tripId, onSave, onCancel, onDelete }) => {
+    const [content, setContent] = useState(existingNote?.content || '');
+    const [fmt, setFmt] = useState<Note['format']>(existingNote?.format || 'freeform');
+    const [color, setColor] = useState(existingNote?.color || '');
+    const [images, setImages] = useState<string[]>(existingNote?.images || []);
+    const [uploading, setUploading] = useState(false);
+    const [uploadError, setUploadError] = useState<string | null>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const effectiveTripId = existingNote?.tripId || tripId || '';
+    const effectiveNoteId = existingNote?.id || 'new';
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        onSave({
+            content,
+            format: fmt,
+            color: color || undefined,
+            images: images.length > 0 ? images : undefined,
+        });
+    };
+
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+        setUploadError(null);
+        setUploading(true);
+
+        try {
+            const newUrls: string[] = [];
+            for (const file of Array.from(files)) {
+                const url = await uploadNoteImage(effectiveTripId, effectiveNoteId, file);
+                newUrls.push(url);
+            }
+            setImages(prev => [...prev, ...newUrls]);
+        } catch (err) {
+            console.error('Image upload failed:', err);
+            setUploadError(err instanceof Error ? err.message : 'Image upload failed.');
+        } finally {
+            setUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    const removeImage = (index: number) => {
+        setImages(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key !== 'Enter' || e.shiftKey) return;
+        if (fmt === 'freeform') return;
+
+        e.preventDefault();
+        const ta = textareaRef.current;
+        if (!ta) return;
+        const { selectionStart, selectionEnd } = ta;
+        const before = content.slice(0, selectionStart);
+        const after = content.slice(selectionEnd);
+        const newContent = before + '\n' + after;
+        setContent(newContent);
+        requestAnimationFrame(() => {
+            ta.selectionStart = ta.selectionEnd = selectionStart + 1;
+        });
+    };
+
+    return (
+        <form className="note-editor card animate-fade-in" onSubmit={handleSubmit}>
+            <div className="note-format-picker">
+                {FORMAT_OPTIONS.map(opt => (
+                    <button
+                        key={opt.value}
+                        type="button"
+                        className={`format-chip ${fmt === opt.value ? 'active' : ''}`}
+                        onClick={() => setFmt(opt.value)}
+                    >
+                        {opt.icon} {opt.label}
+                    </button>
+                ))}
+            </div>
+
+            <textarea
+                ref={textareaRef}
+                className="input-field note-content-input"
+                value={content}
+                onChange={e => setContent(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={fmt === 'bullet' ? 'Enter each item on a new line...' : fmt === 'numbered' ? 'Enter each step on a new line...' : 'Start typing...'}
+                rows={6}
+                autoFocus
+            />
+
+            {/* Image upload */}
+            <div className="note-image-section">
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/gif,image/webp"
+                    multiple
+                    hidden
+                    onChange={handleFileSelect}
+                />
+                <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                >
+                    {uploading ? <><Loader2 size={14} className="spin" /> Uploading...</> : <><ImagePlus size={14} /> Add images</>}
+                </button>
+                {uploadError && <span className="note-upload-error">{uploadError}</span>}
+            </div>
+
+            {images.length > 0 && (
+                <div className="note-image-previews">
+                    {images.map((url, i) => (
+                        <div key={i} className="note-image-thumb">
+                            <img src={url} alt="" />
+                            <button type="button" className="note-image-remove" onClick={() => removeImage(i)} aria-label="Remove image">
+                                <X size={12} />
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            <div className="note-color-picker">
+                <button
+                    type="button"
+                    className={`note-color-swatch no-color ${!color ? 'active' : ''}`}
+                    onClick={() => setColor('')}
+                    aria-label="No color"
+                />
+                {NOTE_COLORS.map(c => (
+                    <button
+                        key={c}
+                        type="button"
+                        className={`note-color-swatch ${color === c ? 'active' : ''}`}
+                        style={{ backgroundColor: c }}
+                        onClick={() => setColor(c)}
+                        aria-label={`Color ${c}`}
+                    />
+                ))}
+            </div>
+
+            <div className="form-actions">
+                {onDelete && (
+                    <button type="button" className="btn btn-danger btn-sm" onClick={onDelete}>
+                        <Trash2 size={14} /> Delete
+                    </button>
+                )}
+                <div className="form-actions-right">
+                    <button type="button" className="btn btn-ghost" onClick={onCancel}>Cancel</button>
+                    <button type="submit" className="btn btn-primary" disabled={uploading}>
+                        {existingNote ? 'Save' : 'Add Note'}
+                    </button>
+                </div>
+            </div>
+        </form>
+    );
+};
+
+export default NoteEditor;
 </file>
 
 <file path="src/components/OnlineStatus.tsx">
@@ -7790,7 +7149,7 @@ export default OnlineStatus;
 
 <file path="src/lib/ai/actions/forms.ts">
 import { getCachedAiText } from '../cache';
-import { generateWithGemini } from '../../services/aiService';
+import { generateWithGemini } from '../../gemini';
 
 export async function generateActivityGuide(title: string): Promise<string> {
   const normalizedTitle = title.trim();
@@ -7848,7 +7207,7 @@ Format as a concise bullet list. Maximum 200 words. Be specific and practical.`;
 
 <file path="src/lib/ai/actions/transport.ts">
 import { getCachedAiText } from '../cache';
-import { generateWithGemini } from '../../services/aiService';
+import { generateWithGemini } from '../../gemini';
 
 export async function suggestTransportOptions(args: {
   from: string;
@@ -8083,142 +7442,6 @@ export function recordAiRequestRetry() {
     retried: snapshot.retried + 1,
   }));
 }
-</file>
-
-<file path="src/lib/amplitude.ts">
-import { useEffect } from 'react';
-import * as amplitude from '@amplitude/analytics-browser';
-
-const AMPLITUDE_API_KEY = import.meta.env.VITE_AMPLITUDE_API_KEY as string;
-let hasInitializedAnalytics = false;
-
-export const deviceId = crypto.randomUUID();
-export const sessionId = Date.now();
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export let experimentInstance: any = null;
-let experimentReadyResolve: () => void;
-export const experimentReady = new Promise<void>((resolve) => {
-  experimentReadyResolve = resolve;
-});
-
-const user = {
-  device_id: deviceId,
-  user_properties: {} as Record<string, unknown>,
-};
-
-const initializeAnalytics = async () => {
-  if (hasInitializedAnalytics || typeof window === 'undefined') {
-    return;
-  }
-
-  amplitude.setOptOut(true);
-  amplitude.init(AMPLITUDE_API_KEY, undefined, {
-    autocapture: {
-      pageViews: true,
-      elementInteractions: false,
-    },
-    serverUrl: 'https://api2.amplitude.com/2/httpapi',
-    optOut: false,
-  });
-  hasInitializedAnalytics = true;
-
-  try {
-    const { sessionReplayPlugin } = await import('@amplitude/plugin-session-replay-browser');
-    amplitude.add(sessionReplayPlugin({ sampleRate: 1 }));
-  } catch {
-    // Session Replay plugin not available
-  }
-
-  try {
-    const { plugin: engagementPlugin } = await import('@amplitude/engagement-browser');
-    amplitude.add(engagementPlugin({ serverZone: 'US', locale: 'en-US' }));
-  } catch {
-    // Engagement plugin not available
-  }
-
-  try {
-    const { Experiment } = await import('@amplitude/experiment-js-client');
-    experimentInstance = Experiment.initialize(AMPLITUDE_API_KEY);
-  } catch {
-    // Experiment SDK not available
-  }
-
-  experimentReadyResolve();
-};
-
-export async function trackExposure(flagKey: string) {
-  if (!experimentInstance) {
-    await experimentReady;
-  }
-  if (!experimentInstance) return null;
-
-  try {
-    await experimentInstance.fetch(user);
-    const variant = experimentInstance.variant(flagKey);
-    return variant.value ?? null;
-  } catch {
-    return null;
-  }
-}
-
-export async function fetchVariant(flagKey: string, customUserProperties: Record<string, unknown> = {}) {
-  if (!experimentInstance) {
-    await experimentReady;
-  }
-  if (!experimentInstance) return { success: false, variant: null, userProperties: customUserProperties };
-
-  try {
-    const userWithCustomProps = {
-      ...user,
-      user_properties: { ...user.user_properties, ...customUserProperties },
-    };
-    await experimentInstance.fetch(userWithCustomProps);
-    const variant = experimentInstance.variant(flagKey);
-    return {
-      success: true,
-      variant: variant.value ?? null,
-      userProperties: userWithCustomProps.user_properties,
-      metadata: variant.metadata || {},
-    };
-  } catch {
-    return { success: false, variant: null, userProperties: customUserProperties };
-  }
-}
-
-export const logEvent = (event: string, eventProps: Record<string, unknown> = {}) => {
-  amplitude.track(event, eventProps);
-};
-
-export const identifyUser = (uid: string, properties: {
-  sign_in_provider: 'google' | 'anonymous';
-  display_name?: string;
-  email?: string;
-}) => {
-  amplitude.setUserId(uid);
-  const identifyObj = new amplitude.Identify();
-  identifyObj.set('sign_in_provider', properties.sign_in_provider);
-  if (properties.display_name) identifyObj.set('display_name', properties.display_name);
-  if (properties.email) identifyObj.set('email', properties.email);
-  identifyObj.setOnce('first_seen_at', new Date().toISOString());
-  identifyObj.set('last_seen_at', new Date().toISOString());
-  amplitude.identify(identifyObj);
-};
-
-export const clearUser = () => {
-  amplitude.setUserId(undefined);
-  amplitude.reset();
-};
-
-const AnalyticsProvider = () => {
-  useEffect(() => {
-    initializeAnalytics();
-  }, []);
-
-  return null;
-};
-
-export default AnalyticsProvider;
 </file>
 
 <file path="src/lib/itinerary.ts">
@@ -8559,683 +7782,416 @@ const Packing: React.FC = () => {
 export default Packing;
 </file>
 
-<file path="src/pages/useCalendarViewController.ts">
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { format, eachDayOfInterval, parseISO } from 'date-fns';
-import { useTrips, useActivities, useTransportRoutes } from '../lib/store';
-import { CATEGORY_COLORS } from '../lib/types';
-import { useToast } from '../components/Toast';
-import { logEvent } from '../lib/amplitude';
-import { generateDayActivityDescriptions, generateDaySummary, generateOptimizedRoute } from '../lib/ai/actions/calendar';
-import { getNearbyPlacesLabel } from '../lib/services/placesService';
-import { getTripPlanningConflicts } from '../lib/planning/conflicts';
+<file path="src/pages/Weather.tsx">
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { format, parseISO } from 'date-fns';
+import { CloudSun, RefreshCw, ChevronDown, ChevronUp, Pencil, Check } from 'lucide-react';
+import { useTrips } from '../lib/store';
+import { useWeatherForTrip, formatTemp, type WeatherRequestLog } from '../lib/weather';
+import { getDatesMissingLocation, getEffectiveDayLocations } from '../lib/itinerary';
 import { useSettings } from '../lib/settings';
-import { useWeatherForTrip } from '../lib/weather';
-import { compareActivitiesByTimeThenOrder, getEffectiveDayLocations } from '../lib/itinerary';
-import {
-    createScenarioActivity,
-    removeScenarioActivity,
-    reorderScenarioActivities,
-    updateScenarioTripSnapshot,
-    upsertScenarioActivity,
-    useTripScenarios,
-} from '../lib/scenarios';
-import { prefetchTripDocumentsForOfflineCache } from '../lib/prefetchTripCache';
-import type { Activity } from '../lib/types';
+import type { TempUnit } from '../lib/weather';
 
-const CALENDAR_VIEW_KEY = 'travelplanner_calendar_view';
+const MAX_DEBUG_LOGS = 80;
 
-export type CalendarViewMode = 'day' | 'trip';
-
-interface CalendarPrefs {
-    viewMode: CalendarViewMode;
-    selectedTripId: string | null;
-    currentDateStr: string | null;
+function formatTime(iso: string): string {
+  if (!iso) return '—';
+  try {
+    const d = parseISO(iso.replace('Z', ''));
+    if (isNaN(d.getTime())) return '—';
+    return format(d, 'HH:mm');
+  } catch {
+    return '—';
+  }
 }
 
-export interface PendingActivityDescription {
-    activityId: string;
-    title: string;
-    summary: string;
-    tips: string[];
-}
+const Weather: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tripIdParam = searchParams.get('trip');
+  const { trips, updateItineraryDay } = useTrips();
+  const settings = useSettings();
+  const tempUnit = settings.temperatureUnit as TempUnit;
+  const hourlyStart = settings.hourlyForecastStartHour ?? 9;
+  const hourlyEnd = settings.hourlyForecastEndHour ?? 21;
 
-function loadCalendarPrefs(): CalendarPrefs {
-    try {
-        const raw = localStorage.getItem(CALENDAR_VIEW_KEY);
-        if (!raw) return { viewMode: 'trip', selectedTripId: null, currentDateStr: null };
-        const p = JSON.parse(raw) as Partial<CalendarPrefs>;
-        const viewMode = p.viewMode === 'day' || p.viewMode === 'trip' ? p.viewMode : 'trip';
-        return { viewMode, selectedTripId: p.selectedTripId ?? null, currentDateStr: p.currentDateStr ?? null };
-    } catch {
-        return { viewMode: 'trip', selectedTripId: null, currentDateStr: null };
+  const selectedTripId = tripIdParam && trips.some((t) => t.id === tripIdParam)
+    ? tripIdParam
+    : trips[0]?.id ?? null;
+  const selectedTrip = trips.find((t) => t.id === selectedTripId);
+
+  const [requestLogs, setRequestLogs] = useState<WeatherRequestLog[]>([]);
+  const [debugOpen, setDebugOpen] = useState(false);
+  const [editingLocationDate, setEditingLocationDate] = useState<string | null>(null);
+  const [editLocationValue, setEditLocationValue] = useState('');
+
+  const onRequestLog = useCallback((entry: WeatherRequestLog) => {
+    setRequestLogs((prev) => [...prev.slice(-(MAX_DEBUG_LOGS - 1)), entry]);
+  }, []);
+
+  useEffect(() => {
+    if (selectedTripId && selectedTripId !== tripIdParam) {
+      setSearchParams({ trip: selectedTripId }, { replace: true });
     }
-}
+  }, [selectedTripId, tripIdParam, setSearchParams]);
 
-function saveCalendarPrefs(viewMode: CalendarViewMode, selectedTripId: string | null, currentDateStr: string | null) {
+  const { weatherByDate, loading: weatherLoading, refetch } = useWeatherForTrip(selectedTrip ?? null, { onRequestLog });
+  const datesMissingLocation = getDatesMissingLocation(selectedTrip ?? null);
+  const [expandedDate, setExpandedDate] = useState<string | null>(null);
+  const tripDaysRef = useRef<string[]>([]);
+
+  const tripDays: string[] = React.useMemo(() => {
+    if (!selectedTrip) return [];
+    const out: string[] = [];
     try {
-        localStorage.setItem(CALENDAR_VIEW_KEY, JSON.stringify({ viewMode, selectedTripId, currentDateStr }));
-    } catch {
-        /* ignore */
+      const start = new Date(selectedTrip.startDate + 'T12:00:00Z');
+      const end = new Date(selectedTrip.endDate + 'T12:00:00Z');
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        out.push(d.toISOString().slice(0, 10));
+      }
+    } catch { /* ignore */ }
+    return out;
+  }, [selectedTrip?.id, selectedTrip?.startDate, selectedTrip?.endDate]);
+
+  useEffect(() => {
+    if (tripDays.length > 0 && expandedDate === null) {
+      setExpandedDate(tripDays[0]);
     }
-}
+    tripDaysRef.current = tripDays;
+  }, [tripDays.join(',')]);
 
-export interface UseCalendarViewControllerOptions {
-    /** When set (Trip day route), syncs selected trip and day view mode from the URL. */
-    routeTripId?: string | null;
-    routeDateStr?: string | null;
-}
-
-export function useCalendarViewController(options?: UseCalendarViewControllerOptions) {
-    const { trips, updateItineraryDay } = useTrips();
-    const { activities, addActivity, updateActivity, deleteActivity, restoreActivity, reorderActivities } =
-        useActivities();
-    const { getRoutesByTrip } = useTransportRoutes();
-    const { showToast } = useToast();
-    const appSettings = useSettings();
-
-    const savedPrefs = useMemo(() => loadCalendarPrefs(), []);
-    const [currentDate, setCurrentDate] = useState(() => {
-        if (savedPrefs.currentDateStr) {
-            try {
-                return parseISO(savedPrefs.currentDateStr);
-            } catch {
-                /* fallback */
-            }
-        }
-        return new Date();
-    });
-    const [viewMode, setViewMode] = useState<CalendarViewMode>(savedPrefs.viewMode);
-    const [selectedTripId, setSelectedTripId] = useState<string | null>(savedPrefs.selectedTripId);
-    const [addingActivityForDate, setAddingActivityForDate] = useState<string | null>(null);
-    const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
-    const [tripSummary, setTripSummary] = useState<{ summary: string; highlights: string[] } | null>(null);
-    const [summaryLoading, setSummaryLoading] = useState(false);
-    const [summaryError, setSummaryError] = useState<string | null>(null);
-    const [optimizationLoading, setOptimizationLoading] = useState(false);
-    const [optimizationError, setOptimizationError] = useState<string | null>(null);
-    const [optimizedRoute, setOptimizedRoute] = useState<{ recommendation: string; optimizedOrder: string[] } | null>(
-        null,
+  if (trips.length === 0) {
+    return (
+      <div className="page-container animate-fade-in">
+        <header className="page-header">
+          <h1>Weather</h1>
+          <p>Create a trip first to see weather forecasts.</p>
+        </header>
+      </div>
     );
-    const [descriptionLoading, setDescriptionLoading] = useState(false);
-    const [descriptionError, setDescriptionError] = useState<string | null>(null);
-    const [pendingDescriptions, setPendingDescriptions] = useState<PendingActivityDescription[] | null>(null);
-    const [accommodationEditDate, setAccommodationEditDate] = useState<string | null>(null);
-    const [accommodationCityInput, setAccommodationCityInput] = useState('');
-    const [accommodationNameInput, setAccommodationNameInput] = useState('');
-    const [showNearbyRestaurantsForActivityId, setShowNearbyRestaurantsForActivityId] = useState<string | null>(null);
-    const [reviewsActivityId, setReviewsActivityId] = useState<string | null>(null);
-    const [conflictsExpandedDate, setConflictsExpandedDate] = useState<string | null>(null);
-    const latestDescriptionContextRef = useRef({
-        currentDateStr: '',
-        selectedTripId: null as string | null,
-        scenarioId: null as string | null,
-    });
+  }
 
-    const selectedTrip = trips.find((t) => t.id === selectedTripId);
-    const { weatherByDate, loading: weatherLoading } = useWeatherForTrip(selectedTrip ?? undefined);
-    const { activeScenario } = useTripScenarios(selectedTripId);
-    const effectiveTrip = activeScenario?.tripSnapshot ?? selectedTrip;
-    const hasLocationForDate = useCallback(
-        (dateStr: string) =>
-            getEffectiveDayLocations(effectiveTrip?.itinerary?.[dateStr], effectiveTrip?.dayLocations?.[dateStr]).length >=
-            1,
-        [effectiveTrip],
-    );
-    const tripRoutes = useMemo(
-        () => (selectedTripId ? getRoutesByTrip(selectedTripId) : []),
-        [selectedTripId, getRoutesByTrip],
-    );
-    const effectiveRoutes = activeScenario?.transportRoutesSnapshot ?? tripRoutes;
-    const tripActivities = useMemo(
-        () => (selectedTripId ? activities.filter((activity) => activity.tripId === selectedTripId) : []),
-        [selectedTripId, activities],
-    );
-    const effectiveActivities = activeScenario?.activitiesSnapshot ?? tripActivities;
-    const currentDateStr = format(currentDate, 'yyyy-MM-dd');
-    const currentDayLocations = getEffectiveDayLocations(
-        effectiveTrip?.itinerary?.[currentDateStr],
-        effectiveTrip?.dayLocations?.[currentDateStr],
-    );
+  return (
+    <div className="page-container animate-fade-in">
+      <header className="page-header" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <CloudSun size={28} style={{ color: 'var(--primary-color)' }} />
+          <div>
+            <h1 style={{ margin: 0 }}>Weather</h1>
+            <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Forecast for your trip</p>
+          </div>
+        </div>
+        <select
+          className="input-field"
+          value={selectedTripId ?? ''}
+          onChange={(e) => {
+            const id = e.target.value || null;
+            setSearchParams(id ? { trip: id } : {}, { replace: true });
+          }}
+          style={{ minWidth: '200px' }}
+        >
+          {trips.map((t) => (
+            <option key={t.id} value={t.id}>{t.name}</option>
+          ))}
+        </select>
+        <button
+          type="button"
+          className="btn btn-ghost"
+          onClick={() => {
+            refetch();
+          }}
+          disabled={weatherLoading}
+          title="Sync latest weather"
+        >
+          <RefreshCw size={18} className={weatherLoading ? 'spin' : undefined} />
+          {weatherLoading ? ' Updating…' : ' Sync weather'}
+        </button>
+      </header>
 
-    useEffect(() => {
-        if (!accommodationEditDate || !effectiveTrip) return;
-        const dayData = effectiveTrip.itinerary?.[accommodationEditDate];
-        const cityDisplay = getEffectiveDayLocations(
-            dayData,
-            effectiveTrip.dayLocations?.[accommodationEditDate],
-        ).join(', ');
-        setAccommodationCityInput(cityDisplay);
-        setAccommodationNameInput(dayData?.accommodation?.name ?? '');
-    }, [accommodationEditDate, effectiveTrip]);
+      {datesMissingLocation.length > 0 && (
+        <div
+          style={{
+            marginTop: '1rem',
+            padding: '0.75rem 1rem',
+            background: 'var(--border-light)',
+            borderRadius: 'var(--radius-md)',
+            fontSize: '0.9rem',
+            color: 'var(--text-secondary)',
+          }}
+        >
+          Add a city for {datesMissingLocation.length} day{datesMissingLocation.length === 1 ? '' : 's'} to see forecasts: set locations in Calendar or Spreadsheet.
+        </div>
+      )}
 
-    useEffect(() => {
-        saveCalendarPrefs(viewMode, selectedTripId, format(currentDate, 'yyyy-MM-dd'));
-    }, [viewMode, selectedTripId, currentDate]);
+      {weatherLoading ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
+          {tripDays.map((dateStr) => (
+            <div
+              key={dateStr}
+              style={{
+                height: '56px',
+                borderRadius: 'var(--radius-md)',
+                background: 'var(--border-light)',
+                animation: 'weather-shimmer 1.5s ease-in-out infinite',
+              }}
+            />
+          ))}
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
+          {tripDays.map((dateStr) => {
+            const days = weatherByDate.get(dateStr) ?? [];
+            const firstDay = days[0];
+            const isExpanded = expandedDate === dateStr;
+            const hasLocation = getEffectiveDayLocations(selectedTrip?.itinerary?.[dateStr], selectedTrip?.dayLocations?.[dateStr]).length > 0;
+            const canExpand = days.length > 0 || hasLocation;
 
-    /** Warm Firestore persistent cache for the selected trip while online. */
-    useEffect(() => {
-        if (!selectedTripId) return;
-        if (typeof navigator !== 'undefined' && !navigator.onLine) return;
-        void prefetchTripDocumentsForOfflineCache(selectedTripId);
-    }, [selectedTripId]);
+            return (
+              <div
+                key={dateStr}
+                className="card"
+                style={{
+                  padding: 0,
+                  overflow: 'hidden',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!canExpand) return;
+                    if (isExpanded) {
+                      setExpandedDate(null);
+                    } else {
+                      setExpandedDate(dateStr);
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '0.75rem 1rem',
+                    border: 'none',
+                    background: 'transparent',
+                    color: 'inherit',
+                    font: 'inherit',
+                    cursor: canExpand ? 'pointer' : 'default',
+                    textAlign: 'left',
+                  }}
+                >
+                  <span style={{ color: 'var(--text-primary)' }}>
+                    {format(parseISO(dateStr), 'EEE MMM d')}
+                    {' · '}
+                    <span style={{ color: 'var(--text-secondary)' }}>
+                      📍 {days.length > 0 ? days.map((d) => d.location).join(', ') : (getEffectiveDayLocations(selectedTrip?.itinerary?.[dateStr], selectedTrip?.dayLocations?.[dateStr]).join(', ') || '—')}
+                    </span>
+                  </span>
+                  {firstDay?.isForecastAvailable ? (
+                    <span>
+                      {firstDay.emoji} {formatTemp(firstDay.tempMinC, tempUnit)}–{formatTemp(firstDay.tempMaxC, tempUnit)}
+                    </span>
+                  ) : (
+                    <span style={{ color: 'var(--text-tertiary)' }}>—</span>
+                  )}
+                </button>
 
-    useEffect(() => {
-        if (options?.routeTripId == null) return;
-        setSelectedTripId(options.routeTripId);
-        setViewMode('day');
-    }, [options?.routeTripId]);
+                {isExpanded && (
+                  <div style={{ padding: '0 1rem 1rem', borderTop: '1px solid var(--border-color)' }}>
+                    {/* Per-day location edit: overwrites app-wide for this date */}
+                    <div style={{ marginTop: '0.75rem', marginBottom: '0.5rem' }}>
+                      {editingLocationDate === dateStr ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <input
+                            type="text"
+                            className="input-field"
+                            value={editLocationValue}
+                            onChange={(e) => setEditLocationValue(e.target.value)}
+                            placeholder="City or cities (comma-separated)"
+                            style={{ flex: '1 1 200px', minWidth: 0 }}
+                            autoFocus
+                          />
+                          <button
+                            type="button"
+                            className="btn btn-primary"
+                            onClick={() => {
+                              const raw = editLocationValue.trim();
+                              const locations = raw ? raw.split(',').map((s) => s.trim()).filter(Boolean) : [];
+                              if (selectedTripId && locations.length > 0) {
+                                updateItineraryDay(selectedTripId, dateStr, {
+                                  location: locations[0],
+                                  locations,
+                                });
+                              }
+                              setEditingLocationDate(null);
+                              setEditLocationValue('');
+                            }}
+                          >
+                            <Check size={16} /> Save
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-ghost"
+                            onClick={() => {
+                              setEditingLocationDate(null);
+                              setEditLocationValue('');
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          style={{ fontSize: '0.85rem' }}
+                          onClick={() => {
+                            const current = getEffectiveDayLocations(selectedTrip?.itinerary?.[dateStr], selectedTrip?.dayLocations?.[dateStr]).join(', ');
+                            setEditLocationValue(current);
+                            setEditingLocationDate(dateStr);
+                          }}
+                        >
+                          <Pencil size={14} /> Edit location for this day
+                        </button>
+                      )}
+                    </div>
+                    {days.length === 0 ? (
+                      <div style={{ paddingTop: '0.25rem', color: 'var(--text-tertiary)', fontSize: '0.9rem' }}>
+                        Add a location for this day to see forecast (use &quot;Edit location&quot; above or set in Calendar/Spreadsheet).
+                      </div>
+                    ) : (
+                      days.map((day, idx) => (
+                        <div key={day.location + idx} style={{ marginTop: idx > 0 ? '1.25rem' : '0.75rem' }}>
+                          <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>📍 {day.location}</div>
+                          {day.isForecastAvailable ? (
+                            <>
+                              <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.9rem' }}>
+                                <div style={{ fontWeight: 600 }}>{day.emoji ?? '🌡'} {day.weatherLabel ?? '—'}</div>
+                                <div>🌡 High {formatTemp(day.tempMaxC, tempUnit)} Low {formatTemp(day.tempMinC, tempUnit)}</div>
+                                <div>🌧 Precip: {(day.precipitationMm ?? 0).toFixed(1)}mm · {day.precipitationProbabilityMax ?? 0}% chance</div>
+                                <div>☀ UV Index: {day.uvIndexMax ?? '—'}</div>
+                                <div>🌅 Sunrise {formatTime(day.sunriseIso ?? '')}</div>
+                                <div>🌇 Sunset {formatTime(day.sunsetIso ?? '')}</div>
+                              </div>
+                              <div style={{ marginTop: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>Hourly</div>
+                              <div
+                                style={{
+                                  display: 'grid',
+                                  gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
+                                  gap: '0.35rem',
+                                  maxHeight: '280px',
+                                  overflowY: 'auto',
+                                  fontSize: '0.8rem',
+                                  color: 'var(--text-secondary)',
+                                }}
+                              >
+                                {(day.hours ?? []).filter((h) => h.hour >= hourlyStart && h.hour <= hourlyEnd).map((h) => (
+                                  <div
+                                    key={h.hour}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '0.35rem',
+                                      padding: '0.25rem 0.4rem',
+                                      background: 'var(--surface-color)',
+                                      borderRadius: 'var(--radius-sm)',
+                                    }}
+                                  >
+                                    <span style={{ color: 'var(--text-tertiary)', minWidth: '2.5rem' }}>
+                                      [{String(h.hour).padStart(2, '0')}:00]
+                                    </span>
+                                    <span>{h.emoji}</span>
+                                    <span>{formatTemp(h.tempC, tempUnit)}</span>
+                                    <span>{h.precipitationMm.toFixed(1)}mm {h.precipitationProbability}%</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </>
+                          ) : (
+                            <div style={{ color: 'var(--text-tertiary)', fontSize: '0.9rem' }}>
+                              Forecast not yet available
+                              {dateStr < format(new Date(), 'yyyy-MM-dd') && (
+                                <span style={{ display: 'block', marginTop: '0.25rem' }}>
+                                  Forecast is only available for the next 16 days from today.
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
-    useEffect(() => {
-        if (options?.routeDateStr == null) return;
-        try {
-            const d = parseISO(options.routeDateStr);
-            if (!Number.isNaN(d.getTime())) setCurrentDate(d);
-        } catch {
-            /* ignore */
-        }
-    }, [options?.routeDateStr]);
+      {/* Temporary debug panel: Open-Meteo request attempts (remove later) */}
+      <div style={{ marginTop: '2rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+        <button
+          type="button"
+          onClick={() => setDebugOpen((o) => !o)}
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0.5rem 0.75rem',
+            background: 'var(--surface-color)',
+            border: 'none',
+            font: 'inherit',
+            color: 'var(--text-secondary)',
+            cursor: 'pointer',
+            fontSize: '0.85rem',
+          }}
+        >
+          <span>Debug: Open-Meteo requests ({requestLogs.length})</span>
+          {debugOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+        </button>
+        {debugOpen && (
+          <div style={{ padding: '0.75rem', background: 'var(--bg-color)', maxHeight: '320px', overflowY: 'auto', fontSize: '0.8rem', fontFamily: 'monospace' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.5rem' }}>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                style={{ fontSize: '0.75rem' }}
+                onClick={() => setRequestLogs([])}
+              >
+                Clear logs
+              </button>
+            </div>
+            {requestLogs.length === 0 ? (
+              <div style={{ color: 'var(--text-tertiary)' }}>No requests yet. Select a trip with day locations and click Sync weather.</div>
+            ) : (
+              <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                {requestLogs.map((log) => (
+                  <li
+                    key={log.id}
+                    style={{
+                      padding: '0.25rem 0',
+                      borderBottom: '1px solid var(--border-light)',
+                      color: log.ok ? 'var(--text-secondary)' : 'var(--error-color, #c00)',
+                    }}
+                  >
+                    <span style={{ color: 'var(--text-tertiary)', marginRight: '0.5rem' }}>{log.time.slice(11, 19)}</span>
+                    <span style={{ fontWeight: 600 }}>{log.type}</span>
+                    {log.location != null && <span> {log.location}</span>}
+                    {log.status != null && <span> HTTP {log.status}</span>}
+                    {log.message != null && <span> — {log.message}</span>}
+                    <div style={{ wordBreak: 'break-all', marginTop: '0.15rem', color: 'var(--text-tertiary)' }}>{log.url}</div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
-    useEffect(() => {
-        if (!effectiveTrip) return;
-        try {
-            const tripStart = parseISO(effectiveTrip.startDate);
-            const tripEnd = parseISO(effectiveTrip.endDate);
-            if (currentDate < tripStart || currentDate > tripEnd) {
-                setCurrentDate(tripStart);
-            }
-        } catch {
-            /* ignore */
-        }
-    }, [effectiveTrip?.id, effectiveTrip?.startDate, effectiveTrip?.endDate, currentDate]);
-
-    useEffect(() => {
-        latestDescriptionContextRef.current = {
-            currentDateStr,
-            selectedTripId,
-            scenarioId: activeScenario?.id ?? null,
-        };
-        setPendingDescriptions(null);
-        setDescriptionError(null);
-        setDescriptionLoading(false);
-    }, [currentDateStr, selectedTripId, activeScenario?.id]);
-
-    const handleSelectTrip = (tripId: string | null) => {
-        setSelectedTripId(tripId);
-        if (tripId) {
-            const trip = trips.find((t) => t.id === tripId);
-            if (trip) {
-                try {
-                    setCurrentDate(parseISO(trip.startDate));
-                } catch {
-                    /* ignore */
-                }
-            }
-        }
-    };
-
-    const hasDaySummaryContent =
-        !!descriptionError ||
-        !!summaryError ||
-        !!optimizationError ||
-        !!pendingDescriptions ||
-        !!optimizedRoute;
-
-    const calendarDays = useMemo(() => {
-        if (viewMode === 'trip' && selectedTrip) {
-            try {
-                return eachDayOfInterval({
-                    start: parseISO(effectiveTrip?.startDate ?? selectedTrip.startDate),
-                    end: parseISO(effectiveTrip?.endDate ?? selectedTrip.endDate),
-                });
-            } catch {
-                return [];
-            }
-        }
-        if (viewMode === 'day') {
-            return [currentDate];
-        }
-        return [];
-    // Intentionally mirrors original deps: selectedTrip + effectiveTrip read inside without listing effectiveTrip (scenario date range).
-    }, [currentDate, viewMode, selectedTrip]);
-
-    const getActivitiesForDate = (date: Date) => {
-        const dateStr = format(date, 'yyyy-MM-dd');
-        return effectiveActivities.filter((a) => a.date === dateStr);
-    };
-
-    const tripDays = useMemo(() => {
-        if (!effectiveTrip) return [];
-        try {
-            return eachDayOfInterval({
-                start: parseISO(effectiveTrip.startDate),
-                end: parseISO(effectiveTrip.endDate),
-            });
-        } catch {
-            return [];
-        }
-    }, [effectiveTrip]);
-
-    const handleReorderActivities = useCallback(
-        (reordered: Activity[]) => {
-            const updates = reordered
-                .map((act, idx) => ({ id: act.id, order: idx }))
-                .filter((u, idx) => reordered[idx].order !== u.order);
-            if (updates.length > 0) {
-                if (selectedTripId && activeScenario) {
-                    reorderScenarioActivities(selectedTripId, activeScenario.id, reordered);
-                } else {
-                    reorderActivities(updates);
-                }
-                logEvent('Activities Reordered', { count: updates.length, source: 'calendar_day' });
-            }
-        },
-        [activeScenario, reorderActivities, selectedTripId],
-    );
-
-    const getActivityColor = (activity: { category?: string; color?: string }) =>
-        activity.color ?? CATEGORY_COLORS[activity.category ?? 'other'];
-
-    const dayViewActivities = effectiveActivities
-        .filter((a) => a.date === currentDateStr)
-        .sort(compareActivitiesByTimeThenOrder);
-
-    const planningConflicts = useMemo(() => {
-        if (!effectiveTrip) return [];
-        return getTripPlanningConflicts({
-            trip: effectiveTrip,
-            activities: effectiveActivities,
-            routes: effectiveRoutes,
-        });
-    }, [effectiveTrip, effectiveActivities, effectiveRoutes]);
-
-    const conflictCountsByDate = useMemo(() => {
-        const counts: Record<string, number> = {};
-        planningConflicts.forEach((conflict) => {
-            if (!conflict.date) return;
-            counts[conflict.date] = (counts[conflict.date] || 0) + 1;
-        });
-        return counts;
-    }, [planningConflicts]);
-
-    const handleSaveAccommodationForDate = useCallback(() => {
-        if (!accommodationEditDate || !selectedTripId || !effectiveTrip) {
-            setAccommodationEditDate(null);
-            return;
-        }
-        const dateStr = accommodationEditDate;
-        const dayData = effectiveTrip.itinerary?.[dateStr];
-
-        const parsedCities = accommodationCityInput
-            .split(',')
-            .map((s) => s.trim())
-            .filter(Boolean);
-
-        const locationUpdates =
-            parsedCities.length === 0
-                ? { location: '', locations: [] as string[] }
-                : parsedCities.length === 1
-                  ? { location: parsedCities[0], locations: [parsedCities[0]] }
-                  : { location: parsedCities[0], locations: parsedCities };
-
-        const hasAccommodationText = accommodationNameInput.trim().length > 0;
-
-        const nextAccommodation = hasAccommodationText
-            ? {
-                  ...(dayData?.accommodation ?? {}),
-                  name: accommodationNameInput.trim() || dayData?.accommodation?.name || '',
-              }
-            : undefined;
-
-        const updates: {
-            location: string;
-            locations: string[];
-            accommodation?: {
-                name: string;
-                cost?: number;
-                currency?: string;
-            };
-        } = {
-            location: locationUpdates.location,
-            locations: locationUpdates.locations,
-        };
-
-        if (nextAccommodation) {
-            updates.accommodation = nextAccommodation;
-        }
-
-        if (activeScenario) {
-            updateScenarioTripSnapshot(selectedTripId, activeScenario.id, (trip) => ({
-                ...trip,
-                itinerary: {
-                    ...(trip.itinerary || {}),
-                    [dateStr]: {
-                        ...(trip.itinerary?.[dateStr] || {}),
-                        ...updates,
-                    },
-                },
-            }));
-        } else {
-            updateItineraryDay(selectedTripId, dateStr, updates);
-        }
-
-        setAccommodationEditDate(null);
-        showToast('Accommodation updated');
-    }, [
-        accommodationCityInput,
-        accommodationNameInput,
-        accommodationEditDate,
-        selectedTripId,
-        effectiveTrip,
-        activeScenario,
-        updateItineraryDay,
-        showToast,
-    ]);
-
-    const handleSaveActivity = (
-        activityData:
-            | Omit<Activity, 'id' | 'userId' | 'tripMembers'>
-            | ({ id: string } & Partial<Omit<Activity, 'userId'>>),
-        forDate?: string,
-    ) => {
-        const targetDate = forDate ?? currentDateStr;
-        if ('id' in activityData && activityData.id) {
-            if (selectedTripId && activeScenario) {
-                const existingActivity = effectiveActivities.find((activity) => activity.id === activityData.id);
-                if (!existingActivity) return;
-                upsertScenarioActivity(selectedTripId, activeScenario.id, { ...existingActivity, ...activityData });
-            } else {
-                updateActivity(activityData.id, activityData);
-            }
-        } else if (selectedTripId && targetDate) {
-            const orderFallback = dayViewActivities.length;
-            if (activeScenario) {
-                const scenarioActivity = createScenarioActivity({
-                    ...(activityData as Omit<Activity, 'id'>),
-                    tripId: selectedTripId,
-                    date: targetDate,
-                    order: ('order' in activityData ? activityData.order : orderFallback) ?? orderFallback,
-                    title: ('title' in activityData ? activityData.title : '') || 'Activity',
-                    userId: selectedTrip?.userId || 'scenario-user',
-                    tripMembers: selectedTrip?.members || [],
-                });
-                upsertScenarioActivity(selectedTripId, activeScenario.id, scenarioActivity);
-            } else {
-                addActivity(
-                    {
-                        ...activityData,
-                        tripId: selectedTripId,
-                        date: targetDate,
-                        order: ('order' in activityData ? activityData.order : orderFallback) ?? orderFallback,
-                        title: ('title' in activityData ? activityData.title : '') || 'Activity',
-                    } as Omit<Activity, 'id' | 'userId' | 'tripMembers'>,
-                    selectedTrip?.members || [],
-                );
-            }
-        }
-        setAddingActivityForDate(null);
-        setEditingActivityId(null);
-    };
-
-    const handleGenerateSummary = async () => {
-        if (!selectedTrip || dayViewActivities.length === 0) return;
-        setSummaryLoading(true);
-        setSummaryError(null);
-        setTripSummary(null);
-
-        logEvent('Trip Summary Requested', {
-            trip_name: selectedTrip.name,
-            activity_count: dayViewActivities.length,
-            date: currentDateStr,
-        });
-        try {
-            const parsed = await generateDaySummary({
-                trip: effectiveTrip ?? selectedTrip,
-                currentDate,
-                currentDateStr,
-                activities: dayViewActivities,
-            });
-            if (!parsed.summary || !Array.isArray(parsed.highlights)) throw new Error('Invalid response format');
-            setTripSummary(parsed);
-        } catch (e) {
-            const msg = e instanceof Error ? e.message : 'Summary generation failed';
-            setSummaryError(/429|quota|rate/i.test(msg) ? 'API rate limit reached — please wait a minute and try again.' : msg);
-        } finally {
-            setSummaryLoading(false);
-        }
-    };
-
-    const handleOptimizeRoute = async () => {
-        if (!selectedTrip || dayViewActivities.length < 2) return;
-        setOptimizationLoading(true);
-        setOptimizationError(null);
-        setOptimizedRoute(null);
-
-        logEvent('Route Optimization Requested', { date: currentDateStr, activity_count: dayViewActivities.length });
-        try {
-            const parsed = await generateOptimizedRoute({
-                trip: effectiveTrip ?? selectedTrip,
-                currentDateStr,
-                activities: dayViewActivities,
-            });
-            if (
-                !parsed.recommendation ||
-                !Array.isArray(parsed.optimizedOrder) ||
-                parsed.optimizedOrder.length !== dayViewActivities.length
-            ) {
-                throw new Error('Invalid response format');
-            }
-            setOptimizedRoute(parsed);
-        } catch (e) {
-            const msg = e instanceof Error ? e.message : 'Optimization failed';
-            setOptimizationError(/429|quota|rate/i.test(msg) ? 'API rate limit reached — please wait a minute and try again.' : msg);
-        } finally {
-            setOptimizationLoading(false);
-        }
-    };
-
-    const handleGenerateDescriptions = async () => {
-        if (!selectedTrip || dayViewActivities.length === 0) return;
-        const requestContext = {
-            currentDateStr,
-            selectedTripId,
-            scenarioId: activeScenario?.id ?? null,
-        };
-        setDescriptionLoading(true);
-        setDescriptionError(null);
-        setPendingDescriptions(null);
-
-        logEvent('Activity Descriptions Requested', {
-            trip_name: selectedTrip.name,
-            activity_count: dayViewActivities.length,
-            date: currentDateStr,
-        });
-
-        try {
-            const parsed = await generateDayActivityDescriptions({
-                trip: effectiveTrip ?? selectedTrip,
-                currentDateStr,
-                activities: dayViewActivities,
-            });
-
-            const nextSuggestions = parsed
-                .map((item) => {
-                    const activity = dayViewActivities.find((candidate) => candidate.id === item.activityId);
-                    if (!activity) return null;
-                    return {
-                        activityId: item.activityId,
-                        title: activity.title,
-                        summary: item.summary.trim(),
-                        tips: item.tips.map((tip) => tip.trim()).filter(Boolean),
-                    };
-                })
-                .filter((item): item is PendingActivityDescription => Boolean(item));
-
-            if (nextSuggestions.length !== dayViewActivities.length) {
-                throw new Error('Missing one or more activity descriptions');
-            }
-
-            const latestContext = latestDescriptionContextRef.current;
-            if (
-                latestContext.currentDateStr !== requestContext.currentDateStr ||
-                latestContext.selectedTripId !== requestContext.selectedTripId ||
-                latestContext.scenarioId !== requestContext.scenarioId
-            ) {
-                return;
-            }
-
-            setPendingDescriptions(nextSuggestions);
-        } catch (e) {
-            const msg = e instanceof Error ? e.message : 'Description generation failed';
-            const latestContext = latestDescriptionContextRef.current;
-            if (
-                latestContext.currentDateStr !== requestContext.currentDateStr ||
-                latestContext.selectedTripId !== requestContext.selectedTripId ||
-                latestContext.scenarioId !== requestContext.scenarioId
-            ) {
-                return;
-            }
-            setDescriptionError(/429|quota|rate/i.test(msg) ? 'API rate limit reached — please wait a minute and try again.' : msg);
-        } finally {
-            const latestContext = latestDescriptionContextRef.current;
-            if (
-                latestContext.currentDateStr === requestContext.currentDateStr &&
-                latestContext.selectedTripId === requestContext.selectedTripId &&
-                latestContext.scenarioId === requestContext.scenarioId
-            ) {
-                setDescriptionLoading(false);
-            }
-        }
-    };
-
-    const dismissPendingDescription = (activityId: string) => {
-        setPendingDescriptions((current) => {
-            if (!current) return null;
-            const next = current.filter((item) => item.activityId !== activityId);
-            return next.length > 0 ? next : null;
-        });
-        logEvent('Activity Description Declined', { activity_id: activityId, date: currentDateStr });
-    };
-
-    const applyPendingDescription = async (activityId: string, summary: string, tips: string[]) => {
-        const activity = dayViewActivities.find((candidate) => candidate.id === activityId);
-        if (!activity) return;
-        const details = `${summary}\n\n${tips.map((tip) => `- ${tip}`).join('\n')}`;
-
-        if (selectedTripId && activeScenario) {
-            upsertScenarioActivity(selectedTripId, activeScenario.id, { ...activity, details });
-        } else {
-            await updateActivity(activityId, { details });
-        }
-
-        setPendingDescriptions((current) => {
-            if (!current) return null;
-            const next = current.filter((item) => item.activityId !== activityId);
-            return next.length > 0 ? next : null;
-        });
-
-        logEvent('Activity Description Accepted', {
-            activity_id: activityId,
-            activity_title: activity.title,
-            date: currentDateStr,
-        });
-    };
-
-    const handleAcceptAllDescriptions = async () => {
-        if (!pendingDescriptions || pendingDescriptions.length === 0) return;
-
-        const count = pendingDescriptions.length;
-        await Promise.all(
-            pendingDescriptions.map((item) => applyPendingDescription(item.activityId, item.summary, item.tips)),
-        );
-        setPendingDescriptions(null);
-
-        logEvent('All Activity Descriptions Accepted', {
-            count,
-            date: currentDateStr,
-        });
-    };
-
-    return {
-        trips,
-        updateItineraryDay,
-        activities,
-        addActivity,
-        updateActivity,
-        deleteActivity,
-        restoreActivity,
-        reorderActivities,
-        showToast,
-        appSettings,
-        currentDate,
-        setCurrentDate,
-        viewMode,
-        setViewMode,
-        selectedTripId,
-        setSelectedTripId,
-        selectedTrip,
-        addingActivityForDate,
-        setAddingActivityForDate,
-        editingActivityId,
-        setEditingActivityId,
-        tripSummary,
-        setTripSummary,
-        summaryLoading,
-        summaryError,
-        optimizationLoading,
-        optimizationError,
-        optimizedRoute,
-        setOptimizedRoute,
-        descriptionLoading,
-        descriptionError,
-        pendingDescriptions,
-        setPendingDescriptions,
-        accommodationEditDate,
-        setAccommodationEditDate,
-        accommodationCityInput,
-        setAccommodationCityInput,
-        accommodationNameInput,
-        setAccommodationNameInput,
-        showNearbyRestaurantsForActivityId,
-        setShowNearbyRestaurantsForActivityId,
-        reviewsActivityId,
-        setReviewsActivityId,
-        conflictsExpandedDate,
-        setConflictsExpandedDate,
-        weatherByDate,
-        weatherLoading,
-        activeScenario,
-        effectiveTrip,
-        hasLocationForDate,
-        effectiveRoutes,
-        effectiveActivities,
-        currentDateStr,
-        currentDayLocations,
-        handleSelectTrip,
-        calendarDays,
-        getActivitiesForDate,
-        tripDays,
-        handleReorderActivities,
-        getActivityColor,
-        dayViewActivities,
-        planningConflicts,
-        conflictCountsByDate,
-        handleSaveAccommodationForDate,
-        handleSaveActivity,
-        handleGenerateSummary,
-        handleOptimizeRoute,
-        handleGenerateDescriptions,
-        dismissPendingDescription,
-        applyPendingDescription,
-        handleAcceptAllDescriptions,
-        hasDaySummaryContent,
-        getNearbyPlacesLabel,
-        updateScenarioTripSnapshot,
-        getEffectiveDayLocations,
-        reorderScenarioActivities,
-        removeScenarioActivity,
-    };
-}
+export default Weather;
 </file>
 
 <file path="storage.rules">
@@ -9340,44 +8296,6 @@ service firebase.storage {
 }
 </file>
 
-<file path="index.html">
-<!doctype html>
-<html lang="en">
-
-<head>
-  <meta charset="UTF-8" />
-  <link rel="icon"
-    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="TravelPlanner — A beautiful travel itinerary planner and tracker." />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
-    rel="stylesheet" />
-  <title>TravelPlanner</title>
-  <!-- GitHub Pages SPA redirect receiver -->
-  <script>
-    (function (l) {
-      if (l.search[1] === '/') {
-        var decoded = l.search.slice(1).split('&').map(function (s) {
-          return s.replace(/~and~/g, '&')
-        }).join('?');
-        window.history.replaceState(null, null,
-          l.pathname.slice(0, -1) + decoded + l.hash
-        );
-      }
-    }(window.location))
-  </script>
-</head>
-
-<body>
-  <div id="root"></div>
-  <script type="module" src="/src/main.tsx"></script>
-</body>
-
-</html>
-</file>
-
 <file path="README.md">
 # TravelPlanner
 
@@ -9450,6 +8368,12 @@ npx wrangler deploy
 
 Set `GEMINI_API_KEYS` (comma-separated) or the legacy `GEMINI_API_KEY` secret in the Cloudflare dashboard.
 
+Required Cloudflare secrets (from `worker/`, use `wrangler secret put <NAME>` or the dashboard):
+
+- **`GEMINI_API_KEYS`** (comma-separated) or **`GEMINI_API_KEY`**
+- **`GOOGLE_PLACES_API_KEY`**
+- **`FIREBASE_PROJECT_ID`** — run `wrangler secret put FIREBASE_PROJECT_ID`; the value must match **`VITE_FIREBASE_PROJECT_ID`** in the frontend environment.
+
 Optional worker vars:
 
 - **`ALLOWED_ORIGINS`** — Comma-separated list of origins (e.g. `https://yourapp.pages.dev`). If set, browsers sending a `Origin` header must match; omit for local dev / open CORS (`*`).
@@ -9476,6 +8400,158 @@ src/
   theme.css       — Base design tokens and global styles
 worker/           — Cloudflare Worker for Gemini API proxy
 ```
+</file>
+
+<file path="src/components/ActivityReviews.tsx">
+import React, { useState, useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
+import { resolvePlaceId, fetchPlaceDetails, generateProsCons } from '../lib/places';
+import type { PlaceDetails, PlaceProsCons } from '../lib/places';
+
+export interface ActivityReviewsProps {
+  activityTitle: string;
+  activityLocation: string | undefined;
+  onClose: () => void;
+}
+
+const ActivityReviews: React.FC<ActivityReviewsProps> = ({
+  activityTitle,
+  activityLocation,
+  onClose,
+}) => {
+  const [step, setStep] = useState<'resolve' | 'details' | 'done' | 'error'>('resolve');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [details, setDetails] = useState<PlaceDetails | null>(null);
+  const [prosCons, setProsCons] = useState<PlaceProsCons | null>(null);
+  const [prosConsLoading, setProsConsLoading] = useState(false);
+
+  const location = activityLocation ?? activityTitle;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const placeId = await resolvePlaceId(activityTitle, location);
+        if (cancelled) return;
+        if (!placeId) {
+          setStep('error');
+          setErrorMessage('No Google Places data found for this activity.');
+          return;
+        }
+
+        const d = await fetchPlaceDetails(placeId);
+        if (cancelled) return;
+        setDetails(d);
+        setStep('done');
+
+        setProsConsLoading(true);
+        generateProsCons(d.name, d.reviews, placeId)
+          .then((pc) => { if (!cancelled) setProsCons(pc); })
+          .catch(() => { /* hide pros/cons on failure */ })
+          .finally(() => { if (!cancelled) setProsConsLoading(false); });
+      } catch (e) {
+        if (cancelled) return;
+        setStep('error');
+        setErrorMessage(e instanceof Error ? e.message : 'Failed to load reviews');
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [activityTitle, location]);
+
+  if (step === 'resolve' || (step === 'done' && !details)) {
+    return (
+      <div style={{ padding: '1rem', minWidth: '320px', maxWidth: '420px', background: 'var(--surface-color)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+          <h3 style={{ margin: 0, fontSize: '1rem' }}>📋 Reviews</h3>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Close">×</button>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+          <Loader2 size={28} className="spin" style={{ color: 'var(--primary-color)' }} />
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 'error') {
+    return (
+      <div style={{ padding: '1rem', minWidth: '320px', background: 'var(--surface-color)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+          <h3 style={{ margin: 0, fontSize: '1rem' }}>📋 Reviews</h3>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Close">×</button>
+        </div>
+        <p style={{ color: 'var(--text-secondary)', margin: 0 }}>{errorMessage}</p>
+      </div>
+    );
+  }
+
+  const d = details!;
+
+  return (
+    <div style={{ padding: '1rem', minWidth: '320px', maxWidth: '420px', background: 'var(--surface-color)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', maxHeight: '80vh', overflowY: 'auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+        <h3 style={{ margin: 0, fontSize: '1rem' }}>📋 Reviews</h3>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Close">×</button>
+      </div>
+
+      <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{d.name}</div>
+      {(d.rating != null || d.ratingCount != null) && (
+        <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+          ⭐ {d.rating?.toFixed(1) ?? '—'} {d.ratingCount != null ? `(${d.ratingCount.toLocaleString()} reviews)` : ''}
+        </div>
+      )}
+
+      <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)', margin: '0.75rem 0' }} />
+
+      <div style={{ fontSize: '0.85rem' }}>
+        <div style={{ fontWeight: 600, marginBottom: '0.35rem' }}>📋 Overview</div>
+        {d.reviewSummary && <p style={{ margin: 0, color: 'var(--text-secondary)' }}>{d.reviewSummary}</p>}
+        {d.reviewSummaryDisclosure && <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{d.reviewSummaryDisclosure}</p>}
+      </div>
+
+      <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)', margin: '0.75rem 0' }} />
+
+      {(prosConsLoading || prosCons) && (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '0.85rem' }}>
+            <div>
+              <div style={{ fontWeight: 600, marginBottom: '0.35rem' }}>✅ Pros</div>
+              {prosConsLoading && !prosCons && <Loader2 size={14} className="spin" />}
+              {prosCons?.pros.map((p, i) => <div key={i} style={{ color: 'var(--text-secondary)' }}>• {p}</div>)}
+            </div>
+            <div>
+              <div style={{ fontWeight: 600, marginBottom: '0.35rem' }}>❌ Cons</div>
+              {prosConsLoading && !prosCons && <Loader2 size={14} className="spin" />}
+              {prosCons?.cons.map((c, i) => <div key={i} style={{ color: 'var(--text-secondary)' }}>• {c}</div>)}
+            </div>
+          </div>
+          {prosCons?.verdict && <p style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>💬 {prosCons.verdict}</p>}
+          <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)', margin: '0.75rem 0' }} />
+        </>
+      )}
+
+      <div style={{ fontWeight: 600, marginBottom: '0.35rem', fontSize: '0.85rem' }}>💬 Recent Reviews</div>
+      {d.reviews.slice(0, 5).map((r, i) => (
+        <div key={i} style={{ marginBottom: '0.6rem', padding: '0.5rem', background: 'var(--bg-color)', borderRadius: 'var(--radius-sm)', fontSize: '0.8rem' }}>
+          <div style={{ color: 'var(--text-tertiary)' }}>{r.authorName} · {r.relativeTime} · {r.rating}★</div>
+          <p style={{ margin: '0.25rem 0 0', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>{r.text}</p>
+        </div>
+      ))}
+
+      <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
+        Powered by Google
+        {d.reviewsUri && (
+          <a href={d.reviewsUri} target="_blank" rel="noopener noreferrer" style={{ marginLeft: '0.5rem', color: 'var(--primary-color)' }}>
+            See all reviews →
+          </a>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default ActivityReviews;
 </file>
 
 <file path="src/components/GeminiUsageHeader.tsx">
@@ -9533,419 +8609,9 @@ const GeminiUsageHeader: React.FC = () => {
 export default GeminiUsageHeader;
 </file>
 
-<file path="src/components/NearbyRestaurants.tsx">
-import React, { useState, useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
-import { fetchNearbyPlaces } from '../lib/services/placesService';
-import { logEvent } from '../lib/amplitude';
-import type { PlaceResult } from '../lib/services/placesService';
-
-function formatPlacesAsNote(places: PlaceResult[]): string {
-  const heading = '**Nearby places**';
-  const lines = places.map((p) => {
-    const ratingPart = p.rating != null
-      ? `${p.rating.toFixed(1)}${p.ratingCount != null ? ` (${p.ratingCount.toLocaleString()} reviews)` : ''}`
-      : '';
-    const parts = [`**${p.name}**`, p.primaryType ? `(${p.primaryType})` : '', ratingPart, p.address].filter(Boolean);
-    return `- ${parts.join(' — ')}`;
-  });
-  return [heading, '', ...lines].join('\n');
-}
-
-export interface NearbyRestaurantsProps {
-  location: string;
-  category?: string;
-  title?: string;
-  label: string;
-  onClose: () => void;
-  onAddToNote?: (formattedText: string) => void;
-}
-
-const NearbyRestaurants: React.FC<NearbyRestaurantsProps> = ({ location, category, title, label, onClose, onAddToNote }) => {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [places, setPlaces] = useState<PlaceResult[]>([]);
-
-  useEffect(() => {
-    logEvent('Nearby Places Opened', { location, category, label });
-    setLoading(true);
-    setError(null);
-    fetchNearbyPlaces(location, category, title)
-      .then(setPlaces)
-      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load places'))
-      .finally(() => setLoading(false));
-  }, [location, category, title, label]);
-
-  return (
-    <div
-      style={{
-        background: 'var(--surface-color)',
-        border: '1px solid var(--border-color)',
-        borderRadius: 'var(--radius-md)',
-        boxShadow: 'var(--shadow-md)',
-        padding: '1rem',
-        minWidth: '280px',
-        maxWidth: '360px',
-      }}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-        <h3 style={{ margin: 0, fontSize: '1rem' }}>{label}</h3>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Close">
-          ×
-        </button>
-      </div>
-
-      {loading && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}>
-          <Loader2 size={24} className="spin" style={{ color: 'var(--primary-color)' }} />
-        </div>
-      )}
-
-      {error && (
-        <p style={{ color: 'var(--error-color)', fontSize: '0.9rem', margin: 0 }}>{error}</p>
-      )}
-
-      {!loading && !error && places.length > 0 && (
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-          {places.map((p) => (
-            <li
-              key={p.id}
-              style={{
-                padding: '0.6rem 0',
-                borderBottom: '1px solid var(--border-color)',
-                cursor: 'pointer',
-              }}
-              onClick={() => logEvent('Nearby Places Result Clicked', { place_name: p.name, rating: p.rating ?? undefined, category, label })}
-              onKeyDown={(e) => e.key === 'Enter' && logEvent('Nearby Places Result Clicked', { place_name: p.name, rating: p.rating ?? undefined, category, label })}
-              role="button"
-              tabIndex={0}
-            >
-              <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{p.name}</div>
-              {p.primaryType && <div style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)' }}>{p.primaryType}</div>}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{p.priceLevel}</span>
-                {p.rating != null && (
-                  <span style={{ fontSize: '0.8rem' }}>⭐ {p.rating.toFixed(1)}{p.ratingCount != null ? ` (${p.ratingCount.toLocaleString()})` : ''}</span>
-                )}
-                {p.isOpenNow != null && (
-                  <span
-                    style={{
-                      fontSize: '0.75rem',
-                      padding: '0.1rem 0.4rem',
-                      borderRadius: 'var(--radius-sm)',
-                      background: p.isOpenNow ? 'color-mix(in srgb, var(--secondary-color) 20%, transparent)' : 'var(--border-light)',
-                      color: p.isOpenNow ? 'var(--secondary-color)' : 'var(--text-tertiary)',
-                    }}
-                  >
-                    {p.isOpenNow ? 'Open now' : 'Closed'}
-                  </span>
-                )}
-              </div>
-              {p.address && <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '0.2rem' }}>{p.address}</div>}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {!loading && !error && places.length === 0 && (
-        <p style={{ color: 'var(--text-tertiary)', fontSize: '0.9rem', margin: 0 }}>No {label.toLowerCase()} found for this location.</p>
-      )}
-
-      {!loading && !error && places.length > 0 && onAddToNote && (
-        <div style={{ marginTop: '0.75rem' }}>
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={() => {
-              const text = formatPlacesAsNote(places);
-              onAddToNote(text);
-              logEvent('Nearby Places Added To Note', { count: places.length, category, label });
-              onClose();
-            }}
-          >
-            Add to activity note
-          </button>
-        </div>
-      )}
-
-      {!loading && (
-        <p style={{ marginTop: '0.75rem', marginBottom: 0, fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>
-          Powered by Google
-        </p>
-      )}
-    </div>
-  );
-};
-
-export default NearbyRestaurants;
-</file>
-
-<file path="src/components/ShareModal.tsx">
-import React, { useState } from 'react';
-import { X, UserPlus, Loader2, Trash2 } from 'lucide-react';
-import { collection, query, where, getDocs, writeBatch, type DocumentReference } from 'firebase/firestore';
-import { db } from '../lib/firebase';
-import { useTrips } from '../lib/store';
-import type { Trip } from '../lib/types';
-import { useToast } from './Toast';
-import { logEvent } from '../lib/amplitude';
-
-interface ShareModalProps {
-    trip: Trip;
-    onClose: () => void;
-}
-
-const ShareModal: React.FC<ShareModalProps> = ({ trip, onClose }) => {
-    const [email, setEmail] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const { updateTrip } = useTrips();
-    const { showToast } = useToast();
-
-    // Prevent closing when clicking inside the modal
-    const stopPropagation = (e: React.MouseEvent) => e.stopPropagation();
-
-    const toErrorMessage = (err: unknown, fallback: string) => {
-        if (!(err instanceof Error) || !err.message) return fallback;
-        if (/permission|missing or insufficient permissions/i.test(err.message)) {
-            return 'You do not have permission to update sharing for this trip.';
-        }
-        if (/network/i.test(err.message)) {
-            return 'Network error while updating collaborators. Please try again.';
-        }
-        return fallback;
-    };
-
-    const handleAddCollaborator = async (e: React.FormEvent) => {
-        e.preventDefault();
-        const targetEmail = email.trim().toLowerCase();
-        if (!targetEmail) return;
-
-        if (trip.sharedWithEmails?.includes(targetEmail)) {
-            setError('User is already a collaborator on this trip.');
-            return;
-        }
-
-        setLoading(true);
-        setError(null);
-
-        try {
-            // 1. Look up user by email in the /users directory
-            const q = query(collection(db, 'users'), where('email', '==', targetEmail));
-            const querySnapshot = await getDocs(q);
-
-            if (querySnapshot.empty) {
-                setError(`No account found for ${targetEmail}. Have they signed in to the app before?`);
-                setLoading(false);
-                return;
-            }
-
-            const targetUserDoc = querySnapshot.docs[0];
-            const targetUid = typeof targetUserDoc.data().uid === 'string' && targetUserDoc.data().uid.trim()
-                ? targetUserDoc.data().uid
-                : targetUserDoc.id;
-
-            if (!targetUid) {
-                throw new Error('Collaborator account is missing a valid UID.');
-            }
-
-            if (targetUid === trip.userId) {
-                setError('You already own this trip.');
-                setLoading(false);
-                return;
-            }
-
-            if ((trip.members || []).includes(targetUid)) {
-                setError('User is already a collaborator on this trip.');
-                setLoading(false);
-                return;
-            }
-
-            // 2. Update the Trip's members and sharedWithEmails array
-            const newMembers = Array.from(new Set([...(trip.members || [trip.userId]), targetUid])).filter(Boolean);
-            const newShared = Array.from(new Set([...(trip.sharedWithEmails || []), targetEmail])).filter(Boolean);
-
-            // Only update the trip doc here, not the child docs immediately
-            await updateTrip(trip.id, {
-                members: newMembers,
-                sharedWithEmails: newShared
-            });
-
-            // 3. Batch update denormalized `tripMembers` on child docs (chunked; Firestore limit 500 per batch)
-            const collectionsToUpdate = ['activities', 'notes', 'transportRoutes', 'chat_history'];
-            const BATCH_LIMIT = 500;
-            const refs: DocumentReference[] = [];
-            for (const collName of collectionsToUpdate) {
-                const subQ = query(collection(db, collName), where('tripId', '==', trip.id));
-                const subSnapshot = await getDocs(subQ);
-                subSnapshot.forEach((docSnap) => refs.push(docSnap.ref));
-            }
-            try {
-                for (let i = 0; i < refs.length; i += BATCH_LIMIT) {
-                    const batch = writeBatch(db);
-                    refs.slice(i, i + BATCH_LIMIT).forEach((ref) => batch.update(ref, { tripMembers: newMembers }));
-                    await batch.commit();
-                }
-            } catch (batchErr) {
-                console.warn('Batch sync after add collaborator failed:', batchErr);
-                showToast(`${targetEmail} was added. If something looks wrong, try refreshing.`);
-                setEmail('');
-                setLoading(false);
-                return;
-            }
-
-            logEvent('Collaborator Added', { trip_id: trip.id });
-            showToast(`${targetEmail} can now collaborate on this trip!`);
-            setEmail('');
-        } catch (err) {
-            console.error('Failed to add collaborator:', err);
-            setError(toErrorMessage(err, 'An error occurred while adding the collaborator.'));
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleRemoveCollaborator = async (emailToRemove: string) => {
-        setLoading(true);
-        setError(null);
-        try {
-            // 1. Lookup the UID for this email to remove it
-            const q = query(collection(db, 'users'), where('email', '==', emailToRemove));
-            const querySnapshot = await getDocs(q);
-            let uidToRemove: string | null = null;
-            if (!querySnapshot.empty) {
-                const userDoc = querySnapshot.docs[0];
-                uidToRemove = typeof userDoc.data().uid === 'string' && userDoc.data().uid.trim()
-                    ? userDoc.data().uid
-                    : userDoc.id;
-            }
-
-            // 2. Filter out arrays
-            const newShared = (trip.sharedWithEmails || []).filter(e => e !== emailToRemove);
-            let newMembers = trip.members || [trip.userId];
-            if (uidToRemove) {
-                newMembers = newMembers.filter(uid => uid !== uidToRemove);
-            }
-
-            // 3. Update trip first so the collaborator is removed from the trip doc
-            await updateTrip(trip.id, {
-                members: newMembers,
-                sharedWithEmails: newShared
-            });
-
-            // 4. Batch update child docs (chunked; Firestore limit 500 per batch)
-            const collectionsToUpdate = ['activities', 'notes', 'transportRoutes', 'chat_history'];
-            const BATCH_LIMIT = 500;
-            const refs: DocumentReference[] = [];
-            for (const collName of collectionsToUpdate) {
-                const subQ = query(collection(db, collName), where('tripId', '==', trip.id));
-                const subSnapshot = await getDocs(subQ);
-                subSnapshot.forEach((docSnap) => refs.push(docSnap.ref));
-            }
-            try {
-                for (let i = 0; i < refs.length; i += BATCH_LIMIT) {
-                    const batch = writeBatch(db);
-                    refs.slice(i, i + BATCH_LIMIT).forEach((ref) => batch.update(ref, { tripMembers: newMembers }));
-                    await batch.commit();
-                }
-            } catch (batchErr) {
-                console.warn('Batch sync after remove collaborator failed:', batchErr);
-                showToast(`${emailToRemove} was removed from the trip. If something looks wrong, try refreshing.`);
-                setLoading(false);
-                return;
-            }
-
-            logEvent('Collaborator Removed', { trip_id: trip.id });
-            showToast(`${emailToRemove} removed.`);
-        } catch (err) {
-            console.error('Failed to remove collaborator:', err);
-            setError(toErrorMessage(err, 'Could not remove collaborator.'));
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    return (
-        <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in"
-            style={{
-                backgroundColor: 'rgba(0,0,0,0.5)',
-                backdropFilter: 'blur(4px)',
-                position: 'fixed',
-                top: 0, left: 0, right: 0, bottom: 0
-            }}
-            onClick={onClose}
-        >
-            <div className="card w-full animate-slide-up" style={{ maxWidth: '440px', margin: 'auto', padding: '1.5rem', zIndex: 51, position: 'relative' }} onClick={stopPropagation}>
-                <div className="flex justify-between items-center mb-md">
-                    <h2 className="text-lg">Share Trip</h2>
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>
-                        <X size={18} />
-                    </button>
-                </div>
-
-                <div className="mb-lg">
-                    <p className="text-sm text-secondary mb-md">
-                        Invite friends to collaborate on <strong>{trip.name}</strong>. They will be able to add, edit, and delete activities and notes.
-                    </p>
-
-                    <form onSubmit={handleAddCollaborator} className="flex gap-sm">
-                        <input
-                            type="email"
-                            className="input-field flex-1"
-                            placeholder="friend@email.com"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            disabled={loading}
-                            required
-                        />
-                        <button type="submit" className="btn btn-primary" disabled={loading || !email.trim()}>
-                            {loading ? <Loader2 size={16} className="spin" /> : <UserPlus size={16} />}
-                            Invite
-                        </button>
-                    </form>
-                    {error && <p className="text-xs text-danger mt-xs">{error}</p>}
-                </div>
-
-                <div className="border-t pt-md" style={{ borderColor: 'var(--border-color)' }}>
-                    <h3 className="text-sm font-medium mb-sm">Collaborators</h3>
-
-                    <div className="flex flex-col gap-xs">
-                        <div className="flex justify-between items-center p-sm rounded-md bg-surface-1 border">
-                            <span className="text-sm text-secondary">You (Owner)</span>
-                        </div>
-
-                        {(trip.sharedWithEmails || []).length === 0 ? (
-                            <p className="text-xs text-tertiary italic p-sm">No one else has access yet.</p>
-                        ) : (
-                            (trip.sharedWithEmails || []).map((sharedEmail) => (
-                                <div key={sharedEmail} className="flex justify-between items-center p-sm rounded-md bg-surface-1 border">
-                                    <span className="text-sm truncate w-3/4">{sharedEmail}</span>
-                                    <button
-                                        type="button"
-                                        className="btn btn-ghost btn-sm text-danger p-1"
-                                        onClick={() => handleRemoveCollaborator(sharedEmail)}
-                                        disabled={loading}
-                                        title="Remove access"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-export default ShareModal;
-</file>
-
 <file path="src/lib/ai/actions/importItinerary.ts">
 import { getCachedAiText } from '../cache';
-import { generateWithGemini } from '../../services/aiService';
+import { generateWithGemini } from '../../gemini';
 
 export interface ParsedActivity {
   date: string;
@@ -10426,258 +9092,6 @@ export function slugifyFilename(input: string): string {
 }
 </file>
 
-<file path="src/lib/places.ts">
-/**
- * Google Places API (New) — all calls via Cloudflare Worker proxy.
- * Never call places.googleapis.com from the frontend.
- */
-
-import { getCachedAiText } from './ai/cache';
-import { generateWithGemini } from './services/aiService';
-
-const placeIdCache = new Map<string, string>(); // key: `${title}:${location}`
-
-function getProxyUrl(): string {
-  const url = import.meta.env.VITE_AI_PROXY_URL as string | undefined;
-  if (!url?.trim()) throw new Error('VITE_AI_PROXY_URL is not set.');
-  return url.replace(/\/+$/, '');
-}
-
-function mapPriceLevel(v?: string): PlaceResult['priceLevel'] {
-  switch (v) {
-    case 'PRICE_LEVEL_FREE': return 'Free';
-    case 'PRICE_LEVEL_INEXPENSIVE': return '$';
-    case 'PRICE_LEVEL_MODERATE': return '$$';
-    case 'PRICE_LEVEL_EXPENSIVE': return '$$$';
-    case 'PRICE_LEVEL_VERY_EXPENSIVE': return '$$$$';
-    default: return 'Unknown';
-  }
-}
-
-export interface PlaceResult {
-  id: string;
-  name: string;
-  primaryType: string;
-  priceLevel: '$' | '$$' | '$$$' | '$$$$' | 'Free' | 'Unknown';
-  rating: number | null;
-  ratingCount: number | null;
-  isOpenNow: boolean | null;
-  address: string | null;
-}
-
-export interface PlaceReview {
-  text: string;
-  rating: number;
-  authorName: string;
-  relativeTime: string;
-}
-
-export interface PlaceDetails {
-  id: string;
-  name: string;
-  rating: number | null;
-  ratingCount: number | null;
-  reviewSummary: string | null;
-  reviewSummaryDisclosure: string | null;
-  reviews: PlaceReview[];
-  reviewsUri?: string | null;
-}
-
-export interface PlaceProsCons {
-  pros: string[];
-  cons: string[];
-  verdict: string;
-}
-
-export type ActivityCategory = 'sightseeing' | 'food' | 'accommodation' | 'transport' | 'shopping' | 'other';
-
-const NEARBY_PLACES_LABELS: Record<ActivityCategory, { button: string; panel: string }> = {
-  food: { button: 'Find restaurants', panel: 'Restaurants nearby' },
-  accommodation: { button: 'Find accommodations', panel: 'Accommodations nearby' },
-  shopping: { button: 'Find shops', panel: 'Shops nearby' },
-  sightseeing: { button: 'Find sights', panel: 'Sights nearby' },
-  transport: { button: 'Find places', panel: 'Places nearby' },
-  other: { button: 'Find places', panel: 'Places nearby' },
-};
-
-export function getNearbyPlacesLabel(category: ActivityCategory | undefined): { button: string; panel: string } {
-  const key = (category && category in NEARBY_PLACES_LABELS ? category : 'other') as ActivityCategory;
-  return NEARBY_PLACES_LABELS[key];
-}
-
-interface PlacesNearbyResponse {
-  places?: Array<{
-    id?: string;
-    displayName?: { text?: string };
-    primaryTypeDisplayName?: { text?: string };
-    priceLevel?: string;
-    rating?: number;
-    userRatingCount?: number;
-    formattedAddress?: string;
-    currentOpeningHours?: { openNow?: boolean };
-  }>;
-}
-
-function parseNearbyResponse(raw: string): PlaceResult[] {
-  const data = JSON.parse(raw) as PlacesNearbyResponse;
-  const places = data.places ?? [];
-  const results: PlaceResult[] = places.map((p) => ({
-    id: p.id ?? '',
-    name: p.displayName?.text ?? '',
-    primaryType: p.primaryTypeDisplayName?.text ?? '',
-    priceLevel: mapPriceLevel(p.priceLevel),
-    rating: typeof p.rating === 'number' ? p.rating : null,
-    ratingCount: typeof p.userRatingCount === 'number' ? p.userRatingCount : null,
-    isOpenNow: p.currentOpeningHours?.openNow ?? null,
-    address: p.formattedAddress ?? null,
-  }));
-  results.sort((a, b) => (b.ratingCount ?? 0) - (a.ratingCount ?? 0));
-  return results;
-}
-
-export async function fetchNearbyPlaces(
-  location: string,
-  category?: string,
-  title?: string
-): Promise<PlaceResult[]> {
-  const cacheKey = [location, category ?? '', title ?? ''].join('|');
-  const raw = await getCachedAiText({
-    namespace: 'places-nearby',
-    cacheKey,
-    ttlMs: 3 * 60 * 60 * 1000,
-    producer: async () => {
-      const res = await fetch(`${getProxyUrl()}/places/nearby`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ location, category, title, maxResults: 20 }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error((data as { error?: string }).error ?? `Request failed: ${res.status}`);
-      return JSON.stringify(data);
-    },
-  });
-  return parseNearbyResponse(raw);
-}
-
-export async function fetchNearbyRestaurants(location: string): Promise<PlaceResult[]> {
-  return fetchNearbyPlaces(location, 'food');
-}
-
-export async function resolvePlaceId(activityTitle: string, location: string): Promise<string | null> {
-  const key = `${activityTitle}:${location}`;
-  const cached = placeIdCache.get(key);
-  if (cached) return cached;
-
-  const query = `${activityTitle} ${location}`.trim();
-  const res = await fetch(`${getProxyUrl()}/places/details`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query, mode: 'resolve' }),
-  });
-  const data = (await res.json()) as { placeId?: string | null; error?: string };
-  if (!res.ok) throw new Error(data.error ?? `Resolve failed: ${res.status}`);
-  const placeId = data.placeId ?? null;
-  if (placeId) placeIdCache.set(key, placeId);
-  return placeId;
-}
-
-export async function fetchPlaceDetails(placeId: string): Promise<PlaceDetails> {
-  const raw = await getCachedAiText({
-    namespace: 'place-details',
-    cacheKey: placeId,
-    ttlMs: 6 * 60 * 60 * 1000,
-    producer: async () => {
-      const res = await fetch(`${getProxyUrl()}/places/details`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ placeId, mode: 'details' }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error((data as { error?: string }).error ?? `Request failed: ${res.status}`);
-      return JSON.stringify(data);
-    },
-  });
-
-  const data = JSON.parse(raw) as {
-    displayName?: { text?: string; languageCode?: string } | string;
-    rating?: number;
-    userRatingCount?: number;
-    reviewSummary?: {
-      text?: string | { text?: string; languageCode?: string };
-      reviewsUri?: string;
-      disclosureText?: string | { text?: string; languageCode?: string };
-    };
-    reviews?: Array<{
-      text?: { text?: string; languageCode?: string } | string;
-      rating?: number;
-      authorAttribution?: { displayName?: string };
-      relativePublishTimeDescription?: string;
-    }>;
-  };
-
-  // Places API (New) can return LocalizedText as { text, languageCode }; always normalize to string for React
-  const textOf = (v: string | { text?: string; languageCode?: string } | null | undefined): string =>
-    typeof v === 'string' ? v : (v && typeof v === 'object' && typeof (v as { text?: string }).text === 'string' ? (v as { text: string }).text : '');
-
-  const name = textOf(data.displayName);
-  const reviews: PlaceReview[] = (data.reviews ?? []).map((r) => ({
-    text: textOf(r.text),
-    rating: r.rating ?? 0,
-    authorName: r.authorAttribution?.displayName ?? '',
-    relativeTime: r.relativePublishTimeDescription ?? '',
-  }));
-
-  const reviewSummaryRaw = data.reviewSummary?.text;
-  const disclosureRaw = data.reviewSummary?.disclosureText;
-
-  return {
-    id: placeId,
-    name,
-    rating: typeof data.rating === 'number' ? data.rating : null,
-    ratingCount: typeof data.userRatingCount === 'number' ? data.userRatingCount : null,
-    reviewSummary: textOf(reviewSummaryRaw) || null,
-    reviewSummaryDisclosure: textOf(disclosureRaw) || null,
-    reviewsUri: data.reviewSummary?.reviewsUri ?? null,
-    reviews,
-  };
-}
-
-const PROS_CONS_SCHEMA = {
-  type: 'object',
-  properties: {
-    pros: { type: 'array', items: { type: 'string' }, minItems: 3, maxItems: 3 },
-    cons: { type: 'array', items: { type: 'string' }, minItems: 3, maxItems: 3 },
-    verdict: { type: 'string' },
-  },
-  required: ['pros', 'cons', 'verdict'],
-  additionalProperties: false,
-};
-
-export async function generateProsCons(placeName: string, reviews: PlaceReview[], placeId: string): Promise<PlaceProsCons> {
-  const raw = await getCachedAiText({
-    namespace: 'place-pros-cons',
-    cacheKey: placeId,
-    ttlMs: 24 * 60 * 60 * 1000,
-    producer: async () => {
-      const reviewText = reviews.map((r) => `[${r.rating}★] ${r.authorName}: ${r.text}`).join('\n\n');
-      const prompt = `Place: ${placeName}\n\nReviews:\n${reviewText}\n\nIdentify the 3 most commonly mentioned pros and 3 cons. Be specific and factual. One sentence verdict.`;
-      return generateWithGemini(prompt, {
-        systemInstruction: 'You are a concise travel assistant. Analyze these reviews and identify the 3 most commonly mentioned pros and cons. Be specific and factual.',
-        responseMimeType: 'application/json',
-        responseSchema: PROS_CONS_SCHEMA as Record<string, unknown>,
-      });
-    },
-  });
-
-  const parsed = JSON.parse(raw) as { pros?: string[]; cons?: string[]; verdict?: string };
-  return {
-    pros: Array.isArray(parsed.pros) ? parsed.pros.slice(0, 3) : [],
-    cons: Array.isArray(parsed.cons) ? parsed.cons.slice(0, 3) : [],
-    verdict: typeof parsed.verdict === 'string' ? parsed.verdict : '',
-  };
-}
-</file>
-
 <file path="src/lib/scenarios.ts">
 import { useSyncExternalStore } from 'react';
 import type { Activity, TransportRoute, Trip, TripScenario } from './types';
@@ -11048,13 +9462,845 @@ function GoogleIcon() {
 export default Login;
 </file>
 
+<file path="src/pages/useCalendarViewController.ts">
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { format, eachDayOfInterval, parseISO } from 'date-fns';
+import { useTrips, useActivities, useTransportRoutes } from '../lib/store';
+import { CATEGORY_COLORS } from '../lib/types';
+import { useToast } from '../components/Toast';
+import { generateDayActivityDescriptions, generateDaySummary, generateOptimizedRoute } from '../lib/ai/actions/calendar';
+import { getNearbyPlacesLabel } from '../lib/places';
+import { getTripPlanningConflicts } from '../lib/planning/conflicts';
+import { useSettings } from '../lib/settings';
+import { useWeatherForTrip } from '../lib/weather';
+import { compareActivitiesByTimeThenOrder, getEffectiveDayLocations } from '../lib/itinerary';
+import {
+    createScenarioActivity,
+    removeScenarioActivity,
+    reorderScenarioActivities,
+    updateScenarioTripSnapshot,
+    upsertScenarioActivity,
+    useTripScenarios,
+} from '../lib/scenarios';
+import { prefetchTripDocumentsForOfflineCache } from '../lib/prefetchTripCache';
+import type { Activity } from '../lib/types';
+
+const CALENDAR_VIEW_KEY = 'travelplanner_calendar_view';
+
+export type CalendarViewMode = 'day' | 'trip';
+
+interface CalendarPrefs {
+    viewMode: CalendarViewMode;
+    selectedTripId: string | null;
+    currentDateStr: string | null;
+}
+
+export interface PendingActivityDescription {
+    activityId: string;
+    title: string;
+    summary: string;
+    tips: string[];
+}
+
+function loadCalendarPrefs(): CalendarPrefs {
+    try {
+        const raw = localStorage.getItem(CALENDAR_VIEW_KEY);
+        if (!raw) return { viewMode: 'trip', selectedTripId: null, currentDateStr: null };
+        const p = JSON.parse(raw) as Partial<CalendarPrefs>;
+        const viewMode = p.viewMode === 'day' || p.viewMode === 'trip' ? p.viewMode : 'trip';
+        return { viewMode, selectedTripId: p.selectedTripId ?? null, currentDateStr: p.currentDateStr ?? null };
+    } catch {
+        return { viewMode: 'trip', selectedTripId: null, currentDateStr: null };
+    }
+}
+
+function saveCalendarPrefs(viewMode: CalendarViewMode, selectedTripId: string | null, currentDateStr: string | null) {
+    try {
+        localStorage.setItem(CALENDAR_VIEW_KEY, JSON.stringify({ viewMode, selectedTripId, currentDateStr }));
+    } catch {
+        /* ignore */
+    }
+}
+
+export interface UseCalendarViewControllerOptions {
+    /** When set (Trip day route), syncs selected trip and day view mode from the URL. */
+    routeTripId?: string | null;
+    routeDateStr?: string | null;
+}
+
+export function useCalendarViewController(options?: UseCalendarViewControllerOptions) {
+    const { trips, updateItineraryDay } = useTrips();
+    const { activities, addActivity, updateActivity, deleteActivity, restoreActivity, reorderActivities } =
+        useActivities();
+    const { getRoutesByTrip } = useTransportRoutes();
+    const { showToast } = useToast();
+    const appSettings = useSettings();
+
+    const savedPrefs = useMemo(() => loadCalendarPrefs(), []);
+    const [currentDate, setCurrentDate] = useState(() => {
+        if (savedPrefs.currentDateStr) {
+            try {
+                return parseISO(savedPrefs.currentDateStr);
+            } catch {
+                /* fallback */
+            }
+        }
+        return new Date();
+    });
+    const [viewMode, setViewMode] = useState<CalendarViewMode>(savedPrefs.viewMode);
+    const [selectedTripId, setSelectedTripId] = useState<string | null>(savedPrefs.selectedTripId);
+    const [addingActivityForDate, setAddingActivityForDate] = useState<string | null>(null);
+    const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
+    const [tripSummary, setTripSummary] = useState<{ summary: string; highlights: string[] } | null>(null);
+    const [summaryLoading, setSummaryLoading] = useState(false);
+    const [summaryError, setSummaryError] = useState<string | null>(null);
+    const [optimizationLoading, setOptimizationLoading] = useState(false);
+    const [optimizationError, setOptimizationError] = useState<string | null>(null);
+    const [optimizedRoute, setOptimizedRoute] = useState<{ recommendation: string; optimizedOrder: string[] } | null>(
+        null,
+    );
+    const [descriptionLoading, setDescriptionLoading] = useState(false);
+    const [descriptionError, setDescriptionError] = useState<string | null>(null);
+    const [pendingDescriptions, setPendingDescriptions] = useState<PendingActivityDescription[] | null>(null);
+    const [accommodationEditDate, setAccommodationEditDate] = useState<string | null>(null);
+    const [accommodationCityInput, setAccommodationCityInput] = useState('');
+    const [accommodationNameInput, setAccommodationNameInput] = useState('');
+    const [showNearbyRestaurantsForActivityId, setShowNearbyRestaurantsForActivityId] = useState<string | null>(null);
+    const [reviewsActivityId, setReviewsActivityId] = useState<string | null>(null);
+    const [conflictsExpandedDate, setConflictsExpandedDate] = useState<string | null>(null);
+    const latestDescriptionContextRef = useRef({
+        currentDateStr: '',
+        selectedTripId: null as string | null,
+        scenarioId: null as string | null,
+    });
+
+    const selectedTrip = trips.find((t) => t.id === selectedTripId);
+    const { weatherByDate, loading: weatherLoading } = useWeatherForTrip(selectedTrip ?? undefined);
+    const { activeScenario } = useTripScenarios(selectedTripId);
+    const effectiveTrip = activeScenario?.tripSnapshot ?? selectedTrip;
+    const hasLocationForDate = useCallback(
+        (dateStr: string) =>
+            getEffectiveDayLocations(effectiveTrip?.itinerary?.[dateStr], effectiveTrip?.dayLocations?.[dateStr]).length >=
+            1,
+        [effectiveTrip],
+    );
+    const tripRoutes = useMemo(
+        () => (selectedTripId ? getRoutesByTrip(selectedTripId) : []),
+        [selectedTripId, getRoutesByTrip],
+    );
+    const effectiveRoutes = activeScenario?.transportRoutesSnapshot ?? tripRoutes;
+    const tripActivities = useMemo(
+        () => (selectedTripId ? activities.filter((activity) => activity.tripId === selectedTripId) : []),
+        [selectedTripId, activities],
+    );
+    const effectiveActivities = activeScenario?.activitiesSnapshot ?? tripActivities;
+    const currentDateStr = format(currentDate, 'yyyy-MM-dd');
+    const currentDayLocations = getEffectiveDayLocations(
+        effectiveTrip?.itinerary?.[currentDateStr],
+        effectiveTrip?.dayLocations?.[currentDateStr],
+    );
+
+    useEffect(() => {
+        if (!accommodationEditDate || !effectiveTrip) return;
+        const dayData = effectiveTrip.itinerary?.[accommodationEditDate];
+        const cityDisplay = getEffectiveDayLocations(
+            dayData,
+            effectiveTrip.dayLocations?.[accommodationEditDate],
+        ).join(', ');
+        setAccommodationCityInput(cityDisplay);
+        setAccommodationNameInput(dayData?.accommodation?.name ?? '');
+    }, [accommodationEditDate, effectiveTrip]);
+
+    useEffect(() => {
+        saveCalendarPrefs(viewMode, selectedTripId, format(currentDate, 'yyyy-MM-dd'));
+    }, [viewMode, selectedTripId, currentDate]);
+
+    /** Warm Firestore persistent cache for the selected trip while online. */
+    useEffect(() => {
+        if (!selectedTripId) return;
+        if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+        void prefetchTripDocumentsForOfflineCache(selectedTripId);
+    }, [selectedTripId]);
+
+    useEffect(() => {
+        if (options?.routeTripId == null) return;
+        setSelectedTripId(options.routeTripId);
+        setViewMode('day');
+    }, [options?.routeTripId]);
+
+    useEffect(() => {
+        if (options?.routeDateStr == null) return;
+        try {
+            const d = parseISO(options.routeDateStr);
+            if (!Number.isNaN(d.getTime())) setCurrentDate(d);
+        } catch {
+            /* ignore */
+        }
+    }, [options?.routeDateStr]);
+
+    useEffect(() => {
+        if (!effectiveTrip) return;
+        try {
+            const tripStart = parseISO(effectiveTrip.startDate);
+            const tripEnd = parseISO(effectiveTrip.endDate);
+            if (currentDate < tripStart || currentDate > tripEnd) {
+                setCurrentDate(tripStart);
+            }
+        } catch {
+            /* ignore */
+        }
+    }, [effectiveTrip?.id, effectiveTrip?.startDate, effectiveTrip?.endDate, currentDate]);
+
+    useEffect(() => {
+        latestDescriptionContextRef.current = {
+            currentDateStr,
+            selectedTripId,
+            scenarioId: activeScenario?.id ?? null,
+        };
+        setPendingDescriptions(null);
+        setDescriptionError(null);
+        setDescriptionLoading(false);
+    }, [currentDateStr, selectedTripId, activeScenario?.id]);
+
+    const handleSelectTrip = (tripId: string | null) => {
+        setSelectedTripId(tripId);
+        if (tripId) {
+            const trip = trips.find((t) => t.id === tripId);
+            if (trip) {
+                try {
+                    setCurrentDate(parseISO(trip.startDate));
+                } catch {
+                    /* ignore */
+                }
+            }
+        }
+    };
+
+    const hasDaySummaryContent =
+        !!descriptionError ||
+        !!summaryError ||
+        !!optimizationError ||
+        !!pendingDescriptions ||
+        !!optimizedRoute;
+
+    const calendarDays = useMemo(() => {
+        if (viewMode === 'trip' && selectedTrip) {
+            try {
+                return eachDayOfInterval({
+                    start: parseISO(effectiveTrip?.startDate ?? selectedTrip.startDate),
+                    end: parseISO(effectiveTrip?.endDate ?? selectedTrip.endDate),
+                });
+            } catch {
+                return [];
+            }
+        }
+        if (viewMode === 'day') {
+            return [currentDate];
+        }
+        return [];
+    // Intentionally mirrors original deps: selectedTrip + effectiveTrip read inside without listing effectiveTrip (scenario date range).
+    }, [currentDate, viewMode, selectedTrip]);
+
+    const getActivitiesForDate = (date: Date) => {
+        const dateStr = format(date, 'yyyy-MM-dd');
+        return effectiveActivities.filter((a) => a.date === dateStr);
+    };
+
+    const tripDays = useMemo(() => {
+        if (!effectiveTrip) return [];
+        try {
+            return eachDayOfInterval({
+                start: parseISO(effectiveTrip.startDate),
+                end: parseISO(effectiveTrip.endDate),
+            });
+        } catch {
+            return [];
+        }
+    }, [effectiveTrip]);
+
+    const handleReorderActivities = useCallback(
+        (reordered: Activity[]) => {
+            const updates = reordered
+                .map((act, idx) => ({ id: act.id, order: idx }))
+                .filter((u, idx) => reordered[idx].order !== u.order);
+            if (updates.length > 0) {
+                if (selectedTripId && activeScenario) {
+                    reorderScenarioActivities(selectedTripId, activeScenario.id, reordered);
+                } else {
+                    reorderActivities(updates);
+                }
+            }
+        },
+        [activeScenario, reorderActivities, selectedTripId],
+    );
+
+    const getActivityColor = (activity: { category?: string; color?: string }) =>
+        activity.color ?? CATEGORY_COLORS[activity.category ?? 'other'];
+
+    const dayViewActivities = effectiveActivities
+        .filter((a) => a.date === currentDateStr)
+        .sort(compareActivitiesByTimeThenOrder);
+
+    const planningConflicts = useMemo(() => {
+        if (!effectiveTrip) return [];
+        return getTripPlanningConflicts({
+            trip: effectiveTrip,
+            activities: effectiveActivities,
+            routes: effectiveRoutes,
+        });
+    }, [effectiveTrip, effectiveActivities, effectiveRoutes]);
+
+    const conflictCountsByDate = useMemo(() => {
+        const counts: Record<string, number> = {};
+        planningConflicts.forEach((conflict) => {
+            if (!conflict.date) return;
+            counts[conflict.date] = (counts[conflict.date] || 0) + 1;
+        });
+        return counts;
+    }, [planningConflicts]);
+
+    const handleSaveAccommodationForDate = useCallback(() => {
+        if (!accommodationEditDate || !selectedTripId || !effectiveTrip) {
+            setAccommodationEditDate(null);
+            return;
+        }
+        const dateStr = accommodationEditDate;
+        const dayData = effectiveTrip.itinerary?.[dateStr];
+
+        const parsedCities = accommodationCityInput
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean);
+
+        const locationUpdates =
+            parsedCities.length === 0
+                ? { location: '', locations: [] as string[] }
+                : parsedCities.length === 1
+                  ? { location: parsedCities[0], locations: [parsedCities[0]] }
+                  : { location: parsedCities[0], locations: parsedCities };
+
+        const hasAccommodationText = accommodationNameInput.trim().length > 0;
+
+        const nextAccommodation = hasAccommodationText
+            ? {
+                  ...(dayData?.accommodation ?? {}),
+                  name: accommodationNameInput.trim() || dayData?.accommodation?.name || '',
+              }
+            : undefined;
+
+        const updates: {
+            location: string;
+            locations: string[];
+            accommodation?: {
+                name: string;
+                cost?: number;
+                currency?: string;
+            };
+        } = {
+            location: locationUpdates.location,
+            locations: locationUpdates.locations,
+        };
+
+        if (nextAccommodation) {
+            updates.accommodation = nextAccommodation;
+        }
+
+        if (activeScenario) {
+            updateScenarioTripSnapshot(selectedTripId, activeScenario.id, (trip) => ({
+                ...trip,
+                itinerary: {
+                    ...(trip.itinerary || {}),
+                    [dateStr]: {
+                        ...(trip.itinerary?.[dateStr] || {}),
+                        ...updates,
+                    },
+                },
+            }));
+        } else {
+            updateItineraryDay(selectedTripId, dateStr, updates);
+        }
+
+        setAccommodationEditDate(null);
+        showToast('Accommodation updated');
+    }, [
+        accommodationCityInput,
+        accommodationNameInput,
+        accommodationEditDate,
+        selectedTripId,
+        effectiveTrip,
+        activeScenario,
+        updateItineraryDay,
+        showToast,
+    ]);
+
+    const handleSaveActivity = (
+        activityData:
+            | Omit<Activity, 'id' | 'userId' | 'tripMembers'>
+            | ({ id: string } & Partial<Omit<Activity, 'userId'>>),
+        forDate?: string,
+    ) => {
+        const targetDate = forDate ?? currentDateStr;
+        if ('id' in activityData && activityData.id) {
+            if (selectedTripId && activeScenario) {
+                const existingActivity = effectiveActivities.find((activity) => activity.id === activityData.id);
+                if (!existingActivity) return;
+                upsertScenarioActivity(selectedTripId, activeScenario.id, { ...existingActivity, ...activityData });
+            } else {
+                updateActivity(activityData.id, activityData);
+            }
+        } else if (selectedTripId && targetDate) {
+            const orderFallback = dayViewActivities.length;
+            if (activeScenario) {
+                const scenarioActivity = createScenarioActivity({
+                    ...(activityData as Omit<Activity, 'id'>),
+                    tripId: selectedTripId,
+                    date: targetDate,
+                    order: ('order' in activityData ? activityData.order : orderFallback) ?? orderFallback,
+                    title: ('title' in activityData ? activityData.title : '') || 'Activity',
+                    userId: selectedTrip?.userId || 'scenario-user',
+                    tripMembers: selectedTrip?.members || [],
+                });
+                upsertScenarioActivity(selectedTripId, activeScenario.id, scenarioActivity);
+            } else {
+                addActivity(
+                    {
+                        ...activityData,
+                        tripId: selectedTripId,
+                        date: targetDate,
+                        order: ('order' in activityData ? activityData.order : orderFallback) ?? orderFallback,
+                        title: ('title' in activityData ? activityData.title : '') || 'Activity',
+                    } as Omit<Activity, 'id' | 'userId' | 'tripMembers'>,
+                    selectedTrip?.members || [],
+                );
+            }
+        }
+        setAddingActivityForDate(null);
+        setEditingActivityId(null);
+    };
+
+    const handleGenerateSummary = async () => {
+        if (!selectedTrip || dayViewActivities.length === 0) return;
+        setSummaryLoading(true);
+        setSummaryError(null);
+        setTripSummary(null);
+
+        try {
+            const parsed = await generateDaySummary({
+                trip: effectiveTrip ?? selectedTrip,
+                currentDate,
+                currentDateStr,
+                activities: dayViewActivities,
+            });
+            if (!parsed.summary || !Array.isArray(parsed.highlights)) throw new Error('Invalid response format');
+            setTripSummary(parsed);
+        } catch (e) {
+            const msg = e instanceof Error ? e.message : 'Summary generation failed';
+            setSummaryError(/429|quota|rate/i.test(msg) ? 'API rate limit reached — please wait a minute and try again.' : msg);
+        } finally {
+            setSummaryLoading(false);
+        }
+    };
+
+    const handleOptimizeRoute = async () => {
+        if (!selectedTrip || dayViewActivities.length < 2) return;
+        setOptimizationLoading(true);
+        setOptimizationError(null);
+        setOptimizedRoute(null);
+
+        try {
+            const parsed = await generateOptimizedRoute({
+                trip: effectiveTrip ?? selectedTrip,
+                currentDateStr,
+                activities: dayViewActivities,
+            });
+            if (
+                !parsed.recommendation ||
+                !Array.isArray(parsed.optimizedOrder) ||
+                parsed.optimizedOrder.length !== dayViewActivities.length
+            ) {
+                throw new Error('Invalid response format');
+            }
+            setOptimizedRoute(parsed);
+        } catch (e) {
+            const msg = e instanceof Error ? e.message : 'Optimization failed';
+            setOptimizationError(/429|quota|rate/i.test(msg) ? 'API rate limit reached — please wait a minute and try again.' : msg);
+        } finally {
+            setOptimizationLoading(false);
+        }
+    };
+
+    const handleGenerateDescriptions = async () => {
+        if (!selectedTrip || dayViewActivities.length === 0) return;
+        const requestContext = {
+            currentDateStr,
+            selectedTripId,
+            scenarioId: activeScenario?.id ?? null,
+        };
+        setDescriptionLoading(true);
+        setDescriptionError(null);
+        setPendingDescriptions(null);
+
+        try {
+            const parsed = await generateDayActivityDescriptions({
+                trip: effectiveTrip ?? selectedTrip,
+                currentDateStr,
+                activities: dayViewActivities,
+            });
+
+            const nextSuggestions = parsed
+                .map((item) => {
+                    const activity = dayViewActivities.find((candidate) => candidate.id === item.activityId);
+                    if (!activity) return null;
+                    return {
+                        activityId: item.activityId,
+                        title: activity.title,
+                        summary: item.summary.trim(),
+                        tips: item.tips.map((tip) => tip.trim()).filter(Boolean),
+                    };
+                })
+                .filter((item): item is PendingActivityDescription => Boolean(item));
+
+            if (nextSuggestions.length !== dayViewActivities.length) {
+                throw new Error('Missing one or more activity descriptions');
+            }
+
+            const latestContext = latestDescriptionContextRef.current;
+            if (
+                latestContext.currentDateStr !== requestContext.currentDateStr ||
+                latestContext.selectedTripId !== requestContext.selectedTripId ||
+                latestContext.scenarioId !== requestContext.scenarioId
+            ) {
+                return;
+            }
+
+            setPendingDescriptions(nextSuggestions);
+        } catch (e) {
+            const msg = e instanceof Error ? e.message : 'Description generation failed';
+            const latestContext = latestDescriptionContextRef.current;
+            if (
+                latestContext.currentDateStr !== requestContext.currentDateStr ||
+                latestContext.selectedTripId !== requestContext.selectedTripId ||
+                latestContext.scenarioId !== requestContext.scenarioId
+            ) {
+                return;
+            }
+            setDescriptionError(/429|quota|rate/i.test(msg) ? 'API rate limit reached — please wait a minute and try again.' : msg);
+        } finally {
+            const latestContext = latestDescriptionContextRef.current;
+            if (
+                latestContext.currentDateStr === requestContext.currentDateStr &&
+                latestContext.selectedTripId === requestContext.selectedTripId &&
+                latestContext.scenarioId === requestContext.scenarioId
+            ) {
+                setDescriptionLoading(false);
+            }
+        }
+    };
+
+    const dismissPendingDescription = (activityId: string) => {
+        setPendingDescriptions((current) => {
+            if (!current) return null;
+            const next = current.filter((item) => item.activityId !== activityId);
+            return next.length > 0 ? next : null;
+        });
+    };
+
+    const applyPendingDescription = async (activityId: string, summary: string, tips: string[]) => {
+        const activity = dayViewActivities.find((candidate) => candidate.id === activityId);
+        if (!activity) return;
+        const details = `${summary}\n\n${tips.map((tip) => `- ${tip}`).join('\n')}`;
+
+        if (selectedTripId && activeScenario) {
+            upsertScenarioActivity(selectedTripId, activeScenario.id, { ...activity, details });
+        } else {
+            await updateActivity(activityId, { details });
+        }
+
+        setPendingDescriptions((current) => {
+            if (!current) return null;
+            const next = current.filter((item) => item.activityId !== activityId);
+            return next.length > 0 ? next : null;
+        });
+    };
+
+    const handleAcceptAllDescriptions = async () => {
+        if (!pendingDescriptions || pendingDescriptions.length === 0) return;
+
+        await Promise.all(
+            pendingDescriptions.map((item) => applyPendingDescription(item.activityId, item.summary, item.tips)),
+        );
+        setPendingDescriptions(null);
+    };
+
+    return {
+        trips,
+        updateItineraryDay,
+        activities,
+        addActivity,
+        updateActivity,
+        deleteActivity,
+        restoreActivity,
+        reorderActivities,
+        showToast,
+        appSettings,
+        currentDate,
+        setCurrentDate,
+        viewMode,
+        setViewMode,
+        selectedTripId,
+        setSelectedTripId,
+        selectedTrip,
+        addingActivityForDate,
+        setAddingActivityForDate,
+        editingActivityId,
+        setEditingActivityId,
+        tripSummary,
+        setTripSummary,
+        summaryLoading,
+        summaryError,
+        optimizationLoading,
+        optimizationError,
+        optimizedRoute,
+        setOptimizedRoute,
+        descriptionLoading,
+        descriptionError,
+        pendingDescriptions,
+        setPendingDescriptions,
+        accommodationEditDate,
+        setAccommodationEditDate,
+        accommodationCityInput,
+        setAccommodationCityInput,
+        accommodationNameInput,
+        setAccommodationNameInput,
+        showNearbyRestaurantsForActivityId,
+        setShowNearbyRestaurantsForActivityId,
+        reviewsActivityId,
+        setReviewsActivityId,
+        conflictsExpandedDate,
+        setConflictsExpandedDate,
+        weatherByDate,
+        weatherLoading,
+        activeScenario,
+        effectiveTrip,
+        hasLocationForDate,
+        effectiveRoutes,
+        effectiveActivities,
+        currentDateStr,
+        currentDayLocations,
+        handleSelectTrip,
+        calendarDays,
+        getActivitiesForDate,
+        tripDays,
+        handleReorderActivities,
+        getActivityColor,
+        dayViewActivities,
+        planningConflicts,
+        conflictCountsByDate,
+        handleSaveAccommodationForDate,
+        handleSaveActivity,
+        handleGenerateSummary,
+        handleOptimizeRoute,
+        handleGenerateDescriptions,
+        dismissPendingDescription,
+        applyPendingDescription,
+        handleAcceptAllDescriptions,
+        hasDaySummaryContent,
+        getNearbyPlacesLabel,
+        updateScenarioTripSnapshot,
+        getEffectiveDayLocations,
+        reorderScenarioActivities,
+        removeScenarioActivity,
+    };
+}
+</file>
+
 <file path="worker/wrangler.jsonc">
 {
     // Cloudflare Worker config for TravelPlanner AI proxy
+    // Required secrets: GEMINI_API_KEYS, GOOGLE_PLACES_API_KEY, FIREBASE_PROJECT_ID
     "name": "travelplanner-ai",
     "main": "src/index.ts",
     "compatibility_date": "2025-01-01"
 }
+</file>
+
+<file path="index.html">
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://api.open-meteo.com https://geocoding-api.open-meteo.com https://accounts.google.com https://apis.google.com https://*.workers.dev; img-src 'self' data: https: blob:; frame-ancestors 'none'" />
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="TravelPlanner — A beautiful travel itinerary planner and tracker." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet" />
+  <title>TravelPlanner</title>
+  <!-- GitHub Pages SPA redirect receiver -->
+  <script>
+    (function (l) {
+      if (l.search[1] === '/') {
+        var decoded = l.search.slice(1).split('&').map(function (s) {
+          return s.replace(/~and~/g, '&')
+        }).join('?');
+        window.history.replaceState(null, null,
+          l.pathname.slice(0, -1) + decoded + l.hash
+        );
+      }
+    }(window.location))
+  </script>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
+</html>
+</file>
+
+<file path="src/components/NearbyRestaurants.tsx">
+import React, { useState, useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
+import { fetchNearbyPlaces } from '../lib/places';
+import type { PlaceResult } from '../lib/places';
+
+function formatPlacesAsNote(places: PlaceResult[]): string {
+  const heading = '**Nearby places**';
+  const lines = places.map((p) => {
+    const ratingPart = p.rating != null
+      ? `${p.rating.toFixed(1)}${p.ratingCount != null ? ` (${p.ratingCount.toLocaleString()} reviews)` : ''}`
+      : '';
+    const parts = [`**${p.name}**`, p.primaryType ? `(${p.primaryType})` : '', ratingPart, p.address].filter(Boolean);
+    return `- ${parts.join(' — ')}`;
+  });
+  return [heading, '', ...lines].join('\n');
+}
+
+export interface NearbyRestaurantsProps {
+  location: string;
+  category?: string;
+  title?: string;
+  label: string;
+  onClose: () => void;
+  onAddToNote?: (formattedText: string) => void;
+}
+
+const NearbyRestaurants: React.FC<NearbyRestaurantsProps> = ({ location, category, title, label, onClose, onAddToNote }) => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [places, setPlaces] = useState<PlaceResult[]>([]);
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    fetchNearbyPlaces(location, category, title)
+      .then(setPlaces)
+      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load places'))
+      .finally(() => setLoading(false));
+  }, [location, category, title, label]);
+
+  return (
+    <div
+      style={{
+        background: 'var(--surface-color)',
+        border: '1px solid var(--border-color)',
+        borderRadius: 'var(--radius-md)',
+        boxShadow: 'var(--shadow-md)',
+        padding: '1rem',
+        minWidth: '280px',
+        maxWidth: '360px',
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+        <h3 style={{ margin: 0, fontSize: '1rem' }}>{label}</h3>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Close">
+          ×
+        </button>
+      </div>
+
+      {loading && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}>
+          <Loader2 size={24} className="spin" style={{ color: 'var(--primary-color)' }} />
+        </div>
+      )}
+
+      {error && (
+        <p style={{ color: 'var(--error-color)', fontSize: '0.9rem', margin: 0 }}>{error}</p>
+      )}
+
+      {!loading && !error && places.length > 0 && (
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+          {places.map((p) => (
+            <li
+              key={p.id}
+              style={{
+                padding: '0.6rem 0',
+                borderBottom: '1px solid var(--border-color)',
+              }}
+            >
+              <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{p.name}</div>
+              {p.primaryType && <div style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)' }}>{p.primaryType}</div>}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{p.priceLevel}</span>
+                {p.rating != null && (
+                  <span style={{ fontSize: '0.8rem' }}>⭐ {p.rating.toFixed(1)}{p.ratingCount != null ? ` (${p.ratingCount.toLocaleString()})` : ''}</span>
+                )}
+                {p.isOpenNow != null && (
+                  <span
+                    style={{
+                      fontSize: '0.75rem',
+                      padding: '0.1rem 0.4rem',
+                      borderRadius: 'var(--radius-sm)',
+                      background: p.isOpenNow ? 'color-mix(in srgb, var(--secondary-color) 20%, transparent)' : 'var(--border-light)',
+                      color: p.isOpenNow ? 'var(--secondary-color)' : 'var(--text-tertiary)',
+                    }}
+                  >
+                    {p.isOpenNow ? 'Open now' : 'Closed'}
+                  </span>
+                )}
+              </div>
+              {p.address && <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '0.2rem' }}>{p.address}</div>}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {!loading && !error && places.length === 0 && (
+        <p style={{ color: 'var(--text-tertiary)', fontSize: '0.9rem', margin: 0 }}>No {label.toLowerCase()} found for this location.</p>
+      )}
+
+      {!loading && !error && places.length > 0 && onAddToNote && (
+        <div style={{ marginTop: '0.75rem' }}>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => {
+              const text = formatPlacesAsNote(places);
+              onAddToNote(text);
+              onClose();
+            }}
+          >
+            Add to activity note
+          </button>
+        </div>
+      )}
+
+      {!loading && (
+        <p style={{ marginTop: '0.75rem', marginBottom: 0, fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>
+          Powered by Google
+        </p>
+      )}
+    </div>
+  );
+};
+
+export default NearbyRestaurants;
 </file>
 
 <file path="src/components/ScenarioSwitcher.tsx">
@@ -11191,9 +10437,269 @@ const ScenarioSwitcher: React.FC<ScenarioSwitcherProps> = ({ trip, activities, r
 export default ScenarioSwitcher;
 </file>
 
+<file path="src/components/ShareModal.tsx">
+import React, { useState } from 'react';
+import { X, UserPlus, Loader2, Trash2 } from 'lucide-react';
+import { collection, query, where, getDocs, writeBatch, type DocumentReference } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { useTrips } from '../lib/store';
+import type { Trip } from '../lib/types';
+import { useToast } from './Toast';
+
+interface ShareModalProps {
+    trip: Trip;
+    onClose: () => void;
+}
+
+const ShareModal: React.FC<ShareModalProps> = ({ trip, onClose }) => {
+    const [email, setEmail] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const { updateTrip } = useTrips();
+    const { showToast } = useToast();
+
+    // Prevent closing when clicking inside the modal
+    const stopPropagation = (e: React.MouseEvent) => e.stopPropagation();
+
+    const toErrorMessage = (err: unknown, fallback: string) => {
+        if (!(err instanceof Error) || !err.message) return fallback;
+        if (/permission|missing or insufficient permissions/i.test(err.message)) {
+            return 'You do not have permission to update sharing for this trip.';
+        }
+        if (/network/i.test(err.message)) {
+            return 'Network error while updating collaborators. Please try again.';
+        }
+        return fallback;
+    };
+
+    const handleAddCollaborator = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const targetEmail = email.trim().toLowerCase();
+        if (!targetEmail) return;
+
+        if (trip.sharedWithEmails?.includes(targetEmail)) {
+            setError('User is already a collaborator on this trip.');
+            return;
+        }
+
+        setLoading(true);
+        setError(null);
+
+        try {
+            // 1. Look up user by email in the /users directory
+            const q = query(collection(db, 'users'), where('email', '==', targetEmail));
+            const querySnapshot = await getDocs(q);
+
+            if (querySnapshot.empty) {
+                setError(`No account found for ${targetEmail}. Have they signed in to the app before?`);
+                setLoading(false);
+                return;
+            }
+
+            const targetUserDoc = querySnapshot.docs[0];
+            const targetUid = typeof targetUserDoc.data().uid === 'string' && targetUserDoc.data().uid.trim()
+                ? targetUserDoc.data().uid
+                : targetUserDoc.id;
+
+            if (!targetUid) {
+                throw new Error('Collaborator account is missing a valid UID.');
+            }
+
+            if (targetUid === trip.userId) {
+                setError('You already own this trip.');
+                setLoading(false);
+                return;
+            }
+
+            if ((trip.members || []).includes(targetUid)) {
+                setError('User is already a collaborator on this trip.');
+                setLoading(false);
+                return;
+            }
+
+            // 2. Update the Trip's members and sharedWithEmails array
+            const newMembers = Array.from(new Set([...(trip.members || [trip.userId]), targetUid])).filter(Boolean);
+            const newShared = Array.from(new Set([...(trip.sharedWithEmails || []), targetEmail])).filter(Boolean);
+
+            // Only update the trip doc here, not the child docs immediately
+            await updateTrip(trip.id, {
+                members: newMembers,
+                sharedWithEmails: newShared
+            });
+
+            // 3. Batch update denormalized `tripMembers` on child docs (chunked; Firestore limit 500 per batch)
+            const collectionsToUpdate = ['activities', 'notes', 'transportRoutes', 'chat_history'];
+            const BATCH_LIMIT = 500;
+            const refs: DocumentReference[] = [];
+            for (const collName of collectionsToUpdate) {
+                const subQ = query(collection(db, collName), where('tripId', '==', trip.id));
+                const subSnapshot = await getDocs(subQ);
+                subSnapshot.forEach((docSnap) => refs.push(docSnap.ref));
+            }
+            try {
+                for (let i = 0; i < refs.length; i += BATCH_LIMIT) {
+                    const batch = writeBatch(db);
+                    refs.slice(i, i + BATCH_LIMIT).forEach((ref) => batch.update(ref, { tripMembers: newMembers }));
+                    await batch.commit();
+                }
+            } catch (batchErr) {
+                console.warn('Batch sync after add collaborator failed:', batchErr);
+                showToast(`${targetEmail} was added. If something looks wrong, try refreshing.`);
+                setEmail('');
+                setLoading(false);
+                return;
+            }
+
+            showToast(`${targetEmail} can now collaborate on this trip!`);
+            setEmail('');
+        } catch (err) {
+            console.error('Failed to add collaborator:', err);
+            setError(toErrorMessage(err, 'An error occurred while adding the collaborator.'));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleRemoveCollaborator = async (emailToRemove: string) => {
+        setLoading(true);
+        setError(null);
+        try {
+            // 1. Lookup the UID for this email to remove it
+            const q = query(collection(db, 'users'), where('email', '==', emailToRemove));
+            const querySnapshot = await getDocs(q);
+            let uidToRemove: string | null = null;
+            if (!querySnapshot.empty) {
+                const userDoc = querySnapshot.docs[0];
+                uidToRemove = typeof userDoc.data().uid === 'string' && userDoc.data().uid.trim()
+                    ? userDoc.data().uid
+                    : userDoc.id;
+            }
+
+            // 2. Filter out arrays
+            const newShared = (trip.sharedWithEmails || []).filter(e => e !== emailToRemove);
+            let newMembers = trip.members || [trip.userId];
+            if (uidToRemove) {
+                newMembers = newMembers.filter(uid => uid !== uidToRemove);
+            }
+
+            // 3. Update trip first so the collaborator is removed from the trip doc
+            await updateTrip(trip.id, {
+                members: newMembers,
+                sharedWithEmails: newShared
+            });
+
+            // 4. Batch update child docs (chunked; Firestore limit 500 per batch)
+            const collectionsToUpdate = ['activities', 'notes', 'transportRoutes', 'chat_history'];
+            const BATCH_LIMIT = 500;
+            const refs: DocumentReference[] = [];
+            for (const collName of collectionsToUpdate) {
+                const subQ = query(collection(db, collName), where('tripId', '==', trip.id));
+                const subSnapshot = await getDocs(subQ);
+                subSnapshot.forEach((docSnap) => refs.push(docSnap.ref));
+            }
+            try {
+                for (let i = 0; i < refs.length; i += BATCH_LIMIT) {
+                    const batch = writeBatch(db);
+                    refs.slice(i, i + BATCH_LIMIT).forEach((ref) => batch.update(ref, { tripMembers: newMembers }));
+                    await batch.commit();
+                }
+            } catch (batchErr) {
+                console.warn('Batch sync after remove collaborator failed:', batchErr);
+                showToast(`${emailToRemove} was removed from the trip. If something looks wrong, try refreshing.`);
+                setLoading(false);
+                return;
+            }
+
+            showToast(`${emailToRemove} removed.`);
+        } catch (err) {
+            console.error('Failed to remove collaborator:', err);
+            setError(toErrorMessage(err, 'Could not remove collaborator.'));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in"
+            style={{
+                backgroundColor: 'rgba(0,0,0,0.5)',
+                backdropFilter: 'blur(4px)',
+                position: 'fixed',
+                top: 0, left: 0, right: 0, bottom: 0
+            }}
+            onClick={onClose}
+        >
+            <div className="card w-full animate-slide-up" style={{ maxWidth: '440px', margin: 'auto', padding: '1.5rem', zIndex: 51, position: 'relative' }} onClick={stopPropagation}>
+                <div className="flex justify-between items-center mb-md">
+                    <h2 className="text-lg">Share Trip</h2>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>
+                        <X size={18} />
+                    </button>
+                </div>
+
+                <div className="mb-lg">
+                    <p className="text-sm text-secondary mb-md">
+                        Invite friends to collaborate on <strong>{trip.name}</strong>. They will be able to add, edit, and delete activities and notes.
+                    </p>
+
+                    <form onSubmit={handleAddCollaborator} className="flex gap-sm">
+                        <input
+                            type="email"
+                            className="input-field flex-1"
+                            placeholder="friend@email.com"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            disabled={loading}
+                            required
+                        />
+                        <button type="submit" className="btn btn-primary" disabled={loading || !email.trim()}>
+                            {loading ? <Loader2 size={16} className="spin" /> : <UserPlus size={16} />}
+                            Invite
+                        </button>
+                    </form>
+                    {error && <p className="text-xs text-danger mt-xs">{error}</p>}
+                </div>
+
+                <div className="border-t pt-md" style={{ borderColor: 'var(--border-color)' }}>
+                    <h3 className="text-sm font-medium mb-sm">Collaborators</h3>
+
+                    <div className="flex flex-col gap-xs">
+                        <div className="flex justify-between items-center p-sm rounded-md bg-surface-1 border">
+                            <span className="text-sm text-secondary">You (Owner)</span>
+                        </div>
+
+                        {(trip.sharedWithEmails || []).length === 0 ? (
+                            <p className="text-xs text-tertiary italic p-sm">No one else has access yet.</p>
+                        ) : (
+                            (trip.sharedWithEmails || []).map((sharedEmail) => (
+                                <div key={sharedEmail} className="flex justify-between items-center p-sm rounded-md bg-surface-1 border">
+                                    <span className="text-sm truncate w-3/4">{sharedEmail}</span>
+                                    <button
+                                        type="button"
+                                        className="btn btn-ghost btn-sm text-danger p-1"
+                                        onClick={() => handleRemoveCollaborator(sharedEmail)}
+                                        disabled={loading}
+                                        title="Remove access"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default ShareModal;
+</file>
+
 <file path="src/lib/ai/actions/assistant.ts">
 import { getCachedAiText } from '../cache';
-import { generateWithGemini } from '../../services/aiService';
+import { generateWithGemini } from '../../gemini';
 
 export async function generateAssistantResponse(args: {
   userMessage: string;
@@ -11235,6 +10741,267 @@ export async function generateAssistantResponse(args: {
     producer: () => generateWithGemini(prompt, { systemInstruction }),
     ttlMs: 12 * 60 * 60 * 1000,
   });
+}
+</file>
+
+<file path="src/lib/places.ts">
+/**
+ * Google Places API (New) — all calls via Cloudflare Worker proxy.
+ * Never call places.googleapis.com from the frontend.
+ */
+
+import { getAuth } from 'firebase/auth';
+
+import { getCachedAiText } from './ai/cache';
+import { generateWithGemini } from './gemini';
+
+const placeIdCache = new Map<string, string>(); // key: `${title}:${location}`
+
+function getProxyUrl(): string {
+  const url = import.meta.env.VITE_AI_PROXY_URL as string | undefined;
+  if (!url?.trim()) throw new Error('VITE_AI_PROXY_URL is not set.');
+  return url.replace(/\/+$/, '');
+}
+
+async function workerRequestHeaders(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const token = await getAuth().currentUser?.getIdToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return headers;
+}
+
+function mapPriceLevel(v?: string): PlaceResult['priceLevel'] {
+  switch (v) {
+    case 'PRICE_LEVEL_FREE': return 'Free';
+    case 'PRICE_LEVEL_INEXPENSIVE': return '$';
+    case 'PRICE_LEVEL_MODERATE': return '$$';
+    case 'PRICE_LEVEL_EXPENSIVE': return '$$$';
+    case 'PRICE_LEVEL_VERY_EXPENSIVE': return '$$$$';
+    default: return 'Unknown';
+  }
+}
+
+export interface PlaceResult {
+  id: string;
+  name: string;
+  primaryType: string;
+  priceLevel: '$' | '$$' | '$$$' | '$$$$' | 'Free' | 'Unknown';
+  rating: number | null;
+  ratingCount: number | null;
+  isOpenNow: boolean | null;
+  address: string | null;
+}
+
+export interface PlaceReview {
+  text: string;
+  rating: number;
+  authorName: string;
+  relativeTime: string;
+}
+
+export interface PlaceDetails {
+  id: string;
+  name: string;
+  rating: number | null;
+  ratingCount: number | null;
+  reviewSummary: string | null;
+  reviewSummaryDisclosure: string | null;
+  reviews: PlaceReview[];
+  reviewsUri?: string | null;
+}
+
+export interface PlaceProsCons {
+  pros: string[];
+  cons: string[];
+  verdict: string;
+}
+
+export type ActivityCategory = 'sightseeing' | 'food' | 'accommodation' | 'transport' | 'shopping' | 'other';
+
+const NEARBY_PLACES_LABELS: Record<ActivityCategory, { button: string; panel: string }> = {
+  food: { button: 'Find restaurants', panel: 'Restaurants nearby' },
+  accommodation: { button: 'Find accommodations', panel: 'Accommodations nearby' },
+  shopping: { button: 'Find shops', panel: 'Shops nearby' },
+  sightseeing: { button: 'Find sights', panel: 'Sights nearby' },
+  transport: { button: 'Find places', panel: 'Places nearby' },
+  other: { button: 'Find places', panel: 'Places nearby' },
+};
+
+export function getNearbyPlacesLabel(category: ActivityCategory | undefined): { button: string; panel: string } {
+  const key = (category && category in NEARBY_PLACES_LABELS ? category : 'other') as ActivityCategory;
+  return NEARBY_PLACES_LABELS[key];
+}
+
+interface PlacesNearbyResponse {
+  places?: Array<{
+    id?: string;
+    displayName?: { text?: string };
+    primaryTypeDisplayName?: { text?: string };
+    priceLevel?: string;
+    rating?: number;
+    userRatingCount?: number;
+    formattedAddress?: string;
+    currentOpeningHours?: { openNow?: boolean };
+  }>;
+}
+
+function parseNearbyResponse(raw: string): PlaceResult[] {
+  const data = JSON.parse(raw) as PlacesNearbyResponse;
+  const places = data.places ?? [];
+  const results: PlaceResult[] = places.map((p) => ({
+    id: p.id ?? '',
+    name: p.displayName?.text ?? '',
+    primaryType: p.primaryTypeDisplayName?.text ?? '',
+    priceLevel: mapPriceLevel(p.priceLevel),
+    rating: typeof p.rating === 'number' ? p.rating : null,
+    ratingCount: typeof p.userRatingCount === 'number' ? p.userRatingCount : null,
+    isOpenNow: p.currentOpeningHours?.openNow ?? null,
+    address: p.formattedAddress ?? null,
+  }));
+  results.sort((a, b) => (b.ratingCount ?? 0) - (a.ratingCount ?? 0));
+  return results;
+}
+
+export async function fetchNearbyPlaces(
+  location: string,
+  category?: string,
+  title?: string
+): Promise<PlaceResult[]> {
+  const cacheKey = [location, category ?? '', title ?? ''].join('|');
+  const raw = await getCachedAiText({
+    namespace: 'places-nearby',
+    cacheKey,
+    ttlMs: 3 * 60 * 60 * 1000,
+    producer: async () => {
+      const res = await fetch(`${getProxyUrl()}/places/nearby`, {
+        method: 'POST',
+        headers: await workerRequestHeaders(),
+        body: JSON.stringify({ location, category, title, maxResults: 20 }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error((data as { error?: string }).error ?? `Request failed: ${res.status}`);
+      return JSON.stringify(data);
+    },
+  });
+  return parseNearbyResponse(raw);
+}
+
+export async function fetchNearbyRestaurants(location: string): Promise<PlaceResult[]> {
+  return fetchNearbyPlaces(location, 'food');
+}
+
+export async function resolvePlaceId(activityTitle: string, location: string): Promise<string | null> {
+  const key = `${activityTitle}:${location}`;
+  const cached = placeIdCache.get(key);
+  if (cached) return cached;
+
+  const query = `${activityTitle} ${location}`.trim();
+  const res = await fetch(`${getProxyUrl()}/places/details`, {
+    method: 'POST',
+    headers: await workerRequestHeaders(),
+    body: JSON.stringify({ query, mode: 'resolve' }),
+  });
+  const data = (await res.json()) as { placeId?: string | null; error?: string };
+  if (!res.ok) throw new Error(data.error ?? `Resolve failed: ${res.status}`);
+  const placeId = data.placeId ?? null;
+  if (placeId) placeIdCache.set(key, placeId);
+  return placeId;
+}
+
+export async function fetchPlaceDetails(placeId: string): Promise<PlaceDetails> {
+  const raw = await getCachedAiText({
+    namespace: 'place-details',
+    cacheKey: placeId,
+    ttlMs: 6 * 60 * 60 * 1000,
+    producer: async () => {
+      const res = await fetch(`${getProxyUrl()}/places/details`, {
+        method: 'POST',
+        headers: await workerRequestHeaders(),
+        body: JSON.stringify({ placeId, mode: 'details' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error((data as { error?: string }).error ?? `Request failed: ${res.status}`);
+      return JSON.stringify(data);
+    },
+  });
+
+  const data = JSON.parse(raw) as {
+    displayName?: { text?: string; languageCode?: string } | string;
+    rating?: number;
+    userRatingCount?: number;
+    reviewSummary?: {
+      text?: string | { text?: string; languageCode?: string };
+      reviewsUri?: string;
+      disclosureText?: string | { text?: string; languageCode?: string };
+    };
+    reviews?: Array<{
+      text?: { text?: string; languageCode?: string } | string;
+      rating?: number;
+      authorAttribution?: { displayName?: string };
+      relativePublishTimeDescription?: string;
+    }>;
+  };
+
+  // Places API (New) can return LocalizedText as { text, languageCode }; always normalize to string for React
+  const textOf = (v: string | { text?: string; languageCode?: string } | null | undefined): string =>
+    typeof v === 'string' ? v : (v && typeof v === 'object' && typeof (v as { text?: string }).text === 'string' ? (v as { text: string }).text : '');
+
+  const name = textOf(data.displayName);
+  const reviews: PlaceReview[] = (data.reviews ?? []).map((r) => ({
+    text: textOf(r.text),
+    rating: r.rating ?? 0,
+    authorName: r.authorAttribution?.displayName ?? '',
+    relativeTime: r.relativePublishTimeDescription ?? '',
+  }));
+
+  const reviewSummaryRaw = data.reviewSummary?.text;
+  const disclosureRaw = data.reviewSummary?.disclosureText;
+
+  return {
+    id: placeId,
+    name,
+    rating: typeof data.rating === 'number' ? data.rating : null,
+    ratingCount: typeof data.userRatingCount === 'number' ? data.userRatingCount : null,
+    reviewSummary: textOf(reviewSummaryRaw) || null,
+    reviewSummaryDisclosure: textOf(disclosureRaw) || null,
+    reviewsUri: data.reviewSummary?.reviewsUri ?? null,
+    reviews,
+  };
+}
+
+const PROS_CONS_SCHEMA = {
+  type: 'object',
+  properties: {
+    pros: { type: 'array', items: { type: 'string' }, minItems: 3, maxItems: 3 },
+    cons: { type: 'array', items: { type: 'string' }, minItems: 3, maxItems: 3 },
+    verdict: { type: 'string' },
+  },
+  required: ['pros', 'cons', 'verdict'],
+  additionalProperties: false,
+};
+
+export async function generateProsCons(placeName: string, reviews: PlaceReview[], placeId: string): Promise<PlaceProsCons> {
+  const raw = await getCachedAiText({
+    namespace: 'place-pros-cons',
+    cacheKey: placeId,
+    ttlMs: 24 * 60 * 60 * 1000,
+    producer: async () => {
+      const reviewText = reviews.map((r) => `[${r.rating}★] ${r.authorName}: ${r.text}`).join('\n\n');
+      const prompt = `Place: ${placeName}\n\nReviews:\n${reviewText}\n\nIdentify the 3 most commonly mentioned pros and 3 cons. Be specific and factual. One sentence verdict.`;
+      return generateWithGemini(prompt, {
+        systemInstruction: 'You are a concise travel assistant. Analyze these reviews and identify the 3 most commonly mentioned pros and cons. Be specific and factual.',
+        responseMimeType: 'application/json',
+        responseSchema: PROS_CONS_SCHEMA as Record<string, unknown>,
+      });
+    },
+  });
+
+  const parsed = JSON.parse(raw) as { pros?: string[]; cons?: string[]; verdict?: string };
+  return {
+    pros: Array.isArray(parsed.pros) ? parsed.pros.slice(0, 3) : [],
+    cons: Array.isArray(parsed.cons) ? parsed.cons.slice(0, 3) : [],
+    verdict: typeof parsed.verdict === 'string' ? parsed.verdict : '',
+  };
 }
 </file>
 
@@ -12100,84 +11867,6 @@ export const googleProvider = new GoogleAuthProvider();
 export default app;
 </file>
 
-<file path="vite.config.ts">
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-
-// https://vite.dev/config/
-export default defineConfig({
-  plugins: [react()],
-  base: '/travelplanner/',
-  build: {
-    chunkSizeWarningLimit: 700,
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
-              return 'vendor-react'
-            }
-            if (id.includes('firebase/firestore')) return 'vendor-firebase-firestore'
-            if (id.includes('firebase/auth')) return 'vendor-firebase-auth'
-            if (id.includes('firebase/storage')) return 'vendor-firebase-storage'
-            if (id.includes('firebase/app')) return 'vendor-firebase-app'
-            if (id.includes('date-fns')) return 'vendor-dates'
-            if (id.includes('@amplitude')) return 'vendor-amplitude'
-            if (id.includes('lucide-react')) return 'vendor-lucide'
-          }
-        },
-      },
-    },
-  },
-})
-</file>
-
-<file path="package.json">
-{
-  "name": "sabb",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview",
-    "seed:kansai-packing": "tsx --env-file=.env scripts/seed-kansai-packing.ts"
-  },
-  "dependencies": {
-    "@amplitude/analytics-browser": "^2.36.1",
-    "@amplitude/engagement-browser": "^1.0.8",
-    "@amplitude/experiment-js-client": "^1.20.3",
-    "@amplitude/plugin-session-replay-browser": "^1.25.18",
-    "date-fns": "^4.1.0",
-    "dompurify": "^3.3.3",
-    "firebase": "^12.10.0",
-    "html-to-image": "^1.11.13",
-    "lucide-react": "^0.576.0",
-    "marked": "^17.0.4",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "react-router-dom": "^7.13.1"
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.39.1",
-    "@types/node": "^24.10.1",
-    "@types/react": "^19.2.7",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.1.1",
-    "eslint": "^9.39.1",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.4.24",
-    "globals": "^16.5.0",
-    "tsx": "^4.21.0",
-    "typescript": "~5.9.3",
-    "typescript-eslint": "^8.48.0",
-    "vite": "^7.3.1"
-  }
-}
-</file>
-
 <file path="src/design-system/themes.ts">
 export interface ThemeTokens {
   bgColor: string;
@@ -12781,7 +12470,7 @@ function loadFont(url: string): void {
 <file path="src/lib/ai/actions/calendar.ts">
 import { format } from 'date-fns';
 import { getCachedAiText } from '../cache';
-import { generateWithGemini } from '../../services/aiService';
+import { generateWithGemini } from '../../gemini';
 import { getEffectiveDayLocations } from '../../itinerary';
 import type { Activity, Trip } from '../../types';
 
@@ -13107,12 +12796,84 @@ Rules:
 }
 </file>
 
+<file path="vite.config.ts">
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [react()],
+  base: '/travelplanner/',
+  build: {
+    chunkSizeWarningLimit: 700,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+              return 'vendor-react'
+            }
+            if (id.includes('firebase/firestore')) return 'vendor-firebase-firestore'
+            if (id.includes('firebase/auth')) return 'vendor-firebase-auth'
+            if (id.includes('firebase/storage')) return 'vendor-firebase-storage'
+            if (id.includes('firebase/app')) return 'vendor-firebase-app'
+            if (id.includes('date-fns')) return 'vendor-dates'
+            if (id.includes('lucide-react')) return 'vendor-lucide'
+          }
+        },
+      },
+    },
+  },
+})
+</file>
+
+<file path="package.json">
+{
+  "name": "sabb",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "seed:kansai-packing": "tsx --env-file=.env scripts/seed-kansai-packing.ts"
+  },
+  "dependencies": {
+    "date-fns": "^4.1.0",
+    "dompurify": "^3.3.3",
+    "firebase": "^12.10.0",
+    "html-to-image": "^1.11.13",
+    "lucide-react": "^0.576.0",
+    "marked": "^17.0.4",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.13.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0",
+    "tsx": "^4.21.0",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.48.0",
+    "vite": "^7.3.1"
+  }
+}
+</file>
+
 <file path="src/components/TripForm.tsx">
 import React, { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import type { Trip } from '../lib/types';
 import { TRIP_COLORS } from '../lib/types';
-import { logEvent } from '../lib/amplitude';
 import Markdown from './Markdown';
 import { generateTripAutofillSuggestion } from '../lib/ai/actions/forms';
 
@@ -13140,7 +12901,6 @@ const TripForm: React.FC<TripFormProps> = ({ existing, onSave, onCancel }) => {
         setAiLoading(true);
         setAiError(null);
         setAiSuggestion(null);
-        logEvent('AI Trip Autofill Requested', { trip_name: name.trim() });
         try {
             const text = await generateTripAutofillSuggestion({
                 name,
@@ -13228,8 +12988,8 @@ const TripForm: React.FC<TripFormProps> = ({ existing, onSave, onCancel }) => {
                             <div className="ai-suggestion-card card" style={{ maxHeight: '200px', overflowY: 'auto' }}>
                                 <Markdown className="ai-suggestion-text">{aiSuggestion}</Markdown>
                                 <div className="ai-suggestion-actions">
-                                    <button type="button" className="btn btn-primary btn-sm" onClick={() => { setDescription(aiSuggestion); setAiSuggestion(null); logEvent('AI Trip Autofill Accepted', { trip_name: name.trim() }); }}>Use as description</button>
-                                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setAiSuggestion(null); logEvent('AI Trip Autofill Declined', { trip_name: name.trim() }); }}>Dismiss</button>
+                                    <button type="button" className="btn btn-primary btn-sm" onClick={() => { setDescription(aiSuggestion); setAiSuggestion(null); }}>Use as description</button>
+                                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setAiSuggestion(null); }}>Dismiss</button>
                                 </div>
                             </div>
                         )}
@@ -13261,7 +13021,6 @@ import DraggableList from '../components/DraggableList';
 import NoteEditor from '../components/NoteEditor';
 import NoteCard from '../components/NoteCard';
 import { useToast } from '../components/Toast';
-import { logEvent } from '../lib/amplitude';
 
 type NotesFilterMode = 'all' | 'general' | 'day';
 
@@ -13336,7 +13095,6 @@ const Notes: React.FC = () => {
                 updatedAt: now,
             } as Omit<import('../lib/types').Note, 'id' | 'userId' | 'tripMembers'>, selectedTrip?.members || []);
             setShowNewForm(false);
-            logEvent('Note Created', { trip_id: selectedTripId, format: data.format, image_count: data.images?.length ?? 0 });
         } catch (err) {
             console.error('Failed to add note:', err);
             setError(err instanceof Error ? err.message : 'Failed to save note. Check your connection and try again.');
@@ -13348,7 +13106,6 @@ const Notes: React.FC = () => {
         try {
             await updateNote(id, { ...data, updatedAt: new Date().toISOString() });
             setEditingNoteId(null);
-            logEvent('Note Updated', { note_id: id });
         } catch (err) {
             console.error('Failed to update note:', err);
             setError(err instanceof Error ? err.message : 'Failed to update note. Check your connection and try again.');
@@ -13359,12 +13116,10 @@ const Notes: React.FC = () => {
         setError(null);
         try {
             await deleteNote(note.id);
-            logEvent('Note Deleted', { note_id: note.id });
             const firstLine = note.content.split('\n')[0]?.trim() || 'Empty note';
             const snippet = firstLine.length > 40 ? `${firstLine.slice(0, 40)}...` : firstLine;
             showToast(`"${snippet}" deleted`, () => {
                 restoreNote(note);
-                logEvent('Note Delete Undone', { note_id: note.id });
             });
             if (editingNoteId === note.id) setEditingNoteId(null);
         } catch (err) {
@@ -13380,7 +13135,6 @@ const Notes: React.FC = () => {
             .filter((u, idx) => reordered[idx].order !== u.order);
         if (updates.length > 0) {
             reorderNotes(updates);
-            logEvent('Notes Reordered', { count: updates.length });
         }
     }, [reorderNotes, filterMode]);
 
@@ -13388,12 +13142,10 @@ const Notes: React.FC = () => {
         navigator.clipboard.writeText(content).then(() => {
             setCopiedId(id);
             showToast('Note copied to clipboard');
-            logEvent('Note Copied');
             setTimeout(() => setCopiedId(null), 2000);
         }).catch((err) => {
             console.error('Failed to copy note:', err);
             showToast('Could not copy note. Please copy manually.');
-            logEvent('Note Copy Failed');
         });
     }, [showToast]);
 
@@ -13539,1122 +13291,6 @@ const Notes: React.FC = () => {
 };
 
 export default Notes;
-</file>
-
-<file path="firestore.rules">
-rules_version = '2';
-
-service cloud.firestore {
-  match /databases/{database}/documents {
-
-    function isOwner() {
-      return request.auth != null && request.auth.uid == resource.data.userId;
-    }
-
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    function isMember() {
-      // Falls back gracefully if `tripMembers` is missing (legacy docs)
-      return isAuthenticated() && (
-        isOwner() ||
-        (resource.data.tripMembers != null && request.auth.uid in resource.data.tripMembers)
-      );
-    }
-
-    // Trip owner can always update child docs (e.g. sync tripMembers when adding/removing collaborators)
-    function isTripOwnerOf(tripId) {
-      return isAuthenticated() && tripId != null && get(/databases/$(database)/documents/trips/$(tripId)).data.userId == request.auth.uid;
-    }
-
-    /** True if the signed-in user is the trip owner or listed on the trip doc (not client-controlled tripMembers alone). */
-    function isMemberOfTrip(tripId) {
-      return tripId is string
-        && tripId != ''
-        && exists(/databases/$(database)/documents/trips/$(tripId))
-        && (
-          get(/databases/$(database)/documents/trips/$(tripId)).data.userId == request.auth.uid
-          || (
-            get(/databases/$(database)/documents/trips/$(tripId)).data.members != null
-            && request.auth.uid in get(/databases/$(database)/documents/trips/$(tripId)).data.members
-          )
-        );
-    }
-
-    // Trip: readable by owner or any member; writable only by owner
-    match /trips/{tripId} {
-      allow read: if isAuthenticated() && (
-        isOwner() ||
-        (resource.data.members != null && request.auth.uid in resource.data.members)
-      );
-      allow create: if isAuthenticated()
-                    && request.resource.data.userId == request.auth.uid
-                    && request.auth.uid in request.resource.data.members;
-      allow update: if isOwner();
-      allow delete: if isOwner();
-    }
-
-    // Child collections: access controlled by denormalized tripMembers array
-    // isMember() falls back to isOwner() so legacy docs without `tripMembers` still work
-    match /activities/{activityId} {
-      allow read: if isMember();
-      allow create: if isAuthenticated()
-        && request.resource.data.tripId is string
-        && isMemberOfTrip(request.resource.data.tripId)
-        && request.resource.data.tripMembers != null
-        && request.auth.uid in request.resource.data.tripMembers;
-      allow update, delete: if isMember() || isTripOwnerOf(resource.data.tripId);
-    }
-
-    match /transportRoutes/{routeId} {
-      allow read: if isMember();
-      allow create: if isAuthenticated()
-        && request.resource.data.tripId is string
-        && isMemberOfTrip(request.resource.data.tripId)
-        && request.resource.data.tripMembers != null
-        && request.auth.uid in request.resource.data.tripMembers;
-      allow update, delete: if isMember() || isTripOwnerOf(resource.data.tripId);
-    }
-
-    match /notes/{noteId} {
-      allow read: if isMember();
-      allow create: if isAuthenticated()
-        && request.resource.data.tripId is string
-        && isMemberOfTrip(request.resource.data.tripId)
-        && request.resource.data.tripMembers != null
-        && request.auth.uid in request.resource.data.tripMembers;
-      allow update, delete: if isMember() || isTripOwnerOf(resource.data.tripId);
-    }
-
-    match /chat_history/{messageId} {
-      allow read: if isMember();
-      allow create: if isAuthenticated()
-        && request.resource.data.tripId is string
-        && isMemberOfTrip(request.resource.data.tripId)
-        && request.resource.data.tripMembers != null
-        && (
-          request.auth.uid in request.resource.data.tripMembers ||
-          request.auth.uid == request.resource.data.userId
-        );
-      allow update, delete: if isMember() || isTripOwnerOf(resource.data.tripId);
-    }
-
-    // User directory: authenticated users can read anyone's profile;
-    // users can only write their own doc
-    match /users/{uid} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && request.auth.uid == uid;
-    }
-  }
-}
-</file>
-
-<file path="src/lib/gemini.ts">
-import {
-  recordAiRequestAttempt,
-  recordAiRequestFailure,
-  recordAiRequestRetry,
-  recordAiRequestSuccess,
-} from './aiUsage';
-
-const MIN_CALL_SPACING_MS = 1200;
-export const DEFAULT_GEMINI_MODEL = 'gemini-3-flash-preview';
-
-let lastCallAt = 0;
-const inflight = new Map<string, Promise<string>>();
-
-function getProxyUrl(): string {
-  const url = import.meta.env.VITE_AI_PROXY_URL as string | undefined;
-  if (!url?.trim()) {
-    throw new Error('AI proxy URL is not set. Add VITE_AI_PROXY_URL to your environment.');
-  }
-  if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    throw new Error(`AI proxy URL must be an absolute address (e.g. https://your-worker.workers.dev). Currently set to: "${url}"`);
-  }
-  return url.replace(/\/+$/, '');
-}
-
-function isRateLimitError(err: unknown): boolean {
-  if (!err) return false;
-  if (err instanceof Error) return /\b429\b/.test(err.message) || /rate/i.test(err.message);
-  if (typeof err === 'string') return /\b429\b/.test(err) || /rate/i.test(err);
-  return false;
-}
-
-async function sleep(ms: number) {
-  await new Promise((r) => setTimeout(r, ms));
-}
-
-/**
- * Single-flight + spaced calls + retry-on-429 wrapper.
- * Calls the Cloudflare Worker proxy instead of Gemini directly.
- */
-export async function generateWithGemini(
-  prompt: string,
-  options?: { systemInstruction?: string; responseMimeType?: 'text/plain' | 'application/json', responseSchema?: Record<string, any>, model?: string }
-): Promise<string> {
-  const opts = options || {};
-  const { systemInstruction, responseMimeType, responseSchema } = opts;
-  const model = opts.model?.trim() || DEFAULT_GEMINI_MODEL;
-
-  const key = `${model}:${responseMimeType || 'text/plain'}:${systemInstruction || ''}:${prompt}`;
-  const existing = inflight.get(key);
-  if (existing) return existing;
-
-  const p = (async () => {
-    const now = Date.now();
-    const waitFor = Math.max(0, MIN_CALL_SPACING_MS - (now - lastCallAt));
-    if (waitFor > 0) await sleep(waitFor);
-    lastCallAt = Date.now();
-
-    const proxyUrl = getProxyUrl();
-    let attempt = 0;
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      try {
-        recordAiRequestAttempt(model);
-        const response = await fetch(`${proxyUrl}/generate`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt, systemInstruction, responseMimeType, responseSchema, model }),
-        });
-
-        const data = await response.json() as { text?: string; error?: string };
-
-        if (!response.ok) {
-          throw new Error(data.error || `Proxy returned ${response.status}`);
-        }
-
-        const text = data.text?.trim() ?? '';
-        if (!text) throw new Error('Empty response from AI proxy');
-        recordAiRequestSuccess();
-        return text;
-      } catch (err) {
-        if (attempt < 3 && isRateLimitError(err)) {
-          const backoff = 1000 * Math.pow(2, attempt) + Math.random() * 500;
-          attempt += 1;
-          recordAiRequestRetry();
-          await sleep(backoff);
-          continue;
-        }
-        recordAiRequestFailure();
-        throw err instanceof Error ? err : new Error(String(err));
-      }
-    }
-  })().finally(() => {
-    inflight.delete(key);
-  });
-
-  inflight.set(key, p);
-  return p;
-}
-</file>
-
-<file path="src/pages/Budget.tsx">
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { format, parseISO, eachDayOfInterval } from 'date-fns';
-import { useTrips, useActivities, useTransportRoutes } from '../lib/store';
-import { CATEGORY_EMOJIS, CATEGORY_COLORS } from '../lib/types';
-import { useLocalStorageState } from '../lib/persist';
-import { logEvent } from '../lib/amplitude';
-import ConflictList from '../components/ConflictList';
-import ScenarioSwitcher from '../components/ScenarioSwitcher';
-import { getBudgetConflicts } from '../lib/planning/conflicts';
-import { getEffectiveDayLocations } from '../lib/itinerary';
-import { useSettings } from '../lib/settings';
-import { useTripScenarios } from '../lib/scenarios';
-
-const CATEGORIES = ['sightseeing', 'food', 'accommodation', 'transport', 'shopping', 'other'] as const;
-const COMMON_CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY', 'KRW', 'SGD', 'THB', 'MXN'] as const;
-
-interface CurrencyTotal { [currency: string]: number; }
-
-function formatCurrency(amount: number, currency: string): string {
-    return `${currency} ${amount.toFixed(2)}`;
-}
-
-function sumCurrency(totals: CurrencyTotal): number {
-    return Object.values(totals).reduce((a, b) => a + b, 0);
-}
-
-function convertAmount(amount: number, from: string, to: string, rates: Record<string, number>): number {
-    if (from === to) return amount;
-    const rate = rates[from];
-    return rate ? amount * rate : amount;
-}
-
-// --- SVG Donut Chart ---
-const DonutChart: React.FC<{ segments: { label: string; value: number; color: string }[]; size?: number }> = ({ segments, size = 160 }) => {
-    const total = segments.reduce((s, seg) => s + seg.value, 0);
-    if (total === 0) return null;
-    const cx = size / 2, cy = size / 2, r = size * 0.35, stroke = size * 0.18;
-    const circumference = 2 * Math.PI * r;
-    let offset = 0;
-
-    return (
-        <div className="flex flex-col items-center gap-sm shrink-0">
-            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-                {segments.map((seg, i) => {
-                    const pct = seg.value / total;
-                    const dash = circumference * pct;
-                    const currentOffset = offset;
-                    offset += dash;
-                    return (
-                        <circle
-                            key={i}
-                            cx={cx} cy={cy} r={r}
-                            fill="none"
-                            stroke={seg.color}
-                            strokeWidth={stroke}
-                            strokeDasharray={`${dash} ${circumference - dash}`}
-                            strokeDashoffset={-currentOffset}
-                            transform={`rotate(-90 ${cx} ${cy})`}
-                        />
-                    );
-                })}
-            </svg>
-            <div className="flex flex-col" style={{ gap: '0.2rem' }}>
-                {segments.map((seg, i) => (
-                    <div key={i} className="flex items-center gap-xs" style={{ fontSize: '0.7rem' }}>
-                        <span className="shrink-0" style={{ width: '10px', height: '10px', borderRadius: '2px', backgroundColor: seg.color }} />
-                        <span className="capitalize text-secondary">{seg.label}</span>
-                        <span className="font-bold text-primary ml-auto text-right" style={{ minWidth: '30px' }}>{Math.round((seg.value / total) * 100)}%</span>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-};
-
-// --- SVG Cumulative Spend Chart ---
-const CumulativeChart: React.FC<{
-    days: { label: string; cumulative: number }[];
-    budgetTarget?: number;
-    height?: number;
-}> = ({ days, budgetTarget, height = 180 }) => {
-    if (days.length === 0) return null;
-    const maxVal = Math.max(
-        days[days.length - 1].cumulative,
-        budgetTarget ?? 0,
-    ) * 1.1 || 1;
-    const w = 600, h = height, pad = { top: 10, right: 10, bottom: 30, left: 50 };
-    const plotW = w - pad.left - pad.right;
-    const plotH = h - pad.top - pad.bottom;
-
-    const points = days.map((d, i) => {
-        const x = pad.left + (days.length === 1 ? plotW / 2 : (i / (days.length - 1)) * plotW);
-        const y = pad.top + plotH - (d.cumulative / maxVal) * plotH;
-        return `${x},${y}`;
-    });
-
-    const areaPoints = [
-        `${pad.left + (days.length === 1 ? plotW / 2 : 0)},${pad.top + plotH}`,
-        ...points,
-        `${pad.left + (days.length === 1 ? plotW / 2 : plotW)},${pad.top + plotH}`,
-    ];
-
-    const gridLines = [0, 0.25, 0.5, 0.75, 1].map(pct => ({
-        y: pad.top + plotH - pct * plotH,
-        label: Math.round(pct * maxVal),
-    }));
-
-    return (
-        <svg viewBox={`0 0 ${w} ${h}`} className="cumulative-chart" preserveAspectRatio="xMidYMid meet">
-            {gridLines.map((g, i) => (
-                <g key={i}>
-                    <line x1={pad.left} y1={g.y} x2={w - pad.right} y2={g.y} stroke="var(--border-color)" strokeWidth="0.5" />
-                    <text x={pad.left - 4} y={g.y + 3} textAnchor="end" fontSize="10" fill="var(--text-tertiary)">{g.label}</text>
-                </g>
-            ))}
-            <polygon points={areaPoints.join(' ')} fill="url(#cumGrad)" opacity="0.3" />
-            <polyline points={points.join(' ')} fill="none" stroke="var(--primary-color)" strokeWidth="2.5" strokeLinejoin="round" />
-            {budgetTarget != null && budgetTarget > 0 && (
-                <line
-                    x1={pad.left} y1={pad.top + plotH - (budgetTarget / maxVal) * plotH}
-                    x2={w - pad.right} y2={pad.top + plotH - (budgetTarget / maxVal) * plotH}
-                    stroke="var(--error-color)" strokeWidth="1.5" strokeDasharray="6,4"
-                />
-            )}
-            {days.map((d, i) => {
-                const x = pad.left + (days.length === 1 ? plotW / 2 : (i / (days.length - 1)) * plotW);
-                return i % Math.max(1, Math.floor(days.length / 8)) === 0 || i === days.length - 1 ? (
-                    <text key={i} x={x} y={h - 8} textAnchor="middle" fontSize="9" fill="var(--text-tertiary)">{d.label}</text>
-                ) : null;
-            })}
-            <defs>
-                <linearGradient id="cumGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--primary-color)" />
-                    <stop offset="100%" stopColor="var(--primary-color)" stopOpacity="0" />
-                </linearGradient>
-            </defs>
-        </svg>
-    );
-};
-
-const Budget: React.FC = () => {
-    const { trips, updateTrip } = useTrips();
-    const { activities } = useActivities();
-    const { routes } = useTransportRoutes();
-
-    const [selectedTripId, setSelectedTripId] = useLocalStorageState<string | null>(
-        'travelplanner_budget_selectedTripId', null,
-    );
-    const [locationFilter, setLocationFilter] = useState<string>('');
-    const [tagFilter, setTagFilter] = useState<string>('');
-    const [showBudgetEditor, setShowBudgetEditor] = useState(false);
-    const [budgetInput, setBudgetInput] = useState('');
-    const [budgetCurrInput, setBudgetCurrInput] = useState('USD');
-    const [displayCurrency, setDisplayCurrency] = useLocalStorageState<string>(
-        'travelplanner_budget_displayCurrency', '',
-    );
-    const [exchangeRates, setExchangeRates] = useLocalStorageState<Record<string, Record<string, number>>>(
-        'travelplanner_budget_exchangeRates', {},
-    );
-    const [showRateEditor, setShowRateEditor] = useState(false);
-
-    const appSettings = useSettings();
-
-    const selectedTrip = trips.find(t => t.id === selectedTripId);
-    const { activeScenario } = useTripScenarios(selectedTripId);
-    const effectiveTrip = activeScenario?.tripSnapshot ?? selectedTrip;
-
-    const tripActivities = useMemo(() => {
-        if (!selectedTripId) return [];
-        return activities.filter(a => a.tripId === selectedTripId);
-    }, [selectedTripId, activities]);
-    const effectiveActivities = activeScenario?.activitiesSnapshot ?? tripActivities;
-
-    const tripRoutes = useMemo(() => {
-        if (!selectedTripId) return [];
-        return routes.filter(r => r.tripId === selectedTripId);
-    }, [selectedTripId, routes]);
-    const effectiveRoutes = activeScenario?.transportRoutesSnapshot ?? tripRoutes;
-
-    const locationsByDate = useMemo(() => {
-        const locs: Record<string, string> = {};
-        if (!effectiveTrip?.startDate || !effectiveTrip?.endDate) return locs;
-        try {
-            const start = parseISO(effectiveTrip.startDate);
-            const end = parseISO(effectiveTrip.endDate);
-            const dates = eachDayOfInterval({ start, end }).map((d) => format(d, 'yyyy-MM-dd'));
-            dates.forEach((date) => {
-                const arr = getEffectiveDayLocations(
-                    effectiveTrip?.itinerary?.[date],
-                    effectiveTrip?.dayLocations?.[date]
-                );
-                const first = arr[0];
-                if (first) locs[date] = first;
-            });
-        } catch { /* ignore */ }
-        return locs;
-    }, [effectiveTrip]);
-
-    const uniqueLocations = useMemo(() => {
-        const locs = new Set(Object.values(locationsByDate).filter(Boolean));
-        return Array.from(locs).sort();
-    }, [locationsByDate]);
-
-    const allTags = useMemo(() => {
-        const tags = new Set<string>();
-        effectiveActivities.forEach(a => a.tags?.forEach(t => tags.add(t)));
-        return Array.from(tags).sort();
-    }, [effectiveActivities]);
-
-    const filteredDates = useMemo(() => {
-        if (!locationFilter) return null;
-        return new Set(
-            Object.entries(locationsByDate)
-                .filter(([, loc]) => loc === locationFilter)
-                .map(([date]) => date),
-        );
-    }, [locationFilter, locationsByDate]);
-
-    const costedActivities = useMemo(() => {
-        let items = effectiveActivities.filter(a => a.cost != null && a.cost > 0);
-        if (filteredDates) items = items.filter(a => filteredDates.has(a.date));
-        if (tagFilter) items = items.filter(a => a.tags?.includes(tagFilter));
-        return items;
-    }, [effectiveActivities, filteredDates, tagFilter]);
-
-    const costedRoutes = useMemo(() => {
-        const items = effectiveRoutes.filter(r => r.cost != null && r.cost > 0);
-        if (!filteredDates) return items;
-        return items.filter(r => filteredDates.has(r.date));
-    }, [effectiveRoutes, filteredDates]);
-
-    const costedAccommodations = useMemo(() => {
-        if (!effectiveTrip?.itinerary) return [];
-        let items = Object.entries(effectiveTrip.itinerary)
-            .filter(([, day]) => day.accommodation?.cost != null && day.accommodation.cost > 0)
-            .map(([date, day]) => ({
-                date,
-                title: `Accommodation: ${day.accommodation!.name}`,
-                cost: day.accommodation!.cost!,
-                currency: day.accommodation!.currency || 'USD',
-            }));
-        if (filteredDates) items = items.filter(a => filteredDates.has(a.date));
-        return items;
-    }, [effectiveTrip, filteredDates]);
-
-    const usedCurrencies = useMemo(() => {
-        const set = new Set<string>();
-        costedActivities.forEach(a => set.add(a.currency || 'USD'));
-        costedRoutes.forEach(r => set.add(r.currency || 'USD'));
-        costedAccommodations.forEach(a => set.add(a.currency || 'USD'));
-        return Array.from(set).sort();
-    }, [costedActivities, costedRoutes, costedAccommodations]);
-
-    const tripRates = useMemo(() =>
-        (selectedTripId && exchangeRates[selectedTripId]) || {},
-        [selectedTripId, exchangeRates]);
-
-    const convertedTotal = useMemo(() => {
-        if (!displayCurrency) return null;
-        let total = 0;
-        for (const a of costedActivities) {
-            total += convertAmount(a.cost!, a.currency || 'USD', displayCurrency, tripRates);
-        }
-        for (const r of costedRoutes) {
-            total += convertAmount(r.cost!, r.currency || 'USD', displayCurrency, tripRates);
-        }
-        for (const a of costedAccommodations) {
-            total += convertAmount(a.cost, a.currency, displayCurrency, tripRates);
-        }
-        return total;
-    }, [displayCurrency, costedActivities, costedRoutes, costedAccommodations, tripRates]);
-
-    const grandTotal = useMemo(() => {
-        const totals: CurrencyTotal = {};
-        for (const a of costedActivities) {
-            const cur = a.currency || 'USD';
-            totals[cur] = (totals[cur] || 0) + a.cost!;
-        }
-        for (const r of costedRoutes) {
-            const cur = r.currency || 'USD';
-            totals[cur] = (totals[cur] || 0) + r.cost!;
-        }
-        for (const a of costedAccommodations) {
-            const cur = a.currency;
-            totals[cur] = (totals[cur] || 0) + a.cost;
-        }
-        return totals;
-    }, [costedActivities, costedRoutes, costedAccommodations]);
-
-    const categoryBreakdown = useMemo(() => {
-        const breakdown: Record<string, CurrencyTotal> = {};
-        for (const cat of CATEGORIES) breakdown[cat] = {};
-        breakdown['transport_routes'] = {};
-
-        for (const a of costedActivities) {
-            const cat = a.category || 'other';
-            const cur = a.currency || 'USD';
-            breakdown[cat][cur] = (breakdown[cat][cur] || 0) + a.cost!;
-        }
-        for (const r of costedRoutes) {
-            const cur = r.currency || 'USD';
-            breakdown['transport_routes'][cur] = (breakdown['transport_routes'][cur] || 0) + r.cost!;
-        }
-        for (const a of costedAccommodations) {
-            const cur = a.currency;
-            breakdown['accommodation'][cur] = (breakdown['accommodation'][cur] || 0) + a.cost;
-        }
-        return breakdown;
-    }, [costedActivities, costedRoutes, costedAccommodations]);
-
-    const donutSegments = useMemo(() => {
-        const segments: { label: string; value: number; color: string }[] = [];
-        for (const cat of CATEGORIES) {
-            const totals = categoryBreakdown[cat];
-            let val: number;
-            if (displayCurrency) {
-                val = Object.entries(totals).reduce((s, [cur, amt]) => s + convertAmount(amt, cur, displayCurrency, tripRates), 0);
-            } else {
-                val = sumCurrency(totals);
-            }
-            if (val > 0) segments.push({ label: cat, value: val, color: CATEGORY_COLORS[cat] });
-        }
-        const trVal = displayCurrency
-            ? Object.entries(categoryBreakdown['transport_routes']).reduce((s, [cur, amt]) => s + convertAmount(amt, cur, displayCurrency, tripRates), 0)
-            : sumCurrency(categoryBreakdown['transport_routes']);
-        if (trVal > 0) segments.push({ label: 'transport routes', value: trVal, color: CATEGORY_COLORS['transport'] });
-        return segments;
-    }, [categoryBreakdown, displayCurrency, tripRates]);
-
-    const locationBreakdown = useMemo(() => {
-        const breakdown: Record<string, CurrencyTotal> = {};
-        const addItem = (date: string, cost: number, currency: string) => {
-            const loc = locationsByDate[date] || 'Unassigned';
-            if (!breakdown[loc]) breakdown[loc] = {};
-            breakdown[loc][currency] = (breakdown[loc][currency] || 0) + cost;
-        };
-        for (const a of costedActivities) addItem(a.date, a.cost!, a.currency || 'USD');
-        for (const r of costedRoutes) addItem(r.date, r.cost!, r.currency || 'USD');
-        for (const a of costedAccommodations) addItem(a.date, a.cost, a.currency);
-        return breakdown;
-    }, [costedActivities, costedRoutes, costedAccommodations, locationsByDate]);
-
-    const allTripDays = useMemo(() => {
-        if (!effectiveTrip) return [];
-        try {
-            return eachDayOfInterval({ start: parseISO(effectiveTrip.startDate), end: parseISO(effectiveTrip.endDate) });
-        } catch { return []; }
-    }, [effectiveTrip]);
-
-    const dailyBreakdown = useMemo(() => {
-        return allTripDays.map(day => {
-            const dateStr = format(day, 'yyyy-MM-dd');
-            const dayActivities = costedActivities.filter(a => a.date === dateStr);
-            const dayRoutes = costedRoutes.filter(r => r.date === dateStr);
-            const dayAccommodations = costedAccommodations.filter(a => a.date === dateStr);
-
-            const totals: CurrencyTotal = {};
-            for (const a of dayActivities) { const cur = a.currency || 'USD'; totals[cur] = (totals[cur] || 0) + a.cost!; }
-            for (const r of dayRoutes) { const cur = r.currency || 'USD'; totals[cur] = (totals[cur] || 0) + r.cost!; }
-            for (const a of dayAccommodations) { const cur = a.currency; totals[cur] = (totals[cur] || 0) + a.cost; }
-
-            return { date: day, dateStr, location: locationsByDate[dateStr] || '', activities: dayActivities, routes: dayRoutes, accommodations: dayAccommodations, totals, itemCount: dayActivities.length + dayRoutes.length + dayAccommodations.length };
-        }).filter(d => d.itemCount > 0);
-    }, [allTripDays, costedActivities, costedRoutes, costedAccommodations, locationsByDate]);
-
-    const cumulativeData = useMemo(() => {
-        let running = 0;
-        return allTripDays.map(day => {
-            const dateStr = format(day, 'yyyy-MM-dd');
-            const dayActs = costedActivities.filter(a => a.date === dateStr);
-            const dayRoutes = costedRoutes.filter(r => r.date === dateStr);
-            const dayAccs = costedAccommodations.filter(a => a.date === dateStr);
-            for (const a of dayActs) running += displayCurrency ? convertAmount(a.cost!, a.currency || 'USD', displayCurrency, tripRates) : a.cost!;
-            for (const r of dayRoutes) running += displayCurrency ? convertAmount(r.cost!, r.currency || 'USD', displayCurrency, tripRates) : r.cost!;
-            for (const a of dayAccs) running += displayCurrency ? convertAmount(a.cost, a.currency, displayCurrency, tripRates) : a.cost;
-            return { label: format(day, 'MMM d'), cumulative: running };
-        });
-    }, [allTripDays, costedActivities, costedRoutes, costedAccommodations, displayCurrency, tripRates]);
-
-    const topExpenses = useMemo(() => {
-        const items: { emoji: string; title: string; cost: number; currency: string; date: string; converted?: number }[] = [];
-        for (const a of costedActivities) {
-            items.push({
-                emoji: CATEGORY_EMOJIS[a.category || 'other'],
-                title: a.title,
-                cost: a.cost!,
-                currency: a.currency || 'USD',
-                date: a.date,
-                converted: displayCurrency ? convertAmount(a.cost!, a.currency || 'USD', displayCurrency, tripRates) : undefined,
-            });
-        }
-        for (const r of costedRoutes) {
-            items.push({
-                emoji: '🚆',
-                title: `${r.from} → ${r.to}`,
-                cost: r.cost!,
-                currency: r.currency || 'USD',
-                date: r.date,
-                converted: displayCurrency ? convertAmount(r.cost!, r.currency || 'USD', displayCurrency, tripRates) : undefined,
-            });
-        }
-        for (const a of costedAccommodations) {
-            items.push({
-                emoji: '🏠',
-                title: a.title,
-                cost: a.cost,
-                currency: a.currency,
-                date: a.date,
-                converted: displayCurrency ? convertAmount(a.cost, a.currency, displayCurrency, tripRates) : undefined,
-            });
-        }
-        items.sort((a, b) => (b.converted ?? b.cost) - (a.converted ?? a.cost));
-        return items.slice(0, 5);
-    }, [costedActivities, costedRoutes, costedAccommodations, displayCurrency, tripRates]);
-
-    const avgDailySpend = useMemo(() => {
-        if (allTripDays.length === 0) return null;
-        if (displayCurrency && convertedTotal != null) return convertedTotal / allTripDays.length;
-        const total = sumCurrency(grandTotal);
-        return total / allTripDays.length;
-    }, [allTripDays, grandTotal, displayCurrency, convertedTotal]);
-
-    const maxDayTotal = useMemo(() => {
-        let max = 0;
-        for (const day of dailyBreakdown) {
-            const sum = displayCurrency
-                ? Object.entries(day.totals).reduce((s, [cur, amt]) => s + convertAmount(amt, cur, displayCurrency, tripRates), 0)
-                : sumCurrency(day.totals);
-            if (sum > max) max = sum;
-        }
-        return max;
-    }, [dailyBreakdown, displayCurrency, tripRates]);
-
-    const categoryBarMax = useMemo(() => {
-        let max = 0;
-        for (const totals of Object.values(categoryBreakdown)) {
-            const sum = displayCurrency
-                ? Object.entries(totals).reduce((s, [cur, amt]) => s + convertAmount(amt, cur, displayCurrency, tripRates), 0)
-                : sumCurrency(totals);
-            if (sum > max) max = sum;
-        }
-        return max;
-    }, [categoryBreakdown, displayCurrency, tripRates]);
-
-    const locationBarMax = useMemo(() => {
-        let max = 0;
-        for (const totals of Object.values(locationBreakdown)) {
-            const sum = displayCurrency
-                ? Object.entries(totals).reduce((s, [cur, amt]) => s + convertAmount(amt, cur, displayCurrency, tripRates), 0)
-                : sumCurrency(totals);
-            if (sum > max) max = sum;
-        }
-        return max;
-    }, [locationBreakdown, displayCurrency, tripRates]);
-
-    const totalExpenses = costedActivities.length + costedRoutes.length + costedAccommodations.length;
-    const budgetTarget = effectiveTrip?.budgetTarget;
-    const budgetCurrency = effectiveTrip?.budgetCurrency || effectiveTrip?.defaultCurrency || 'USD';
-
-    const budgetProgress = useMemo(() => {
-        if (!budgetTarget) return null;
-        let spent: number;
-        if (displayCurrency === budgetCurrency && convertedTotal != null) {
-            spent = convertedTotal;
-        } else {
-            spent = sumCurrency(grandTotal);
-        }
-        return { spent, target: budgetTarget, pct: Math.min((spent / budgetTarget) * 100, 100) };
-    }, [budgetTarget, budgetCurrency, displayCurrency, convertedTotal, grandTotal]);
-
-    const budgetConflicts = useMemo(() => {
-        if (!budgetProgress) return [];
-        return getBudgetConflicts({
-            spent: budgetProgress.spent,
-            target: budgetProgress.target,
-            currency: budgetCurrency,
-        });
-    }, [budgetProgress, budgetCurrency]);
-
-    const handleSaveBudget = useCallback(() => {
-        if (!selectedTrip) return;
-        const val = parseFloat(budgetInput);
-        if (isNaN(val) || val <= 0) {
-            updateTrip(selectedTrip.id, { budgetTarget: undefined, budgetCurrency: undefined } as Partial<typeof selectedTrip>);
-        } else {
-            updateTrip(selectedTrip.id, { budgetTarget: val, budgetCurrency: budgetCurrInput });
-        }
-        setShowBudgetEditor(false);
-        logEvent('Budget Target Set', { amount: val, currency: budgetCurrInput });
-    }, [selectedTrip, budgetInput, budgetCurrInput, updateTrip]);
-
-    const handleSetRate = useCallback((fromCur: string, rate: number) => {
-        if (!selectedTripId) return;
-        setExchangeRates(prev => ({
-            ...prev,
-            [selectedTripId]: { ...prev[selectedTripId], [fromCur]: rate },
-        }));
-    }, [selectedTripId, setExchangeRates]);
-
-    const renderAmount = useCallback((totals: CurrencyTotal) => {
-        if (displayCurrency) {
-            const converted = Object.entries(totals).reduce(
-                (s, [cur, amt]) => s + convertAmount(amt, cur, displayCurrency, tripRates), 0,
-            );
-            return <span>{formatCurrency(converted, displayCurrency)}</span>;
-        }
-        return Object.entries(totals).map(([cur, amt]) => <span key={cur}>{formatCurrency(amt, cur)}</span>);
-    }, [displayCurrency, tripRates]);
-
-    useEffect(() => {
-        if (!selectedTrip) return;
-        let tripDays: string[] = [];
-        try {
-            tripDays = eachDayOfInterval({ start: parseISO(effectiveTrip?.startDate ?? selectedTrip.startDate), end: parseISO(effectiveTrip?.endDate ?? selectedTrip.endDate) }).map(d => format(d, 'yyyy-MM-dd'));
-        } catch { return; }
-        const daysWithCost = new Set(costedActivities.map(a => a.date));
-        const daysWithActivity = new Set(effectiveActivities.map(a => a.date));
-        logEvent('Budget Viewed', {
-            trip_id: selectedTrip.id, trip_name: selectedTrip.name,
-            duration_days: tripDays.length, total_activities: effectiveActivities.length,
-            costed_activities: costedActivities.length, total_expense_items: totalExpenses,
-            days_with_any_activity: tripDays.filter(d => daysWithActivity.has(d)).length,
-            days_with_any_cost: tripDays.filter(d => daysWithCost.has(d)).length,
-        });
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedTripId, effectiveTrip, effectiveActivities, costedActivities.length, totalExpenses]);
-
-    useEffect(() => { setLocationFilter(''); setTagFilter(''); }, [selectedTripId]);
-
-    useEffect(() => {
-        if (selectedTrip) {
-            setBudgetInput(selectedTrip.budgetTarget?.toString() || '');
-            setBudgetCurrInput(selectedTrip.budgetCurrency || selectedTrip.defaultCurrency || 'USD');
-        }
-    }, [selectedTrip]);
-
-    if (trips.length === 0) {
-        return (
-            <div className="page-container animate-fade-in">
-                <div className="text-center p-xl mx-auto" style={{ maxWidth: '400px' }}>
-                    <div className="mb-md" style={{ fontSize: '3rem', lineHeight: 1 }}>💰</div>
-                    <h2 className="mb-sm">No trips yet</h2>
-                    <p>Create a trip from the Trips page to start tracking your budget.</p>
-                </div>
-            </div>
-        );
-    }
-
-    return (
-        <div className="page-container animate-fade-in">
-            <header className="page-header">
-                <div>
-                    <h1>Budget</h1>
-                    <p>Track your travel spending across activities and transport.</p>
-                </div>
-            </header>
-
-            {/* Controls */}
-            <div className="flex items-center gap-md mb-xl flex-wrap">
-                <select className="input-field" style={{ maxWidth: '200px' }} value={selectedTripId || ''} onChange={e => setSelectedTripId(e.target.value || null)}>
-                    <option value="">Select a trip...</option>
-                    {trips.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                </select>
-                {selectedTrip && (
-                    <ScenarioSwitcher trip={selectedTrip} activities={effectiveActivities} routes={effectiveRoutes} />
-                )}
-                {uniqueLocations.length > 0 && selectedTrip && (
-                    <select className="input-field" style={{ maxWidth: '200px' }} value={locationFilter} onChange={e => setLocationFilter(e.target.value)}>
-                        <option value="">All locations</option>
-                        {uniqueLocations.map(loc => <option key={loc} value={loc}>📍 {loc}</option>)}
-                    </select>
-                )}
-                {allTags.length > 0 && selectedTrip && (
-                    <select className="input-field" style={{ maxWidth: '200px' }} value={tagFilter} onChange={e => setTagFilter(e.target.value)}>
-                        <option value="">All tags</option>
-                        {allTags.map(tag => <option key={tag} value={tag}>🏷️ {tag}</option>)}
-                    </select>
-                )}
-                {usedCurrencies.length > 1 && selectedTrip && (
-                    <div className="flex items-center gap-sm">
-                        <select className="input-field" value={displayCurrency} onChange={e => setDisplayCurrency(e.target.value)}>
-                            <option value="">Multi-currency</option>
-                            {COMMON_CURRENCIES.filter(c => usedCurrencies.includes(c) || c === (selectedTrip?.defaultCurrency || 'USD')).map(c =>
-                                <option key={c} value={c}>Show in {c}</option>
-                            )}
-                        </select>
-                        {displayCurrency && (
-                            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowRateEditor(p => !p)}>
-                                {showRateEditor ? 'Hide rates' : 'Edit rates'}
-                            </button>
-                        )}
-                    </div>
-                )}
-            </div>
-
-
-            {/* Exchange rate editor */}
-            {showRateEditor && displayCurrency && selectedTripId && (
-                <div className="card p-md mb-xl">
-                    <h4 className="font-semibold text-sm mb-xs">Exchange Rates → {displayCurrency}</h4>
-                    <p className="text-xs text-tertiary mb-sm">Enter how much 1 unit of each currency is worth in {displayCurrency}.</p>
-                    <div className="flex flex-wrap gap-sm">
-                        {usedCurrencies.filter(c => c !== displayCurrency).map(cur => (
-                            <div key={cur} className="flex items-center gap-xs text-sm">
-                                <label style={{ fontWeight: 600, minWidth: '60px' }}>1 {cur} =</label>
-                                <input
-                                    type="number"
-                                    className="input-field"
-                                    style={{ width: '90px', maxWidth: '90px' }}
-                                    step="0.0001"
-                                    min="0"
-                                    placeholder="1.0"
-                                    value={tripRates[cur] ?? ''}
-                                    onChange={e => handleSetRate(cur, parseFloat(e.target.value) || 0)}
-                                />
-                                <span>{displayCurrency}</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {!selectedTrip && (
-                <div className="text-center p-xl mx-auto" style={{ maxWidth: '400px' }}>
-                    <div className="mb-md" style={{ fontSize: '3rem', lineHeight: 1 }}>💰</div>
-                    <h2 className="mb-sm">Select a trip</h2>
-                    <p>Choose a trip above to see your budget breakdown.</p>
-                </div>
-            )}
-
-            {selectedTrip && (
-                <>
-                    {appSettings.showBudgetWarnings && budgetConflicts.length > 0 && (
-                        <div className="mb-lg">
-                            <ConflictList conflicts={budgetConflicts} title="Budget checks" compact />
-                        </div>
-                    )}
-                    {/* Stats row */}
-                    <div className="grid gap-md mb-xl" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
-                        {/* Grand total */}
-                        <div className="card p-md text-center">
-                            <h3 className="text-xs text-secondary uppercase mb-xs" style={{ letterSpacing: '0.05em' }}>Total Spending{locationFilter && ` — ${locationFilter}`}</h3>
-                            {Object.keys(grandTotal).length > 0 ? (
-                                <div className="text-primary font-bold flex justify-center flex-wrap gap-sm mb-xs" style={{ fontSize: '1.6rem' }}>
-                                    {displayCurrency && convertedTotal != null
-                                        ? formatCurrency(convertedTotal, displayCurrency)
-                                        : Object.entries(grandTotal).sort(([, a], [, b]) => b - a).map(([cur, amt]) => (
-                                            <span key={cur}>{formatCurrency(amt, cur)}</span>
-                                        ))
-                                    }
-                                </div>
-                            ) : (
-                                <p className="text-sm text-tertiary italic mb-xs">No costs recorded yet.</p>
-                            )}
-                            <span className="text-xs text-tertiary block">{totalExpenses} expense{totalExpenses !== 1 ? 's' : ''} across {dailyBreakdown.length} day{dailyBreakdown.length !== 1 ? 's' : ''}</span>
-                        </div>
-
-                        {/* Average daily */}
-                        {avgDailySpend != null && avgDailySpend > 0 && (
-                            <div className="card p-md text-center">
-                                <h3 className="text-xs text-secondary uppercase mb-xs" style={{ letterSpacing: '0.05em' }}>Avg / Day</h3>
-                                <div className="text-primary font-bold flex justify-center flex-wrap gap-sm mb-xs" style={{ fontSize: '1.6rem' }}>
-                                    {displayCurrency
-                                        ? formatCurrency(avgDailySpend, displayCurrency)
-                                        : formatCurrency(avgDailySpend, usedCurrencies[0] || 'USD')
-                                    }
-                                </div>
-                                <span className="text-xs text-tertiary block">{allTripDays.length} day trip</span>
-                            </div>
-                        )}
-
-                        {/* Budget target */}
-                        <div className="card p-md text-center relative">
-                            <h3 className="text-xs text-secondary uppercase mb-xs" style={{ letterSpacing: '0.05em' }}>Budget Target</h3>
-                            {showBudgetEditor ? (
-                                <div className="flex items-center gap-xs flex-wrap justify-center">
-                                    <input type="number" className="input-field" style={{ maxWidth: '100px' }} placeholder="e.g. 2000" value={budgetInput} onChange={e => setBudgetInput(e.target.value)} min="0" step="1" />
-                                    <select className="input-field" value={budgetCurrInput} onChange={e => setBudgetCurrInput(e.target.value)}>
-                                        {COMMON_CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-                                    </select>
-                                    <button className="btn btn-primary btn-sm" onClick={handleSaveBudget}>Save</button>
-                                    <button className="btn btn-ghost btn-sm" onClick={() => setShowBudgetEditor(false)}>Cancel</button>
-                                </div>
-                            ) : budgetProgress ? (
-                                <>
-                                    <div className="text-primary font-bold flex justify-center flex-wrap gap-sm mb-xs" style={{ fontSize: '1.6rem' }}>{formatCurrency(budgetProgress.target, budgetCurrency)}</div>
-                                    <div className="bg-border-light rounded-full overflow-hidden my-xs" style={{ height: '8px' }}>
-                                        <div
-                                            className={`rounded-full h-full transition-shadow ${budgetProgress.pct >= 90 ? 'bg-danger' : 'bg-primary'}`}
-                                            style={{ width: `${budgetProgress.pct}%`, transition: 'width 0.4s ease' }}
-                                        />
-                                    </div>
-                                    <span className="text-xs text-tertiary block mb-sm">
-                                        {Math.round(budgetProgress.pct)}% used — {formatCurrency(budgetProgress.target - budgetProgress.spent, budgetCurrency)} remaining
-                                    </span>
-                                    <button className="btn btn-ghost btn-sm" onClick={() => setShowBudgetEditor(true)}>Edit</button>
-                                </>
-                            ) : (
-                                <>
-                                    <p className="text-sm text-tertiary italic mb-xs">No target set</p>
-                                    <button className="btn btn-outline btn-sm" onClick={() => setShowBudgetEditor(true)}>Set budget</button>
-                                </>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Donut + Category bars */}
-                    {totalExpenses > 0 && (
-                        <div className="mb-xl">
-                            <h2 className="text-lg font-primary mb-md">By Category</h2>
-                            <div className="flex gap-xl items-start" style={{ flexWrap: 'wrap' }}>
-                                {donutSegments.length > 1 && <DonutChart segments={donutSegments} />}
-                                <div className="flex flex-col gap-sm flex-1 min-w-0">
-                                    {CATEGORIES.map(cat => {
-                                        const totals = categoryBreakdown[cat];
-                                        const sum = displayCurrency
-                                            ? Object.entries(totals).reduce((s, [cur, amt]) => s + convertAmount(amt, cur, displayCurrency, tripRates), 0)
-                                            : sumCurrency(totals);
-                                        if (sum === 0) return null;
-                                        const barWidth = categoryBarMax > 0 ? (sum / categoryBarMax) * 100 : 0;
-                                        return (
-                                            <div key={cat} className="grid items-center gap-md py-1 border-b" style={{ gridTemplateColumns: '140px 1fr auto' }}>
-                                                <div className="flex items-center gap-sm">
-                                                    <span className="text-base">{CATEGORY_EMOJIS[cat]}</span>
-                                                    <span className="text-sm font-semibold capitalize text-primary">{cat}</span>
-                                                </div>
-                                                <div className="h-2 rounded-full bg-border-light overflow-hidden">
-                                                    <div className="h-full rounded-full transition-all duration-300 min-w-1" style={{ width: `${barWidth}%`, backgroundColor: CATEGORY_COLORS[cat] }} />
-                                                </div>
-                                                <div className="flex flex-col items-end gap-0.5 text-sm font-bold text-primary min-w-[80px] text-right">{renderAmount(totals)}</div>
-                                            </div>
-                                        );
-                                    })}
-                                    {(() => {
-                                        const trTotals = categoryBreakdown['transport_routes'];
-                                        const trSum = displayCurrency
-                                            ? Object.entries(trTotals).reduce((s, [cur, amt]) => s + convertAmount(amt, cur, displayCurrency, tripRates), 0)
-                                            : sumCurrency(trTotals);
-                                        if (trSum === 0) return null;
-                                        const barW = categoryBarMax > 0 ? (trSum / categoryBarMax) * 100 : 0;
-                                        return (
-                                            <div className="grid items-center gap-md py-1 border-b" style={{ gridTemplateColumns: '140px 1fr auto' }}>
-                                                <div className="flex items-center gap-sm">
-                                                    <span className="text-base">🚆</span>
-                                                    <span className="text-sm font-semibold capitalize text-primary">transport routes</span>
-                                                </div>
-                                                <div className="h-2 rounded-full bg-border-light overflow-hidden">
-                                                    <div className="h-full rounded-full transition-all duration-300 min-w-1" style={{ width: `${barW}%`, backgroundColor: CATEGORY_COLORS['transport'] }} />
-                                                </div>
-                                                <div className="flex flex-col items-end gap-0.5 text-sm font-bold text-primary min-w-[80px] text-right">{renderAmount(trTotals)}</div>
-                                            </div>
-                                        );
-                                    })()}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Location breakdown */}
-                    {totalExpenses > 0 && Object.keys(locationBreakdown).length > 1 && (
-                        <div className="budget-section">
-                            <h2 className="budget-section-title">By Location</h2>
-                            <div className="budget-category-grid">
-                                {Object.entries(locationBreakdown)
-                                    .sort(([, a], [, b]) => {
-                                        const sa = displayCurrency ? Object.entries(a).reduce((s, [c, v]) => s + convertAmount(v, c, displayCurrency, tripRates), 0) : sumCurrency(a);
-                                        const sb = displayCurrency ? Object.entries(b).reduce((s, [c, v]) => s + convertAmount(v, c, displayCurrency, tripRates), 0) : sumCurrency(b);
-                                        return sb - sa;
-                                    })
-                                    .map(([loc, totals]) => {
-                                        const sum = displayCurrency
-                                            ? Object.entries(totals).reduce((s, [cur, amt]) => s + convertAmount(amt, cur, displayCurrency, tripRates), 0)
-                                            : sumCurrency(totals);
-                                        const barWidth = locationBarMax > 0 ? (sum / locationBarMax) * 100 : 0;
-                                        return (
-                                            <div key={loc} className="grid items-center gap-md py-1 border-b" style={{ gridTemplateColumns: '140px 1fr auto' }}>
-                                                <div className="flex items-center gap-sm">
-                                                    <span className="text-base">{loc === 'Unassigned' ? '📌' : '📍'}</span>
-                                                    <span className="text-sm font-semibold capitalize text-primary">{loc}</span>
-                                                </div>
-                                                <div className="h-2 rounded-full bg-border-light overflow-hidden">
-                                                    <div className="h-full rounded-full transition-all duration-300 min-w-1" style={{ width: `${barWidth}%`, backgroundColor: 'var(--primary-color)' }} />
-                                                </div>
-                                                <div className="flex flex-col items-end gap-0.5 text-sm font-bold text-primary min-w-[80px] text-right">{renderAmount(totals)}</div>
-                                            </div>
-                                        );
-                                    })}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Cumulative spend chart */}
-                    {cumulativeData.length > 1 && cumulativeData[cumulativeData.length - 1].cumulative > 0 && (
-                        <div className="mb-xl">
-                            <h2 className="text-lg font-primary mb-md">Cumulative Spending</h2>
-                            <div className="card p-md overflow-hidden">
-                                <div style={{ width: '100%', height: 'auto', display: 'block' }}>
-                                    <CumulativeChart
-                                        days={cumulativeData}
-                                        budgetTarget={budgetTarget && displayCurrency === budgetCurrency ? budgetTarget : undefined}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Top expenses */}
-                    {topExpenses.length > 0 && (
-                        <div className="mb-xl">
-                            <h2 className="text-lg font-primary mb-md">Top Expenses</h2>
-                            <div className="flex flex-col gap-sm">
-                                {topExpenses.map((item, i) => (
-                                    <div key={i} className="flex items-center gap-sm px-3 py-1 rounded-sm bg-border-light text-sm">
-                                        <span className="font-bold text-primary text-xs" style={{ minWidth: '24px' }}>#{i + 1}</span>
-                                        <span className="shrink-0">{item.emoji}</span>
-                                        <span className="flex-1 font-medium truncate">{item.title}</span>
-                                        <span className="text-xs text-tertiary shrink-0">{(() => { try { return format(parseISO(item.date), 'MMM d'); } catch { return item.date; } })()}</span>
-                                        <span className="font-bold text-secondary shrink-0">
-                                            {displayCurrency && item.converted != null
-                                                ? formatCurrency(item.converted, displayCurrency)
-                                                : formatCurrency(item.cost, item.currency)
-                                            }
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Daily breakdown */}
-                    {dailyBreakdown.length > 0 && (
-                        <div className="mb-xl">
-                            <h2 className="text-lg font-primary mb-md">By Day</h2>
-                            <div className="grid grid-cols-auto-300 gap-md">
-                                {dailyBreakdown.map(day => {
-                                    const daySum = displayCurrency
-                                        ? Object.entries(day.totals).reduce((s, [cur, amt]) => s + convertAmount(amt, cur, displayCurrency, tripRates), 0)
-                                        : sumCurrency(day.totals);
-                                    const barWidth = maxDayTotal > 0 ? (daySum / maxDayTotal) * 100 : 0;
-                                    const overAvg = avgDailySpend != null && daySum > avgDailySpend * 1.5;
-                                    return (
-                                        <div key={day.dateStr} className={`card p-md ${overAvg ? 'border-l-[3px] border-l-danger' : ''}`}>
-                                            <div className="flex justify-between items-center mb-xs">
-                                                <div className="flex items-baseline gap-xs">
-                                                    <span className="font-bold text-sm text-primary">{format(day.date, 'EEE')}</span>
-                                                    <span className="text-xs text-secondary">{format(day.date, 'MMM d')}</span>
-                                                </div>
-                                                <div className="flex gap-sm">
-                                                    <span className="text-base font-bold text-secondary">
-                                                        {displayCurrency ? formatCurrency(daySum, displayCurrency) : Object.entries(day.totals).map(([cur, amt]) => formatCurrency(amt, cur)).join(' / ')}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            {day.location && <span className="block text-xs text-tertiary mb-xs">📍 {day.location}</span>}
-                                            <div className="h-1 rounded-full bg-border-light overflow-hidden mb-sm">
-                                                <div className="h-full rounded-full transition-all duration-300 min-w-1" style={{ width: `${barWidth}%`, background: 'linear-gradient(90deg, var(--primary-color), var(--secondary-color))' }} />
-                                            </div>
-                                            <div className="flex flex-col gap-1">
-                                                {day.accommodations.map((a, idx) => (
-                                                    <div key={`acc-${idx}`} className="flex items-center gap-xs py-1 px-2 rounded-sm bg-border-light text-xs">
-                                                        <span className="shrink-0">🏠</span>
-                                                        <span className="flex-1 font-medium text-primary truncate">{a.title}</span>
-                                                        <span className="font-bold text-secondary shrink-0">
-                                                            {displayCurrency ? formatCurrency(convertAmount(a.cost, a.currency, displayCurrency, tripRates), displayCurrency) : formatCurrency(a.cost, a.currency)}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                                {day.activities.map(a => (
-                                                    <div key={a.id} className="flex items-center gap-xs py-1 px-2 rounded-sm bg-border-light text-xs">
-                                                        <span className="shrink-0">{CATEGORY_EMOJIS[a.category || 'other']}</span>
-                                                        <span className="flex-1 font-medium text-primary truncate">
-                                                            {a.title}
-                                                            {a.tags && a.tags.length > 0 && <span className="ml-1 text-[10px] text-tertiary font-normal">{a.tags.map(t => `#${t}`).join(' ')}</span>}
-                                                        </span>
-                                                        <span className="font-bold text-secondary shrink-0">
-                                                            {displayCurrency ? formatCurrency(convertAmount(a.cost!, a.currency || 'USD', displayCurrency, tripRates), displayCurrency) : formatCurrency(a.cost!, a.currency || 'USD')}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                                {day.routes.map(r => (
-                                                    <div key={r.id} className="flex items-center gap-xs py-1 px-2 rounded-sm bg-border-light text-xs">
-                                                        <span className="shrink-0">🚆</span>
-                                                        <span className="flex-1 font-medium text-primary truncate">{r.from} → {r.to}</span>
-                                                        <span className="font-bold text-secondary shrink-0">
-                                                            {displayCurrency ? formatCurrency(convertAmount(r.cost!, r.currency || 'USD', displayCurrency, tripRates), displayCurrency) : formatCurrency(r.cost!, r.currency || 'USD')}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
-                </>
-            )}
-
-        </div>
-    );
-};
-
-export default Budget;
 </file>
 
 <file path="src/pages/SpreadsheetView.module.css">
@@ -15522,297 +14158,1105 @@ export default Budget;
 }
 </file>
 
-<file path="src/components/ActivityForm.tsx">
-import React, { useState } from 'react';
-import type { Activity } from '../lib/types';
-import { CATEGORY_EMOJIS, ACTIVITY_COLORS } from '../lib/types';
-import { Loader2, Trash2 } from 'lucide-react';
-import { logEvent } from '../lib/amplitude';
-import Markdown from './Markdown';
-import AutoTextarea from './AutoTextarea';
-import { generateActivityGuide } from '../lib/ai/actions/forms';
-import './ActivityForm.css';
+<file path="firestore.rules">
+rules_version = '2';
 
-interface ActivityFormProps {
-    tripId: string;
-    date: string;
-    existingActivity?: Activity;
-    nextOrder: number;
-    defaultCurrency?: string;
-    onSave: (activity: Omit<Activity, 'id' | 'userId' | 'tripMembers'> | ({ id: string } & Partial<Omit<Activity, 'userId'>>)) => void;
-    onCancel: () => void;
-    onDelete?: () => void;
-}
+service cloud.firestore {
+  match /databases/{database}/documents {
 
-const categories = ['sightseeing', 'food', 'accommodation', 'transport', 'shopping', 'other'] as const;
-
-const TIME_OPTIONS: { value: string; label: string }[] = (() => {
-    const opts: { value: string; label: string }[] = [{ value: '', label: 'No time' }];
-    for (let h = 0; h < 24; h++) {
-        for (const m of [0, 30]) {
-            const hh = String(h).padStart(2, '0');
-            const mm = String(m).padStart(2, '0');
-            const value = `${hh}:${mm}`;
-            const period = h < 12 ? 'AM' : 'PM';
-            const displayH = h === 0 ? 12 : h > 12 ? h - 12 : h;
-            const label = `${displayH}:${mm} ${period}`;
-            opts.push({ value, label });
-        }
+    function isOwner() {
+      return request.auth != null && request.auth.uid == resource.data.userId;
     }
-    return opts;
-})();
 
-function snapTo30(time: string): string {
-    if (!time) return '';
-    const [hStr, mStr] = time.split(':');
-    const minutes = parseInt(mStr ?? '0', 10);
-    const snapped = minutes < 15 ? '00' : minutes < 45 ? '30' : '00';
-    let hours = parseInt(hStr ?? '0', 10);
-    if (minutes >= 45) hours = (hours + 1) % 24;
-    return `${String(hours).padStart(2, '0')}:${snapped}`;
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isMember() {
+      // Falls back gracefully if `tripMembers` is missing (legacy docs)
+      return isAuthenticated() && (
+        isOwner() ||
+        (resource.data.tripMembers != null && request.auth.uid in resource.data.tripMembers)
+      );
+    }
+
+    // Trip owner can always update child docs (e.g. sync tripMembers when adding/removing collaborators)
+    function isTripOwnerOf(tripId) {
+      return isAuthenticated() && tripId != null && get(/databases/$(database)/documents/trips/$(tripId)).data.userId == request.auth.uid;
+    }
+
+    /** True if the signed-in user is the trip owner or listed on the trip doc (not client-controlled tripMembers alone). */
+    function isMemberOfTrip(tripId) {
+      return tripId is string
+        && tripId != ''
+        && exists(/databases/$(database)/documents/trips/$(tripId))
+        && (
+          get(/databases/$(database)/documents/trips/$(tripId)).data.userId == request.auth.uid
+          || (
+            get(/databases/$(database)/documents/trips/$(tripId)).data.members != null
+            && request.auth.uid in get(/databases/$(database)/documents/trips/$(tripId)).data.members
+          )
+        );
+    }
+
+    // Trip: readable by owner or any member; writable only by owner
+    match /trips/{tripId} {
+      allow read: if isAuthenticated() && (
+        isOwner() ||
+        (resource.data.members != null && request.auth.uid in resource.data.members)
+      );
+      allow create: if isAuthenticated()
+                    && request.resource.data.userId == request.auth.uid
+                    && request.auth.uid in request.resource.data.members;
+      allow update: if isOwner();
+      allow delete: if isOwner();
+    }
+
+    // Child collections: access controlled by denormalized tripMembers array
+    // isMember() falls back to isOwner() so legacy docs without `tripMembers` still work
+    match /activities/{activityId} {
+      allow read: if isMember();
+      allow create: if isAuthenticated()
+        && request.resource.data.tripId is string
+        && isMemberOfTrip(request.resource.data.tripId)
+        && request.resource.data.tripMembers != null
+        && request.auth.uid in request.resource.data.tripMembers;
+      allow update, delete: if isMember() || isTripOwnerOf(resource.data.tripId);
+    }
+
+    match /transportRoutes/{routeId} {
+      allow read: if isMember();
+      allow create: if isAuthenticated()
+        && request.resource.data.tripId is string
+        && isMemberOfTrip(request.resource.data.tripId)
+        && request.resource.data.tripMembers != null
+        && request.auth.uid in request.resource.data.tripMembers;
+      allow update, delete: if isMember() || isTripOwnerOf(resource.data.tripId);
+    }
+
+    match /notes/{noteId} {
+      allow read: if isMember();
+      allow create: if isAuthenticated()
+        && request.resource.data.tripId is string
+        && isMemberOfTrip(request.resource.data.tripId)
+        && request.resource.data.tripMembers != null
+        && request.auth.uid in request.resource.data.tripMembers;
+      allow update, delete: if isMember() || isTripOwnerOf(resource.data.tripId);
+    }
+
+    match /chat_history/{messageId} {
+      allow read: if isMember();
+      allow create: if isAuthenticated()
+        && request.resource.data.tripId is string
+        && isMemberOfTrip(request.resource.data.tripId)
+        && request.resource.data.tripMembers != null
+        && (
+          request.auth.uid in request.resource.data.tripMembers ||
+          request.auth.uid == request.resource.data.userId
+        );
+      allow update, delete: if isMember() || isTripOwnerOf(resource.data.tripId);
+    }
+
+    // User directory: authenticated users can read anyone's profile;
+    // users can only write their own doc
+    match /users/{uid} {
+      allow read: if isAuthenticated() && request.auth.token.firebase.sign_in_provider != 'anonymous';
+      allow write: if isAuthenticated() && request.auth.uid == uid && request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+  }
+}
+</file>
+
+<file path="src/lib/gemini.ts">
+import { getAuth } from 'firebase/auth';
+
+import {
+  recordAiRequestAttempt,
+  recordAiRequestFailure,
+  recordAiRequestRetry,
+  recordAiRequestSuccess,
+} from './aiUsage';
+
+const MIN_CALL_SPACING_MS = 1200;
+export const DEFAULT_GEMINI_MODEL = 'gemini-3-flash-preview';
+
+let lastCallAt = 0;
+const inflight = new Map<string, Promise<string>>();
+
+function getProxyUrl(): string {
+  const url = import.meta.env.VITE_AI_PROXY_URL as string | undefined;
+  if (!url?.trim()) {
+    throw new Error('AI proxy URL is not set. Add VITE_AI_PROXY_URL to your environment.');
+  }
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    throw new Error(`AI proxy URL must be an absolute address (e.g. https://your-worker.workers.dev). Currently set to: "${url}"`);
+  }
+  return url.replace(/\/+$/, '');
 }
 
-const ActivityForm: React.FC<ActivityFormProps> = ({ tripId, date, existingActivity, nextOrder, defaultCurrency, onSave, onCancel, onDelete }) => {
-    const [title, setTitle] = useState(existingActivity?.title || '');
-    const [details, setDetails] = useState(existingActivity?.details || '');
-    const [time, setTime] = useState(() => snapTo30(existingActivity?.time || ''));
-    const [location, setLocation] = useState(existingActivity?.location || '');
-    const [category, setCategory] = useState<Activity['category']>(existingActivity?.category || 'other');
-    const [cost, setCost] = useState(existingActivity?.cost?.toString() || '');
-    const [currency, setCurrency] = useState(existingActivity?.currency || defaultCurrency || 'USD');
-    const [color, setColor] = useState(existingActivity?.color || '');
-    const [tags, setTags] = useState(existingActivity?.tags?.join(', ') || '');
-    const [showOptional, setShowOptional] = useState(!!existingActivity);
-    const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
-    const [aiLoading, setAiLoading] = useState(false);
-    const [aiError, setAiError] = useState<string | null>(null);
+function isRateLimitError(err: unknown): boolean {
+  if (!err) return false;
+  if (err instanceof Error) return /\b429\b/.test(err.message) || /rate/i.test(err.message);
+  if (typeof err === 'string') return /\b429\b/.test(err) || /rate/i.test(err);
+  return false;
+}
 
-    const handleAiSuggest = async () => {
-        if (!title.trim()) return;
-        setAiLoading(true);
-        setAiError(null);
-        setAiSuggestion(null);
-        logEvent('AI Suggestion Requested', { activity_title: title.trim() });
-        try {
-            const text = await generateActivityGuide(title);
-            setAiSuggestion(text);
-        } catch (e) {
-            setAiError(e instanceof Error ? e.message : 'AI suggestion failed');
-        } finally {
-            setAiLoading(false);
+async function sleep(ms: number) {
+  await new Promise((r) => setTimeout(r, ms));
+}
+
+/**
+ * Single-flight + spaced calls + retry-on-429 wrapper.
+ * Calls the Cloudflare Worker proxy instead of Gemini directly.
+ */
+export async function generateWithGemini(
+  prompt: string,
+  options?: { systemInstruction?: string; responseMimeType?: 'text/plain' | 'application/json', responseSchema?: Record<string, any>, model?: string }
+): Promise<string> {
+  const opts = options || {};
+  const { systemInstruction, responseMimeType, responseSchema } = opts;
+  const model = opts.model?.trim() || DEFAULT_GEMINI_MODEL;
+
+  const key = `${model}:${responseMimeType || 'text/plain'}:${systemInstruction || ''}:${prompt}`;
+  const existing = inflight.get(key);
+  if (existing) return existing;
+
+  const p = (async () => {
+    const now = Date.now();
+    const waitFor = Math.max(0, MIN_CALL_SPACING_MS - (now - lastCallAt));
+    if (waitFor > 0) await sleep(waitFor);
+    lastCallAt = Date.now();
+
+    const proxyUrl = getProxyUrl();
+    let attempt = 0;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      try {
+        recordAiRequestAttempt(model);
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        const token = await getAuth().currentUser?.getIdToken();
+        if (token) headers.Authorization = `Bearer ${token}`;
+        const response = await fetch(`${proxyUrl}/generate`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ prompt, systemInstruction, responseMimeType, responseSchema, model }),
+        });
+
+        const data = await response.json() as { text?: string; error?: string };
+
+        if (!response.ok) {
+          throw new Error(data.error || `Proxy returned ${response.status}`);
         }
-    };
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!title.trim()) return;
-
-        const parsedTags = tags.split(',').map(t => t.trim()).filter(Boolean);
-        const activityData = {
-            ...(existingActivity ? { id: existingActivity.id } : {}),
-            tripId,
-            date,
-            title: title.trim(),
-            details: details.trim() || undefined,
-            time: time || undefined,
-            location: location.trim() || undefined,
-            category,
-            cost: cost ? parseFloat(cost) : undefined,
-            currency: cost ? currency : undefined,
-            order: existingActivity?.order ?? nextOrder,
-            color: color || undefined,
-            tags: parsedTags.length > 0 ? parsedTags : undefined,
-        };
-
-        onSave(activityData);
-
-        const hasCost = !!activityData.cost;
-        if (existingActivity) {
-            logEvent('Activity Updated', {
-                activity_title: activityData.title,
-                category: activityData.category,
-                has_cost: hasCost,
-                has_time: !!activityData.time,
-                has_location: !!activityData.location,
-            });
-        } else {
-            logEvent('Activity Created', {
-                activity_title: activityData.title,
-                category: activityData.category,
-                has_cost: hasCost,
-                has_time: !!activityData.time,
-                has_location: !!activityData.location,
-                trip_id: activityData.tripId,
-                date: activityData.date,
-            });
+        const text = data.text?.trim() ?? '';
+        if (!text) throw new Error('Empty response from AI proxy');
+        recordAiRequestSuccess();
+        return text;
+      } catch (err) {
+        if (attempt < 3 && isRateLimitError(err)) {
+          const backoff = 1000 * Math.pow(2, attempt) + Math.random() * 500;
+          attempt += 1;
+          recordAiRequestRetry();
+          await sleep(backoff);
+          continue;
         }
-    };
+        recordAiRequestFailure();
+        throw err instanceof Error ? err : new Error(String(err));
+      }
+    }
+  })().finally(() => {
+    inflight.delete(key);
+  });
+
+  inflight.set(key, p);
+  return p;
+}
+</file>
+
+<file path="src/pages/Budget.tsx">
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { format, parseISO, eachDayOfInterval } from 'date-fns';
+import { useTrips, useActivities, useTransportRoutes } from '../lib/store';
+import { CATEGORY_EMOJIS, CATEGORY_COLORS } from '../lib/types';
+import { useLocalStorageState } from '../lib/persist';
+import ConflictList from '../components/ConflictList';
+import ScenarioSwitcher from '../components/ScenarioSwitcher';
+import { getBudgetConflicts } from '../lib/planning/conflicts';
+import { getEffectiveDayLocations } from '../lib/itinerary';
+import { useSettings } from '../lib/settings';
+import { useTripScenarios } from '../lib/scenarios';
+
+const CATEGORIES = ['sightseeing', 'food', 'accommodation', 'transport', 'shopping', 'other'] as const;
+const COMMON_CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY', 'KRW', 'SGD', 'THB', 'MXN'] as const;
+
+interface CurrencyTotal { [currency: string]: number; }
+
+function formatCurrency(amount: number, currency: string): string {
+    return `${currency} ${amount.toFixed(2)}`;
+}
+
+function sumCurrency(totals: CurrencyTotal): number {
+    return Object.values(totals).reduce((a, b) => a + b, 0);
+}
+
+function convertAmount(amount: number, from: string, to: string, rates: Record<string, number>): number {
+    if (from === to) return amount;
+    const rate = rates[from];
+    return rate ? amount * rate : amount;
+}
+
+// --- SVG Donut Chart ---
+const DonutChart: React.FC<{ segments: { label: string; value: number; color: string }[]; size?: number }> = ({ segments, size = 160 }) => {
+    const total = segments.reduce((s, seg) => s + seg.value, 0);
+    if (total === 0) return null;
+    const cx = size / 2, cy = size / 2, r = size * 0.35, stroke = size * 0.18;
+    const circumference = 2 * Math.PI * r;
+    let offset = 0;
 
     return (
-        <form className="activity-form animate-fade-in" onSubmit={handleSubmit}>
-            <div className="form-row">
-                <div className="input-group" style={{ flex: 2 }}>
-                    <label className="input-label">Title *</label>
-                    <input
-                        className="input-field"
-                        type="text"
-                        value={title}
-                        onChange={e => setTitle(e.target.value)}
-                        placeholder="e.g. Visit the Colosseum"
-                        autoFocus
-                        required
-                    />
-                </div>
-                <div className="input-group" style={{ flex: 0, minWidth: '130px' }}>
-                    <label className="input-label">Time</label>
-                    <select
-                        className="input-field"
-                        value={time}
-                        onChange={e => setTime(e.target.value)}
-                    >
-                        {TIME_OPTIONS.map(opt => (
-                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                    </select>
+        <div className="flex flex-col items-center gap-sm shrink-0">
+            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+                {segments.map((seg, i) => {
+                    const pct = seg.value / total;
+                    const dash = circumference * pct;
+                    const currentOffset = offset;
+                    offset += dash;
+                    return (
+                        <circle
+                            key={i}
+                            cx={cx} cy={cy} r={r}
+                            fill="none"
+                            stroke={seg.color}
+                            strokeWidth={stroke}
+                            strokeDasharray={`${dash} ${circumference - dash}`}
+                            strokeDashoffset={-currentOffset}
+                            transform={`rotate(-90 ${cx} ${cy})`}
+                        />
+                    );
+                })}
+            </svg>
+            <div className="flex flex-col" style={{ gap: '0.2rem' }}>
+                {segments.map((seg, i) => (
+                    <div key={i} className="flex items-center gap-xs" style={{ fontSize: '0.7rem' }}>
+                        <span className="shrink-0" style={{ width: '10px', height: '10px', borderRadius: '2px', backgroundColor: seg.color }} />
+                        <span className="capitalize text-secondary">{seg.label}</span>
+                        <span className="font-bold text-primary ml-auto text-right" style={{ minWidth: '30px' }}>{Math.round((seg.value / total) * 100)}%</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+// --- SVG Cumulative Spend Chart ---
+const CumulativeChart: React.FC<{
+    days: { label: string; cumulative: number }[];
+    budgetTarget?: number;
+    height?: number;
+}> = ({ days, budgetTarget, height = 180 }) => {
+    if (days.length === 0) return null;
+    const maxVal = Math.max(
+        days[days.length - 1].cumulative,
+        budgetTarget ?? 0,
+    ) * 1.1 || 1;
+    const w = 600, h = height, pad = { top: 10, right: 10, bottom: 30, left: 50 };
+    const plotW = w - pad.left - pad.right;
+    const plotH = h - pad.top - pad.bottom;
+
+    const points = days.map((d, i) => {
+        const x = pad.left + (days.length === 1 ? plotW / 2 : (i / (days.length - 1)) * plotW);
+        const y = pad.top + plotH - (d.cumulative / maxVal) * plotH;
+        return `${x},${y}`;
+    });
+
+    const areaPoints = [
+        `${pad.left + (days.length === 1 ? plotW / 2 : 0)},${pad.top + plotH}`,
+        ...points,
+        `${pad.left + (days.length === 1 ? plotW / 2 : plotW)},${pad.top + plotH}`,
+    ];
+
+    const gridLines = [0, 0.25, 0.5, 0.75, 1].map(pct => ({
+        y: pad.top + plotH - pct * plotH,
+        label: Math.round(pct * maxVal),
+    }));
+
+    return (
+        <svg viewBox={`0 0 ${w} ${h}`} className="cumulative-chart" preserveAspectRatio="xMidYMid meet">
+            {gridLines.map((g, i) => (
+                <g key={i}>
+                    <line x1={pad.left} y1={g.y} x2={w - pad.right} y2={g.y} stroke="var(--border-color)" strokeWidth="0.5" />
+                    <text x={pad.left - 4} y={g.y + 3} textAnchor="end" fontSize="10" fill="var(--text-tertiary)">{g.label}</text>
+                </g>
+            ))}
+            <polygon points={areaPoints.join(' ')} fill="url(#cumGrad)" opacity="0.3" />
+            <polyline points={points.join(' ')} fill="none" stroke="var(--primary-color)" strokeWidth="2.5" strokeLinejoin="round" />
+            {budgetTarget != null && budgetTarget > 0 && (
+                <line
+                    x1={pad.left} y1={pad.top + plotH - (budgetTarget / maxVal) * plotH}
+                    x2={w - pad.right} y2={pad.top + plotH - (budgetTarget / maxVal) * plotH}
+                    stroke="var(--error-color)" strokeWidth="1.5" strokeDasharray="6,4"
+                />
+            )}
+            {days.map((d, i) => {
+                const x = pad.left + (days.length === 1 ? plotW / 2 : (i / (days.length - 1)) * plotW);
+                return i % Math.max(1, Math.floor(days.length / 8)) === 0 || i === days.length - 1 ? (
+                    <text key={i} x={x} y={h - 8} textAnchor="middle" fontSize="9" fill="var(--text-tertiary)">{d.label}</text>
+                ) : null;
+            })}
+            <defs>
+                <linearGradient id="cumGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--primary-color)" />
+                    <stop offset="100%" stopColor="var(--primary-color)" stopOpacity="0" />
+                </linearGradient>
+            </defs>
+        </svg>
+    );
+};
+
+const Budget: React.FC = () => {
+    const { trips, updateTrip } = useTrips();
+    const { activities } = useActivities();
+    const { routes } = useTransportRoutes();
+
+    const [selectedTripId, setSelectedTripId] = useLocalStorageState<string | null>(
+        'travelplanner_budget_selectedTripId', null,
+    );
+    const [locationFilter, setLocationFilter] = useState<string>('');
+    const [tagFilter, setTagFilter] = useState<string>('');
+    const [showBudgetEditor, setShowBudgetEditor] = useState(false);
+    const [budgetInput, setBudgetInput] = useState('');
+    const [budgetCurrInput, setBudgetCurrInput] = useState('USD');
+    const [displayCurrency, setDisplayCurrency] = useLocalStorageState<string>(
+        'travelplanner_budget_displayCurrency', '',
+    );
+    const [exchangeRates, setExchangeRates] = useLocalStorageState<Record<string, Record<string, number>>>(
+        'travelplanner_budget_exchangeRates', {},
+    );
+    const [showRateEditor, setShowRateEditor] = useState(false);
+
+    const appSettings = useSettings();
+
+    const selectedTrip = trips.find(t => t.id === selectedTripId);
+    const { activeScenario } = useTripScenarios(selectedTripId);
+    const effectiveTrip = activeScenario?.tripSnapshot ?? selectedTrip;
+
+    const tripActivities = useMemo(() => {
+        if (!selectedTripId) return [];
+        return activities.filter(a => a.tripId === selectedTripId);
+    }, [selectedTripId, activities]);
+    const effectiveActivities = activeScenario?.activitiesSnapshot ?? tripActivities;
+
+    const tripRoutes = useMemo(() => {
+        if (!selectedTripId) return [];
+        return routes.filter(r => r.tripId === selectedTripId);
+    }, [selectedTripId, routes]);
+    const effectiveRoutes = activeScenario?.transportRoutesSnapshot ?? tripRoutes;
+
+    const locationsByDate = useMemo(() => {
+        const locs: Record<string, string> = {};
+        if (!effectiveTrip?.startDate || !effectiveTrip?.endDate) return locs;
+        try {
+            const start = parseISO(effectiveTrip.startDate);
+            const end = parseISO(effectiveTrip.endDate);
+            const dates = eachDayOfInterval({ start, end }).map((d) => format(d, 'yyyy-MM-dd'));
+            dates.forEach((date) => {
+                const arr = getEffectiveDayLocations(
+                    effectiveTrip?.itinerary?.[date],
+                    effectiveTrip?.dayLocations?.[date]
+                );
+                const first = arr[0];
+                if (first) locs[date] = first;
+            });
+        } catch { /* ignore */ }
+        return locs;
+    }, [effectiveTrip]);
+
+    const uniqueLocations = useMemo(() => {
+        const locs = new Set(Object.values(locationsByDate).filter(Boolean));
+        return Array.from(locs).sort();
+    }, [locationsByDate]);
+
+    const allTags = useMemo(() => {
+        const tags = new Set<string>();
+        effectiveActivities.forEach(a => a.tags?.forEach(t => tags.add(t)));
+        return Array.from(tags).sort();
+    }, [effectiveActivities]);
+
+    const filteredDates = useMemo(() => {
+        if (!locationFilter) return null;
+        return new Set(
+            Object.entries(locationsByDate)
+                .filter(([, loc]) => loc === locationFilter)
+                .map(([date]) => date),
+        );
+    }, [locationFilter, locationsByDate]);
+
+    const costedActivities = useMemo(() => {
+        let items = effectiveActivities.filter(a => a.cost != null && a.cost > 0);
+        if (filteredDates) items = items.filter(a => filteredDates.has(a.date));
+        if (tagFilter) items = items.filter(a => a.tags?.includes(tagFilter));
+        return items;
+    }, [effectiveActivities, filteredDates, tagFilter]);
+
+    const costedRoutes = useMemo(() => {
+        const items = effectiveRoutes.filter(r => r.cost != null && r.cost > 0);
+        if (!filteredDates) return items;
+        return items.filter(r => filteredDates.has(r.date));
+    }, [effectiveRoutes, filteredDates]);
+
+    const costedAccommodations = useMemo(() => {
+        if (!effectiveTrip?.itinerary) return [];
+        let items = Object.entries(effectiveTrip.itinerary)
+            .filter(([, day]) => day.accommodation?.cost != null && day.accommodation.cost > 0)
+            .map(([date, day]) => ({
+                date,
+                title: `Accommodation: ${day.accommodation!.name}`,
+                cost: day.accommodation!.cost!,
+                currency: day.accommodation!.currency || 'USD',
+            }));
+        if (filteredDates) items = items.filter(a => filteredDates.has(a.date));
+        return items;
+    }, [effectiveTrip, filteredDates]);
+
+    const usedCurrencies = useMemo(() => {
+        const set = new Set<string>();
+        costedActivities.forEach(a => set.add(a.currency || 'USD'));
+        costedRoutes.forEach(r => set.add(r.currency || 'USD'));
+        costedAccommodations.forEach(a => set.add(a.currency || 'USD'));
+        return Array.from(set).sort();
+    }, [costedActivities, costedRoutes, costedAccommodations]);
+
+    const tripRates = useMemo(() =>
+        (selectedTripId && exchangeRates[selectedTripId]) || {},
+        [selectedTripId, exchangeRates]);
+
+    const convertedTotal = useMemo(() => {
+        if (!displayCurrency) return null;
+        let total = 0;
+        for (const a of costedActivities) {
+            total += convertAmount(a.cost!, a.currency || 'USD', displayCurrency, tripRates);
+        }
+        for (const r of costedRoutes) {
+            total += convertAmount(r.cost!, r.currency || 'USD', displayCurrency, tripRates);
+        }
+        for (const a of costedAccommodations) {
+            total += convertAmount(a.cost, a.currency, displayCurrency, tripRates);
+        }
+        return total;
+    }, [displayCurrency, costedActivities, costedRoutes, costedAccommodations, tripRates]);
+
+    const grandTotal = useMemo(() => {
+        const totals: CurrencyTotal = {};
+        for (const a of costedActivities) {
+            const cur = a.currency || 'USD';
+            totals[cur] = (totals[cur] || 0) + a.cost!;
+        }
+        for (const r of costedRoutes) {
+            const cur = r.currency || 'USD';
+            totals[cur] = (totals[cur] || 0) + r.cost!;
+        }
+        for (const a of costedAccommodations) {
+            const cur = a.currency;
+            totals[cur] = (totals[cur] || 0) + a.cost;
+        }
+        return totals;
+    }, [costedActivities, costedRoutes, costedAccommodations]);
+
+    const categoryBreakdown = useMemo(() => {
+        const breakdown: Record<string, CurrencyTotal> = {};
+        for (const cat of CATEGORIES) breakdown[cat] = {};
+        breakdown['transport_routes'] = {};
+
+        for (const a of costedActivities) {
+            const cat = a.category || 'other';
+            const cur = a.currency || 'USD';
+            breakdown[cat][cur] = (breakdown[cat][cur] || 0) + a.cost!;
+        }
+        for (const r of costedRoutes) {
+            const cur = r.currency || 'USD';
+            breakdown['transport_routes'][cur] = (breakdown['transport_routes'][cur] || 0) + r.cost!;
+        }
+        for (const a of costedAccommodations) {
+            const cur = a.currency;
+            breakdown['accommodation'][cur] = (breakdown['accommodation'][cur] || 0) + a.cost;
+        }
+        return breakdown;
+    }, [costedActivities, costedRoutes, costedAccommodations]);
+
+    const donutSegments = useMemo(() => {
+        const segments: { label: string; value: number; color: string }[] = [];
+        for (const cat of CATEGORIES) {
+            const totals = categoryBreakdown[cat];
+            let val: number;
+            if (displayCurrency) {
+                val = Object.entries(totals).reduce((s, [cur, amt]) => s + convertAmount(amt, cur, displayCurrency, tripRates), 0);
+            } else {
+                val = sumCurrency(totals);
+            }
+            if (val > 0) segments.push({ label: cat, value: val, color: CATEGORY_COLORS[cat] });
+        }
+        const trVal = displayCurrency
+            ? Object.entries(categoryBreakdown['transport_routes']).reduce((s, [cur, amt]) => s + convertAmount(amt, cur, displayCurrency, tripRates), 0)
+            : sumCurrency(categoryBreakdown['transport_routes']);
+        if (trVal > 0) segments.push({ label: 'transport routes', value: trVal, color: CATEGORY_COLORS['transport'] });
+        return segments;
+    }, [categoryBreakdown, displayCurrency, tripRates]);
+
+    const locationBreakdown = useMemo(() => {
+        const breakdown: Record<string, CurrencyTotal> = {};
+        const addItem = (date: string, cost: number, currency: string) => {
+            const loc = locationsByDate[date] || 'Unassigned';
+            if (!breakdown[loc]) breakdown[loc] = {};
+            breakdown[loc][currency] = (breakdown[loc][currency] || 0) + cost;
+        };
+        for (const a of costedActivities) addItem(a.date, a.cost!, a.currency || 'USD');
+        for (const r of costedRoutes) addItem(r.date, r.cost!, r.currency || 'USD');
+        for (const a of costedAccommodations) addItem(a.date, a.cost, a.currency);
+        return breakdown;
+    }, [costedActivities, costedRoutes, costedAccommodations, locationsByDate]);
+
+    const allTripDays = useMemo(() => {
+        if (!effectiveTrip) return [];
+        try {
+            return eachDayOfInterval({ start: parseISO(effectiveTrip.startDate), end: parseISO(effectiveTrip.endDate) });
+        } catch { return []; }
+    }, [effectiveTrip]);
+
+    const dailyBreakdown = useMemo(() => {
+        return allTripDays.map(day => {
+            const dateStr = format(day, 'yyyy-MM-dd');
+            const dayActivities = costedActivities.filter(a => a.date === dateStr);
+            const dayRoutes = costedRoutes.filter(r => r.date === dateStr);
+            const dayAccommodations = costedAccommodations.filter(a => a.date === dateStr);
+
+            const totals: CurrencyTotal = {};
+            for (const a of dayActivities) { const cur = a.currency || 'USD'; totals[cur] = (totals[cur] || 0) + a.cost!; }
+            for (const r of dayRoutes) { const cur = r.currency || 'USD'; totals[cur] = (totals[cur] || 0) + r.cost!; }
+            for (const a of dayAccommodations) { const cur = a.currency; totals[cur] = (totals[cur] || 0) + a.cost; }
+
+            return { date: day, dateStr, location: locationsByDate[dateStr] || '', activities: dayActivities, routes: dayRoutes, accommodations: dayAccommodations, totals, itemCount: dayActivities.length + dayRoutes.length + dayAccommodations.length };
+        }).filter(d => d.itemCount > 0);
+    }, [allTripDays, costedActivities, costedRoutes, costedAccommodations, locationsByDate]);
+
+    const cumulativeData = useMemo(() => {
+        let running = 0;
+        return allTripDays.map(day => {
+            const dateStr = format(day, 'yyyy-MM-dd');
+            const dayActs = costedActivities.filter(a => a.date === dateStr);
+            const dayRoutes = costedRoutes.filter(r => r.date === dateStr);
+            const dayAccs = costedAccommodations.filter(a => a.date === dateStr);
+            for (const a of dayActs) running += displayCurrency ? convertAmount(a.cost!, a.currency || 'USD', displayCurrency, tripRates) : a.cost!;
+            for (const r of dayRoutes) running += displayCurrency ? convertAmount(r.cost!, r.currency || 'USD', displayCurrency, tripRates) : r.cost!;
+            for (const a of dayAccs) running += displayCurrency ? convertAmount(a.cost, a.currency, displayCurrency, tripRates) : a.cost;
+            return { label: format(day, 'MMM d'), cumulative: running };
+        });
+    }, [allTripDays, costedActivities, costedRoutes, costedAccommodations, displayCurrency, tripRates]);
+
+    const topExpenses = useMemo(() => {
+        const items: { emoji: string; title: string; cost: number; currency: string; date: string; converted?: number }[] = [];
+        for (const a of costedActivities) {
+            items.push({
+                emoji: CATEGORY_EMOJIS[a.category || 'other'],
+                title: a.title,
+                cost: a.cost!,
+                currency: a.currency || 'USD',
+                date: a.date,
+                converted: displayCurrency ? convertAmount(a.cost!, a.currency || 'USD', displayCurrency, tripRates) : undefined,
+            });
+        }
+        for (const r of costedRoutes) {
+            items.push({
+                emoji: '🚆',
+                title: `${r.from} → ${r.to}`,
+                cost: r.cost!,
+                currency: r.currency || 'USD',
+                date: r.date,
+                converted: displayCurrency ? convertAmount(r.cost!, r.currency || 'USD', displayCurrency, tripRates) : undefined,
+            });
+        }
+        for (const a of costedAccommodations) {
+            items.push({
+                emoji: '🏠',
+                title: a.title,
+                cost: a.cost,
+                currency: a.currency,
+                date: a.date,
+                converted: displayCurrency ? convertAmount(a.cost, a.currency, displayCurrency, tripRates) : undefined,
+            });
+        }
+        items.sort((a, b) => (b.converted ?? b.cost) - (a.converted ?? a.cost));
+        return items.slice(0, 5);
+    }, [costedActivities, costedRoutes, costedAccommodations, displayCurrency, tripRates]);
+
+    const avgDailySpend = useMemo(() => {
+        if (allTripDays.length === 0) return null;
+        if (displayCurrency && convertedTotal != null) return convertedTotal / allTripDays.length;
+        const total = sumCurrency(grandTotal);
+        return total / allTripDays.length;
+    }, [allTripDays, grandTotal, displayCurrency, convertedTotal]);
+
+    const maxDayTotal = useMemo(() => {
+        let max = 0;
+        for (const day of dailyBreakdown) {
+            const sum = displayCurrency
+                ? Object.entries(day.totals).reduce((s, [cur, amt]) => s + convertAmount(amt, cur, displayCurrency, tripRates), 0)
+                : sumCurrency(day.totals);
+            if (sum > max) max = sum;
+        }
+        return max;
+    }, [dailyBreakdown, displayCurrency, tripRates]);
+
+    const categoryBarMax = useMemo(() => {
+        let max = 0;
+        for (const totals of Object.values(categoryBreakdown)) {
+            const sum = displayCurrency
+                ? Object.entries(totals).reduce((s, [cur, amt]) => s + convertAmount(amt, cur, displayCurrency, tripRates), 0)
+                : sumCurrency(totals);
+            if (sum > max) max = sum;
+        }
+        return max;
+    }, [categoryBreakdown, displayCurrency, tripRates]);
+
+    const locationBarMax = useMemo(() => {
+        let max = 0;
+        for (const totals of Object.values(locationBreakdown)) {
+            const sum = displayCurrency
+                ? Object.entries(totals).reduce((s, [cur, amt]) => s + convertAmount(amt, cur, displayCurrency, tripRates), 0)
+                : sumCurrency(totals);
+            if (sum > max) max = sum;
+        }
+        return max;
+    }, [locationBreakdown, displayCurrency, tripRates]);
+
+    const totalExpenses = costedActivities.length + costedRoutes.length + costedAccommodations.length;
+    const budgetTarget = effectiveTrip?.budgetTarget;
+    const budgetCurrency = effectiveTrip?.budgetCurrency || effectiveTrip?.defaultCurrency || 'USD';
+
+    const budgetProgress = useMemo(() => {
+        if (!budgetTarget) return null;
+        let spent: number;
+        if (displayCurrency === budgetCurrency && convertedTotal != null) {
+            spent = convertedTotal;
+        } else {
+            spent = sumCurrency(grandTotal);
+        }
+        return { spent, target: budgetTarget, pct: Math.min((spent / budgetTarget) * 100, 100) };
+    }, [budgetTarget, budgetCurrency, displayCurrency, convertedTotal, grandTotal]);
+
+    const budgetConflicts = useMemo(() => {
+        if (!budgetProgress) return [];
+        return getBudgetConflicts({
+            spent: budgetProgress.spent,
+            target: budgetProgress.target,
+            currency: budgetCurrency,
+        });
+    }, [budgetProgress, budgetCurrency]);
+
+    const handleSaveBudget = useCallback(() => {
+        if (!selectedTrip) return;
+        const val = parseFloat(budgetInput);
+        if (isNaN(val) || val <= 0) {
+            updateTrip(selectedTrip.id, { budgetTarget: undefined, budgetCurrency: undefined } as Partial<typeof selectedTrip>);
+        } else {
+            updateTrip(selectedTrip.id, { budgetTarget: val, budgetCurrency: budgetCurrInput });
+        }
+        setShowBudgetEditor(false);
+    }, [selectedTrip, budgetInput, budgetCurrInput, updateTrip]);
+
+    const handleSetRate = useCallback((fromCur: string, rate: number) => {
+        if (!selectedTripId) return;
+        setExchangeRates(prev => ({
+            ...prev,
+            [selectedTripId]: { ...prev[selectedTripId], [fromCur]: rate },
+        }));
+    }, [selectedTripId, setExchangeRates]);
+
+    const renderAmount = useCallback((totals: CurrencyTotal) => {
+        if (displayCurrency) {
+            const converted = Object.entries(totals).reduce(
+                (s, [cur, amt]) => s + convertAmount(amt, cur, displayCurrency, tripRates), 0,
+            );
+            return <span>{formatCurrency(converted, displayCurrency)}</span>;
+        }
+        return Object.entries(totals).map(([cur, amt]) => <span key={cur}>{formatCurrency(amt, cur)}</span>);
+    }, [displayCurrency, tripRates]);
+
+    useEffect(() => { setLocationFilter(''); setTagFilter(''); }, [selectedTripId]);
+
+    useEffect(() => {
+        if (selectedTrip) {
+            setBudgetInput(selectedTrip.budgetTarget?.toString() || '');
+            setBudgetCurrInput(selectedTrip.budgetCurrency || selectedTrip.defaultCurrency || 'USD');
+        }
+    }, [selectedTrip]);
+
+    if (trips.length === 0) {
+        return (
+            <div className="page-container animate-fade-in">
+                <div className="text-center p-xl mx-auto" style={{ maxWidth: '400px' }}>
+                    <div className="mb-md" style={{ fontSize: '3rem', lineHeight: 1 }}>💰</div>
+                    <h2 className="mb-sm">No trips yet</h2>
+                    <p>Create a trip from the Trips page to start tracking your budget.</p>
                 </div>
             </div>
+        );
+    }
 
-            <div className="input-group">
-                <label className="input-label">Details</label>
-                <AutoTextarea
-                    className="input-field textarea"
-                    value={details}
-                    onChange={e => setDetails(e.target.value)}
-                    placeholder="What's happening?"
-                    minRows={6}
-                />
-                {title.trim() && (
-                    <div className="ai-suggestion-block">
-                        <button
-                            type="button"
-                            className="btn btn-sm ai-suggest-btn"
-                            onClick={handleAiSuggest}
-                            disabled={aiLoading}
-                        >
-                            {aiLoading ? <><Loader2 size={14} className="spin" /> Getting suggestion…</> : 'Suggest with AI'}
-                        </button>
-                        {aiError && <p className="ai-error">{aiError}</p>}
-                        {aiSuggestion && (
-                            <div className="ai-suggestion-card card">
-                                <Markdown className="ai-suggestion-text">{aiSuggestion}</Markdown>
-                                <div className="ai-suggestion-actions">
-                                    <button type="button" className="btn btn-primary btn-sm" onClick={() => { setDetails(aiSuggestion!); setAiSuggestion(null); logEvent('AI Suggestion Accepted', { activity_title: title.trim() }); }}>Accept</button>
-                                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setAiSuggestion(null); logEvent('AI Suggestion Declined', { activity_title: title.trim() }); }}>Decline</button>
-                                </div>
-                            </div>
+    return (
+        <div className="page-container animate-fade-in">
+            <header className="page-header">
+                <div>
+                    <h1>Budget</h1>
+                    <p>Track your travel spending across activities and transport.</p>
+                </div>
+            </header>
+
+            {/* Controls */}
+            <div className="flex items-center gap-md mb-xl flex-wrap">
+                <select className="input-field" style={{ maxWidth: '200px' }} value={selectedTripId || ''} onChange={e => setSelectedTripId(e.target.value || null)}>
+                    <option value="">Select a trip...</option>
+                    {trips.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+                {selectedTrip && (
+                    <ScenarioSwitcher trip={selectedTrip} activities={effectiveActivities} routes={effectiveRoutes} />
+                )}
+                {uniqueLocations.length > 0 && selectedTrip && (
+                    <select className="input-field" style={{ maxWidth: '200px' }} value={locationFilter} onChange={e => setLocationFilter(e.target.value)}>
+                        <option value="">All locations</option>
+                        {uniqueLocations.map(loc => <option key={loc} value={loc}>📍 {loc}</option>)}
+                    </select>
+                )}
+                {allTags.length > 0 && selectedTrip && (
+                    <select className="input-field" style={{ maxWidth: '200px' }} value={tagFilter} onChange={e => setTagFilter(e.target.value)}>
+                        <option value="">All tags</option>
+                        {allTags.map(tag => <option key={tag} value={tag}>🏷️ {tag}</option>)}
+                    </select>
+                )}
+                {usedCurrencies.length > 1 && selectedTrip && (
+                    <div className="flex items-center gap-sm">
+                        <select className="input-field" value={displayCurrency} onChange={e => setDisplayCurrency(e.target.value)}>
+                            <option value="">Multi-currency</option>
+                            {COMMON_CURRENCIES.filter(c => usedCurrencies.includes(c) || c === (selectedTrip?.defaultCurrency || 'USD')).map(c =>
+                                <option key={c} value={c}>Show in {c}</option>
+                            )}
+                        </select>
+                        {displayCurrency && (
+                            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowRateEditor(p => !p)}>
+                                {showRateEditor ? 'Hide rates' : 'Edit rates'}
+                            </button>
                         )}
                     </div>
                 )}
             </div>
 
-            <div className="category-picker">
-                {categories.map(cat => (
-                    <button
-                        type="button"
-                        key={cat}
-                        className={`category-chip ${category === cat ? 'active' : ''}`}
-                        onClick={() => setCategory(cat)}
-                    >
-                        {CATEGORY_EMOJIS[cat]} {cat}
-                    </button>
-                ))}
-            </div>
 
-            {!showOptional && (
-                <button type="button" className="btn btn-ghost toggle-optional" onClick={() => setShowOptional(true)}>
-                    + More details
-                </button>
-            )}
-
-            {showOptional && (
-                <div className="optional-fields animate-fade-in">
-                    <div className="input-group">
-                        <label className="input-label">Activity color</label>
-                        <div className="trip-color-picker">
-                            {ACTIVITY_COLORS.map((c) => (
-                                <button
-                                    key={c}
-                                    type="button"
-                                    className={`trip-color-swatch ${color === c ? 'active' : ''}`}
-                                    style={{ backgroundColor: c }}
-                                    onClick={() => setColor(c)}
-                                    aria-label={`Color ${c}`}
+            {/* Exchange rate editor */}
+            {showRateEditor && displayCurrency && selectedTripId && (
+                <div className="card p-md mb-xl">
+                    <h4 className="font-semibold text-sm mb-xs">Exchange Rates → {displayCurrency}</h4>
+                    <p className="text-xs text-tertiary mb-sm">Enter how much 1 unit of each currency is worth in {displayCurrency}.</p>
+                    <div className="flex flex-wrap gap-sm">
+                        {usedCurrencies.filter(c => c !== displayCurrency).map(cur => (
+                            <div key={cur} className="flex items-center gap-xs text-sm">
+                                <label style={{ fontWeight: 600, minWidth: '60px' }}>1 {cur} =</label>
+                                <input
+                                    type="number"
+                                    className="input-field"
+                                    style={{ width: '90px', maxWidth: '90px' }}
+                                    step="0.0001"
+                                    min="0"
+                                    placeholder="1.0"
+                                    value={tripRates[cur] ?? ''}
+                                    onChange={e => handleSetRate(cur, parseFloat(e.target.value) || 0)}
                                 />
-                            ))}
-                        </div>
-                    </div>
-                    <div className="form-row">
-                        <div className="input-group" style={{ flex: 2 }}>
-                            <label className="input-label">Location</label>
-                            <input
-                                className="input-field"
-                                type="text"
-                                value={location}
-                                onChange={e => setLocation(e.target.value)}
-                                placeholder="e.g. Piazza del Colosseo"
-                            />
-                        </div>
-                        <div className="input-group" style={{ flex: 1 }}>
-                            <label className="input-label">Cost</label>
-                            <input
-                                className="input-field"
-                                type="number"
-                                value={cost}
-                                onChange={e => setCost(e.target.value)}
-                                placeholder="0.00"
-                                step="0.01"
-                                min="0"
-                            />
-                        </div>
-                        <div className="input-group" style={{ flex: 0, minWidth: '100px' }}>
-                            <label className="input-label">Currency</label>
-                            <select className="input-field" value={currency} onChange={e => setCurrency(e.target.value)}>
-                                <option value="USD">USD</option>
-                                <option value="EUR">EUR</option>
-                                <option value="GBP">GBP</option>
-                                <option value="JPY">JPY</option>
-                                <option value="CAD">CAD</option>
-                                <option value="AUD">AUD</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div className="input-group">
-                        <label className="input-label">Tags</label>
-                        <input
-                            className="input-field"
-                            type="text"
-                            value={tags}
-                            onChange={e => setTags(e.target.value)}
-                            placeholder="e.g. shared, reimbursable, splurge"
-                        />
-                        <span className="input-hint">Comma-separated</span>
+                                <span>{displayCurrency}</span>
+                            </div>
+                        ))}
                     </div>
                 </div>
             )}
 
-            <div className="form-actions">
-                {onDelete && (
-                    <button type="button" className="btn btn-danger btn-sm form-delete-btn" onClick={onDelete}>
-                        <Trash2 size={14} /> Delete
-                    </button>
-                )}
-                <div className="form-actions-right">
-                    <button type="button" className="btn btn-ghost" onClick={onCancel}>Cancel</button>
-                    <button type="submit" className="btn btn-primary" disabled={!title.trim()}>
-                        {existingActivity ? 'Save Changes' : 'Add Activity'}
-                    </button>
+            {!selectedTrip && (
+                <div className="text-center p-xl mx-auto" style={{ maxWidth: '400px' }}>
+                    <div className="mb-md" style={{ fontSize: '3rem', lineHeight: 1 }}>💰</div>
+                    <h2 className="mb-sm">Select a trip</h2>
+                    <p>Choose a trip above to see your budget breakdown.</p>
                 </div>
-            </div>
-        </form>
+            )}
+
+            {selectedTrip && (
+                <>
+                    {appSettings.showBudgetWarnings && budgetConflicts.length > 0 && (
+                        <div className="mb-lg">
+                            <ConflictList conflicts={budgetConflicts} title="Budget checks" compact />
+                        </div>
+                    )}
+                    {/* Stats row */}
+                    <div className="grid gap-md mb-xl" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+                        {/* Grand total */}
+                        <div className="card p-md text-center">
+                            <h3 className="text-xs text-secondary uppercase mb-xs" style={{ letterSpacing: '0.05em' }}>Total Spending{locationFilter && ` — ${locationFilter}`}</h3>
+                            {Object.keys(grandTotal).length > 0 ? (
+                                <div className="text-primary font-bold flex justify-center flex-wrap gap-sm mb-xs" style={{ fontSize: '1.6rem' }}>
+                                    {displayCurrency && convertedTotal != null
+                                        ? formatCurrency(convertedTotal, displayCurrency)
+                                        : Object.entries(grandTotal).sort(([, a], [, b]) => b - a).map(([cur, amt]) => (
+                                            <span key={cur}>{formatCurrency(amt, cur)}</span>
+                                        ))
+                                    }
+                                </div>
+                            ) : (
+                                <p className="text-sm text-tertiary italic mb-xs">No costs recorded yet.</p>
+                            )}
+                            <span className="text-xs text-tertiary block">{totalExpenses} expense{totalExpenses !== 1 ? 's' : ''} across {dailyBreakdown.length} day{dailyBreakdown.length !== 1 ? 's' : ''}</span>
+                        </div>
+
+                        {/* Average daily */}
+                        {avgDailySpend != null && avgDailySpend > 0 && (
+                            <div className="card p-md text-center">
+                                <h3 className="text-xs text-secondary uppercase mb-xs" style={{ letterSpacing: '0.05em' }}>Avg / Day</h3>
+                                <div className="text-primary font-bold flex justify-center flex-wrap gap-sm mb-xs" style={{ fontSize: '1.6rem' }}>
+                                    {displayCurrency
+                                        ? formatCurrency(avgDailySpend, displayCurrency)
+                                        : formatCurrency(avgDailySpend, usedCurrencies[0] || 'USD')
+                                    }
+                                </div>
+                                <span className="text-xs text-tertiary block">{allTripDays.length} day trip</span>
+                            </div>
+                        )}
+
+                        {/* Budget target */}
+                        <div className="card p-md text-center relative">
+                            <h3 className="text-xs text-secondary uppercase mb-xs" style={{ letterSpacing: '0.05em' }}>Budget Target</h3>
+                            {showBudgetEditor ? (
+                                <div className="flex items-center gap-xs flex-wrap justify-center">
+                                    <input type="number" className="input-field" style={{ maxWidth: '100px' }} placeholder="e.g. 2000" value={budgetInput} onChange={e => setBudgetInput(e.target.value)} min="0" step="1" />
+                                    <select className="input-field" value={budgetCurrInput} onChange={e => setBudgetCurrInput(e.target.value)}>
+                                        {COMMON_CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                    <button className="btn btn-primary btn-sm" onClick={handleSaveBudget}>Save</button>
+                                    <button className="btn btn-ghost btn-sm" onClick={() => setShowBudgetEditor(false)}>Cancel</button>
+                                </div>
+                            ) : budgetProgress ? (
+                                <>
+                                    <div className="text-primary font-bold flex justify-center flex-wrap gap-sm mb-xs" style={{ fontSize: '1.6rem' }}>{formatCurrency(budgetProgress.target, budgetCurrency)}</div>
+                                    <div className="bg-border-light rounded-full overflow-hidden my-xs" style={{ height: '8px' }}>
+                                        <div
+                                            className={`rounded-full h-full transition-shadow ${budgetProgress.pct >= 90 ? 'bg-danger' : 'bg-primary'}`}
+                                            style={{ width: `${budgetProgress.pct}%`, transition: 'width 0.4s ease' }}
+                                        />
+                                    </div>
+                                    <span className="text-xs text-tertiary block mb-sm">
+                                        {Math.round(budgetProgress.pct)}% used — {formatCurrency(budgetProgress.target - budgetProgress.spent, budgetCurrency)} remaining
+                                    </span>
+                                    <button className="btn btn-ghost btn-sm" onClick={() => setShowBudgetEditor(true)}>Edit</button>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="text-sm text-tertiary italic mb-xs">No target set</p>
+                                    <button className="btn btn-outline btn-sm" onClick={() => setShowBudgetEditor(true)}>Set budget</button>
+                                </>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Donut + Category bars */}
+                    {totalExpenses > 0 && (
+                        <div className="mb-xl">
+                            <h2 className="text-lg font-primary mb-md">By Category</h2>
+                            <div className="flex gap-xl items-start" style={{ flexWrap: 'wrap' }}>
+                                {donutSegments.length > 1 && <DonutChart segments={donutSegments} />}
+                                <div className="flex flex-col gap-sm flex-1 min-w-0">
+                                    {CATEGORIES.map(cat => {
+                                        const totals = categoryBreakdown[cat];
+                                        const sum = displayCurrency
+                                            ? Object.entries(totals).reduce((s, [cur, amt]) => s + convertAmount(amt, cur, displayCurrency, tripRates), 0)
+                                            : sumCurrency(totals);
+                                        if (sum === 0) return null;
+                                        const barWidth = categoryBarMax > 0 ? (sum / categoryBarMax) * 100 : 0;
+                                        return (
+                                            <div key={cat} className="grid items-center gap-md py-1 border-b" style={{ gridTemplateColumns: '140px 1fr auto' }}>
+                                                <div className="flex items-center gap-sm">
+                                                    <span className="text-base">{CATEGORY_EMOJIS[cat]}</span>
+                                                    <span className="text-sm font-semibold capitalize text-primary">{cat}</span>
+                                                </div>
+                                                <div className="h-2 rounded-full bg-border-light overflow-hidden">
+                                                    <div className="h-full rounded-full transition-all duration-300 min-w-1" style={{ width: `${barWidth}%`, backgroundColor: CATEGORY_COLORS[cat] }} />
+                                                </div>
+                                                <div className="flex flex-col items-end gap-0.5 text-sm font-bold text-primary min-w-[80px] text-right">{renderAmount(totals)}</div>
+                                            </div>
+                                        );
+                                    })}
+                                    {(() => {
+                                        const trTotals = categoryBreakdown['transport_routes'];
+                                        const trSum = displayCurrency
+                                            ? Object.entries(trTotals).reduce((s, [cur, amt]) => s + convertAmount(amt, cur, displayCurrency, tripRates), 0)
+                                            : sumCurrency(trTotals);
+                                        if (trSum === 0) return null;
+                                        const barW = categoryBarMax > 0 ? (trSum / categoryBarMax) * 100 : 0;
+                                        return (
+                                            <div className="grid items-center gap-md py-1 border-b" style={{ gridTemplateColumns: '140px 1fr auto' }}>
+                                                <div className="flex items-center gap-sm">
+                                                    <span className="text-base">🚆</span>
+                                                    <span className="text-sm font-semibold capitalize text-primary">transport routes</span>
+                                                </div>
+                                                <div className="h-2 rounded-full bg-border-light overflow-hidden">
+                                                    <div className="h-full rounded-full transition-all duration-300 min-w-1" style={{ width: `${barW}%`, backgroundColor: CATEGORY_COLORS['transport'] }} />
+                                                </div>
+                                                <div className="flex flex-col items-end gap-0.5 text-sm font-bold text-primary min-w-[80px] text-right">{renderAmount(trTotals)}</div>
+                                            </div>
+                                        );
+                                    })()}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Location breakdown */}
+                    {totalExpenses > 0 && Object.keys(locationBreakdown).length > 1 && (
+                        <div className="budget-section">
+                            <h2 className="budget-section-title">By Location</h2>
+                            <div className="budget-category-grid">
+                                {Object.entries(locationBreakdown)
+                                    .sort(([, a], [, b]) => {
+                                        const sa = displayCurrency ? Object.entries(a).reduce((s, [c, v]) => s + convertAmount(v, c, displayCurrency, tripRates), 0) : sumCurrency(a);
+                                        const sb = displayCurrency ? Object.entries(b).reduce((s, [c, v]) => s + convertAmount(v, c, displayCurrency, tripRates), 0) : sumCurrency(b);
+                                        return sb - sa;
+                                    })
+                                    .map(([loc, totals]) => {
+                                        const sum = displayCurrency
+                                            ? Object.entries(totals).reduce((s, [cur, amt]) => s + convertAmount(amt, cur, displayCurrency, tripRates), 0)
+                                            : sumCurrency(totals);
+                                        const barWidth = locationBarMax > 0 ? (sum / locationBarMax) * 100 : 0;
+                                        return (
+                                            <div key={loc} className="grid items-center gap-md py-1 border-b" style={{ gridTemplateColumns: '140px 1fr auto' }}>
+                                                <div className="flex items-center gap-sm">
+                                                    <span className="text-base">{loc === 'Unassigned' ? '📌' : '📍'}</span>
+                                                    <span className="text-sm font-semibold capitalize text-primary">{loc}</span>
+                                                </div>
+                                                <div className="h-2 rounded-full bg-border-light overflow-hidden">
+                                                    <div className="h-full rounded-full transition-all duration-300 min-w-1" style={{ width: `${barWidth}%`, backgroundColor: 'var(--primary-color)' }} />
+                                                </div>
+                                                <div className="flex flex-col items-end gap-0.5 text-sm font-bold text-primary min-w-[80px] text-right">{renderAmount(totals)}</div>
+                                            </div>
+                                        );
+                                    })}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Cumulative spend chart */}
+                    {cumulativeData.length > 1 && cumulativeData[cumulativeData.length - 1].cumulative > 0 && (
+                        <div className="mb-xl">
+                            <h2 className="text-lg font-primary mb-md">Cumulative Spending</h2>
+                            <div className="card p-md overflow-hidden">
+                                <div style={{ width: '100%', height: 'auto', display: 'block' }}>
+                                    <CumulativeChart
+                                        days={cumulativeData}
+                                        budgetTarget={budgetTarget && displayCurrency === budgetCurrency ? budgetTarget : undefined}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Top expenses */}
+                    {topExpenses.length > 0 && (
+                        <div className="mb-xl">
+                            <h2 className="text-lg font-primary mb-md">Top Expenses</h2>
+                            <div className="flex flex-col gap-sm">
+                                {topExpenses.map((item, i) => (
+                                    <div key={i} className="flex items-center gap-sm px-3 py-1 rounded-sm bg-border-light text-sm">
+                                        <span className="font-bold text-primary text-xs" style={{ minWidth: '24px' }}>#{i + 1}</span>
+                                        <span className="shrink-0">{item.emoji}</span>
+                                        <span className="flex-1 font-medium truncate">{item.title}</span>
+                                        <span className="text-xs text-tertiary shrink-0">{(() => { try { return format(parseISO(item.date), 'MMM d'); } catch { return item.date; } })()}</span>
+                                        <span className="font-bold text-secondary shrink-0">
+                                            {displayCurrency && item.converted != null
+                                                ? formatCurrency(item.converted, displayCurrency)
+                                                : formatCurrency(item.cost, item.currency)
+                                            }
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Daily breakdown */}
+                    {dailyBreakdown.length > 0 && (
+                        <div className="mb-xl">
+                            <h2 className="text-lg font-primary mb-md">By Day</h2>
+                            <div className="grid grid-cols-auto-300 gap-md">
+                                {dailyBreakdown.map(day => {
+                                    const daySum = displayCurrency
+                                        ? Object.entries(day.totals).reduce((s, [cur, amt]) => s + convertAmount(amt, cur, displayCurrency, tripRates), 0)
+                                        : sumCurrency(day.totals);
+                                    const barWidth = maxDayTotal > 0 ? (daySum / maxDayTotal) * 100 : 0;
+                                    const overAvg = avgDailySpend != null && daySum > avgDailySpend * 1.5;
+                                    return (
+                                        <div key={day.dateStr} className={`card p-md ${overAvg ? 'border-l-[3px] border-l-danger' : ''}`}>
+                                            <div className="flex justify-between items-center mb-xs">
+                                                <div className="flex items-baseline gap-xs">
+                                                    <span className="font-bold text-sm text-primary">{format(day.date, 'EEE')}</span>
+                                                    <span className="text-xs text-secondary">{format(day.date, 'MMM d')}</span>
+                                                </div>
+                                                <div className="flex gap-sm">
+                                                    <span className="text-base font-bold text-secondary">
+                                                        {displayCurrency ? formatCurrency(daySum, displayCurrency) : Object.entries(day.totals).map(([cur, amt]) => formatCurrency(amt, cur)).join(' / ')}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            {day.location && <span className="block text-xs text-tertiary mb-xs">📍 {day.location}</span>}
+                                            <div className="h-1 rounded-full bg-border-light overflow-hidden mb-sm">
+                                                <div className="h-full rounded-full transition-all duration-300 min-w-1" style={{ width: `${barWidth}%`, background: 'linear-gradient(90deg, var(--primary-color), var(--secondary-color))' }} />
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                {day.accommodations.map((a, idx) => (
+                                                    <div key={`acc-${idx}`} className="flex items-center gap-xs py-1 px-2 rounded-sm bg-border-light text-xs">
+                                                        <span className="shrink-0">🏠</span>
+                                                        <span className="flex-1 font-medium text-primary truncate">{a.title}</span>
+                                                        <span className="font-bold text-secondary shrink-0">
+                                                            {displayCurrency ? formatCurrency(convertAmount(a.cost, a.currency, displayCurrency, tripRates), displayCurrency) : formatCurrency(a.cost, a.currency)}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                                {day.activities.map(a => (
+                                                    <div key={a.id} className="flex items-center gap-xs py-1 px-2 rounded-sm bg-border-light text-xs">
+                                                        <span className="shrink-0">{CATEGORY_EMOJIS[a.category || 'other']}</span>
+                                                        <span className="flex-1 font-medium text-primary truncate">
+                                                            {a.title}
+                                                            {a.tags && a.tags.length > 0 && <span className="ml-1 text-[10px] text-tertiary font-normal">{a.tags.map(t => `#${t}`).join(' ')}</span>}
+                                                        </span>
+                                                        <span className="font-bold text-secondary shrink-0">
+                                                            {displayCurrency ? formatCurrency(convertAmount(a.cost!, a.currency || 'USD', displayCurrency, tripRates), displayCurrency) : formatCurrency(a.cost!, a.currency || 'USD')}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                                {day.routes.map(r => (
+                                                    <div key={r.id} className="flex items-center gap-xs py-1 px-2 rounded-sm bg-border-light text-xs">
+                                                        <span className="shrink-0">🚆</span>
+                                                        <span className="flex-1 font-medium text-primary truncate">{r.from} → {r.to}</span>
+                                                        <span className="font-bold text-secondary shrink-0">
+                                                            {displayCurrency ? formatCurrency(convertAmount(r.cost!, r.currency || 'USD', displayCurrency, tripRates), displayCurrency) : formatCurrency(r.cost!, r.currency || 'USD')}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+                </>
+            )}
+
+        </div>
     );
 };
 
-export default ActivityForm;
+export default Budget;
 </file>
 
 <file path="src/pages/CalendarView.module.css">
@@ -16862,6 +16306,276 @@ export default ActivityForm;
 }
 </file>
 
+<file path="src/components/ActivityForm.tsx">
+import React, { useState } from 'react';
+import type { Activity } from '../lib/types';
+import { CATEGORY_EMOJIS, ACTIVITY_COLORS } from '../lib/types';
+import { Loader2, Trash2 } from 'lucide-react';
+import Markdown from './Markdown';
+import AutoTextarea from './AutoTextarea';
+import { generateActivityGuide } from '../lib/ai/actions/forms';
+import './ActivityForm.css';
+
+interface ActivityFormProps {
+    tripId: string;
+    date: string;
+    existingActivity?: Activity;
+    nextOrder: number;
+    defaultCurrency?: string;
+    onSave: (activity: Omit<Activity, 'id' | 'userId' | 'tripMembers'> | ({ id: string } & Partial<Omit<Activity, 'userId'>>)) => void;
+    onCancel: () => void;
+    onDelete?: () => void;
+}
+
+const categories = ['sightseeing', 'food', 'accommodation', 'transport', 'shopping', 'other'] as const;
+
+const TIME_OPTIONS: { value: string; label: string }[] = (() => {
+    const opts: { value: string; label: string }[] = [{ value: '', label: 'No time' }];
+    for (let h = 0; h < 24; h++) {
+        for (const m of [0, 30]) {
+            const hh = String(h).padStart(2, '0');
+            const mm = String(m).padStart(2, '0');
+            const value = `${hh}:${mm}`;
+            const period = h < 12 ? 'AM' : 'PM';
+            const displayH = h === 0 ? 12 : h > 12 ? h - 12 : h;
+            const label = `${displayH}:${mm} ${period}`;
+            opts.push({ value, label });
+        }
+    }
+    return opts;
+})();
+
+function snapTo30(time: string): string {
+    if (!time) return '';
+    const [hStr, mStr] = time.split(':');
+    const minutes = parseInt(mStr ?? '0', 10);
+    const snapped = minutes < 15 ? '00' : minutes < 45 ? '30' : '00';
+    let hours = parseInt(hStr ?? '0', 10);
+    if (minutes >= 45) hours = (hours + 1) % 24;
+    return `${String(hours).padStart(2, '0')}:${snapped}`;
+}
+
+const ActivityForm: React.FC<ActivityFormProps> = ({ tripId, date, existingActivity, nextOrder, defaultCurrency, onSave, onCancel, onDelete }) => {
+    const [title, setTitle] = useState(existingActivity?.title || '');
+    const [details, setDetails] = useState(existingActivity?.details || '');
+    const [time, setTime] = useState(() => snapTo30(existingActivity?.time || ''));
+    const [location, setLocation] = useState(existingActivity?.location || '');
+    const [category, setCategory] = useState<Activity['category']>(existingActivity?.category || 'other');
+    const [cost, setCost] = useState(existingActivity?.cost?.toString() || '');
+    const [currency, setCurrency] = useState(existingActivity?.currency || defaultCurrency || 'USD');
+    const [color, setColor] = useState(existingActivity?.color || '');
+    const [tags, setTags] = useState(existingActivity?.tags?.join(', ') || '');
+    const [showOptional, setShowOptional] = useState(!!existingActivity);
+    const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
+    const [aiLoading, setAiLoading] = useState(false);
+    const [aiError, setAiError] = useState<string | null>(null);
+
+    const handleAiSuggest = async () => {
+        if (!title.trim()) return;
+        setAiLoading(true);
+        setAiError(null);
+        setAiSuggestion(null);
+        try {
+            const text = await generateActivityGuide(title);
+            setAiSuggestion(text);
+        } catch (e) {
+            setAiError(e instanceof Error ? e.message : 'AI suggestion failed');
+        } finally {
+            setAiLoading(false);
+        }
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!title.trim()) return;
+
+        const parsedTags = tags.split(',').map(t => t.trim()).filter(Boolean);
+        const activityData = {
+            ...(existingActivity ? { id: existingActivity.id } : {}),
+            tripId,
+            date,
+            title: title.trim(),
+            details: details.trim() || undefined,
+            time: time || undefined,
+            location: location.trim() || undefined,
+            category,
+            cost: cost ? parseFloat(cost) : undefined,
+            currency: cost ? currency : undefined,
+            order: existingActivity?.order ?? nextOrder,
+            color: color || undefined,
+            tags: parsedTags.length > 0 ? parsedTags : undefined,
+        };
+
+        onSave(activityData);
+    };
+
+    return (
+        <form className="activity-form animate-fade-in" onSubmit={handleSubmit}>
+            <div className="form-row">
+                <div className="input-group" style={{ flex: 2 }}>
+                    <label className="input-label">Title *</label>
+                    <input
+                        className="input-field"
+                        type="text"
+                        value={title}
+                        onChange={e => setTitle(e.target.value)}
+                        placeholder="e.g. Visit the Colosseum"
+                        autoFocus
+                        required
+                    />
+                </div>
+                <div className="input-group" style={{ flex: 0, minWidth: '130px' }}>
+                    <label className="input-label">Time</label>
+                    <select
+                        className="input-field"
+                        value={time}
+                        onChange={e => setTime(e.target.value)}
+                    >
+                        {TIME_OPTIONS.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                    </select>
+                </div>
+            </div>
+
+            <div className="input-group">
+                <label className="input-label">Details</label>
+                <AutoTextarea
+                    className="input-field textarea"
+                    value={details}
+                    onChange={e => setDetails(e.target.value)}
+                    placeholder="What's happening?"
+                    minRows={6}
+                />
+                {title.trim() && (
+                    <div className="ai-suggestion-block">
+                        <button
+                            type="button"
+                            className="btn btn-sm ai-suggest-btn"
+                            onClick={handleAiSuggest}
+                            disabled={aiLoading}
+                        >
+                            {aiLoading ? <><Loader2 size={14} className="spin" /> Getting suggestion…</> : 'Suggest with AI'}
+                        </button>
+                        {aiError && <p className="ai-error">{aiError}</p>}
+                        {aiSuggestion && (
+                            <div className="ai-suggestion-card card">
+                                <Markdown className="ai-suggestion-text">{aiSuggestion}</Markdown>
+                                <div className="ai-suggestion-actions">
+                                    <button type="button" className="btn btn-primary btn-sm" onClick={() => { setDetails(aiSuggestion!); setAiSuggestion(null); }}>Accept</button>
+                                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setAiSuggestion(null); }}>Decline</button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            <div className="category-picker">
+                {categories.map(cat => (
+                    <button
+                        type="button"
+                        key={cat}
+                        className={`category-chip ${category === cat ? 'active' : ''}`}
+                        onClick={() => setCategory(cat)}
+                    >
+                        {CATEGORY_EMOJIS[cat]} {cat}
+                    </button>
+                ))}
+            </div>
+
+            {!showOptional && (
+                <button type="button" className="btn btn-ghost toggle-optional" onClick={() => setShowOptional(true)}>
+                    + More details
+                </button>
+            )}
+
+            {showOptional && (
+                <div className="optional-fields animate-fade-in">
+                    <div className="input-group">
+                        <label className="input-label">Activity color</label>
+                        <div className="trip-color-picker">
+                            {ACTIVITY_COLORS.map((c) => (
+                                <button
+                                    key={c}
+                                    type="button"
+                                    className={`trip-color-swatch ${color === c ? 'active' : ''}`}
+                                    style={{ backgroundColor: c }}
+                                    onClick={() => setColor(c)}
+                                    aria-label={`Color ${c}`}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                    <div className="form-row">
+                        <div className="input-group" style={{ flex: 2 }}>
+                            <label className="input-label">Location</label>
+                            <input
+                                className="input-field"
+                                type="text"
+                                value={location}
+                                onChange={e => setLocation(e.target.value)}
+                                placeholder="e.g. Piazza del Colosseo"
+                            />
+                        </div>
+                        <div className="input-group" style={{ flex: 1 }}>
+                            <label className="input-label">Cost</label>
+                            <input
+                                className="input-field"
+                                type="number"
+                                value={cost}
+                                onChange={e => setCost(e.target.value)}
+                                placeholder="0.00"
+                                step="0.01"
+                                min="0"
+                            />
+                        </div>
+                        <div className="input-group" style={{ flex: 0, minWidth: '100px' }}>
+                            <label className="input-label">Currency</label>
+                            <select className="input-field" value={currency} onChange={e => setCurrency(e.target.value)}>
+                                <option value="USD">USD</option>
+                                <option value="EUR">EUR</option>
+                                <option value="GBP">GBP</option>
+                                <option value="JPY">JPY</option>
+                                <option value="CAD">CAD</option>
+                                <option value="AUD">AUD</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div className="input-group">
+                        <label className="input-label">Tags</label>
+                        <input
+                            className="input-field"
+                            type="text"
+                            value={tags}
+                            onChange={e => setTags(e.target.value)}
+                            placeholder="e.g. shared, reimbursable, splurge"
+                        />
+                        <span className="input-hint">Comma-separated</span>
+                    </div>
+                </div>
+            )}
+
+            <div className="form-actions">
+                {onDelete && (
+                    <button type="button" className="btn btn-danger btn-sm form-delete-btn" onClick={onDelete}>
+                        <Trash2 size={14} /> Delete
+                    </button>
+                )}
+                <div className="form-actions-right">
+                    <button type="button" className="btn btn-ghost" onClick={onCancel}>Cancel</button>
+                    <button type="submit" className="btn btn-primary" disabled={!title.trim()}>
+                        {existingActivity ? 'Save Changes' : 'Add Activity'}
+                    </button>
+                </div>
+            </div>
+        </form>
+    );
+};
+
+export default ActivityForm;
+</file>
+
 <file path="src/lib/types.ts">
 export const TRIP_COLORS = [
     '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
@@ -17052,1799 +16766,6 @@ export const TRANSPORT_EMOJIS: Record<string, string> = {
     walk: '🚶',
     other: '🔄',
 };
-</file>
-
-<file path="src/pages/ImportItinerary.tsx">
-import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Loader2, Check, AlertCircle, Plus, X, Plane } from 'lucide-react';
-import { useTrips, useActivities, useTransportRoutes, useNotes } from '../lib/store';
-import { useLocalStorageState } from '../hooks/useLocalStorageState';
-import { CATEGORY_EMOJIS } from '../lib/types';
-import type { Activity } from '../lib/types';
-import { useToast } from '../components/Toast';
-import { logEvent } from '../lib/amplitude';
-import { selectTripScenario, replaceScenarioDay, overwriteScenarioActivities } from '../lib/scenarios';
-import { buildTripExportPayload, downloadTextFile, slugifyFilename, toTripCsv } from '../lib/exportTrip';
-import { compareActivitiesByTimeThenOrder } from '../lib/itinerary';
-import { parseItineraryChunk, type ParseItineraryOptions, type ParsedActivity, type ParsedItinerary } from '../lib/ai/actions/importItinerary';
-
-type Stage = 'input' | 'preview' | 'saving' | 'done';
-type ImportExportMode = 'import' | 'export';
-type ExportFormat = 'json' | 'csv';
-type ImportTarget = 'new_trip' | 'existing_trip';
-
-const CATEGORY_LIST = ['sightseeing', 'food', 'accommodation', 'transport', 'shopping', 'other'] as const;
-const CURRENCY_LIST = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'KRW', 'TWD', 'THB', 'SGD'];
-
-function splitIntoChunks(text: string, maxChunks: number): string[] {
-    const lines = text.split('\n');
-    if (lines.length <= 10) return [text];
-
-    const dayPattern = /^(?:\|?\s*)?(?:\d{1,2}\/\d{1,2}(?:\/\d{2,4})?|\d{4}-\d{2}-\d{2}|day\s*\d+|(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*(?:day)?|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d|\t+\d{4}-\d{2}-\d{2})/i;
-
-    const dayStarts: number[] = [];
-    for (let i = 0; i < lines.length; i++) {
-        if (dayPattern.test(lines[i].trim())) {
-            dayStarts.push(i);
-        }
-    }
-
-    if (dayStarts.length >= 2) {
-        const dayGroups: string[] = [];
-        for (let i = 0; i < dayStarts.length; i++) {
-            const start = dayStarts[i];
-            const end = i + 1 < dayStarts.length ? dayStarts[i + 1] : lines.length;
-            dayGroups.push(lines.slice(start, end).join('\n'));
-        }
-        const header = dayStarts[0] > 0 ? lines.slice(0, dayStarts[0]).join('\n').trim() : '';
-
-        const daysPerChunk = Math.ceil(dayGroups.length / maxChunks);
-        const chunks: string[] = [];
-        for (let i = 0; i < dayGroups.length; i += daysPerChunk) {
-            const slice = dayGroups.slice(i, i + daysPerChunk).join('\n');
-            chunks.push(header ? `${header}\n${slice}` : slice);
-        }
-        return chunks;
-    }
-
-    const linesPerChunk = Math.ceil(lines.length / maxChunks);
-    const chunks: string[] = [];
-    for (let i = 0; i < lines.length; i += linesPerChunk) {
-        chunks.push(lines.slice(i, i + linesPerChunk).join('\n'));
-    }
-    return chunks;
-}
-
-function mergeResults(results: ParsedItinerary[]): ParsedItinerary {
-    const allActivities = results.flatMap(r => r.activities);
-    const allRoutes = results.flatMap(r => r.transportRoutes ?? []);
-    const dates = results.flatMap(r => [r.startDate, r.endDate]).sort();
-    return {
-        tripName: results[0].tripName,
-        startDate: dates[0],
-        endDate: dates[dates.length - 1],
-        activities: allActivities,
-        transportRoutes: allRoutes.length > 0 ? allRoutes : undefined,
-    };
-}
-
-function groupByDate(activities: ParsedActivity[]): Map<string, ParsedActivity[]> {
-    const map = new Map<string, ParsedActivity[]>();
-    for (const act of activities) {
-        const list = map.get(act.date) ?? [];
-        list.push(act);
-        map.set(act.date, list);
-    }
-    return new Map([...map.entries()].sort(([a], [b]) => a.localeCompare(b)));
-}
-
-function formatDate(dateStr: string): string {
-    try {
-        const d = new Date(dateStr + 'T00:00:00');
-        return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-    } catch {
-        return dateStr;
-    }
-}
-
-function getDateOptionsForTrip(startDate: string, endDate: string): { value: string; label: string }[] {
-    const start = new Date(startDate + 'T00:00:00');
-    const end = new Date(endDate + 'T00:00:00');
-    const options: { value: string; label: string }[] = [];
-    const cursor = new Date(start);
-    let dayIndex = 0;
-    while (cursor <= end) {
-        const dateStr = cursor.toISOString().slice(0, 10);
-        options.push({
-            value: dateStr,
-            label: `Day ${dayIndex + 1}: ${formatDate(dateStr)}`,
-        });
-        cursor.setDate(cursor.getDate() + 1);
-        dayIndex++;
-    }
-    return options;
-}
-
-const LOADING_MESSAGES = [
-    "Analyzing your itinerary...",
-    "Extracting dates and times...",
-    "Categorizing activities...",
-    "Structuring the schedule...",
-    "Almost done...",
-    "Just a little more..."
-];
-
-const LoadingJokes: React.FC<{ progress: string }> = ({ progress }) => {
-    const [msgIdx, setMsgIdx] = React.useState(0);
-
-    React.useEffect(() => {
-        const interval = setInterval(() => {
-            setMsgIdx(prev => (prev + 1) % LOADING_MESSAGES.length);
-        }, 10000);
-        return () => clearInterval(interval);
-    }, []);
-
-    // Explicit progress overrides rotating messages (e.g. chunking progress)
-    const displayMessage = progress || LOADING_MESSAGES[msgIdx];
-
-    return (
-        <div className="flex flex-col items-center text-center gap-xl" style={{ padding: '4rem 2rem' }}>
-            <div className="text-primary animate-plane-bob">
-                <Plane size={48} />
-            </div>
-            <p className="flex items-center gap-sm text-sm text-tertiary loading-spinner-before">{displayMessage}</p>
-        </div>
-    );
-};
-
-function assistantPayloadToParsedActivities(raw: unknown[]): ParsedActivity[] {
-    return raw.map((item: any) => ({
-        date: typeof item.date === 'string' ? item.date : '',
-        title: typeof item.title === 'string' ? item.title : 'Activity',
-        details: typeof item.details === 'string' ? item.details : undefined,
-        time: typeof item.time === 'string' ? item.time : undefined,
-        location: typeof item.location === 'string' ? item.location : undefined,
-        category: ['sightseeing', 'food', 'accommodation', 'transport', 'shopping', 'other'].includes(item.category) ? item.category : 'other',
-        notes: typeof item.notes === 'string' ? item.notes : undefined,
-        cost: typeof item.cost === 'number' ? item.cost : undefined,
-        currency: typeof item.currency === 'string' ? item.currency : undefined,
-    })).filter(a => a.date && a.title);
-}
-
-const ImportItinerary: React.FC = () => {
-    const navigate = useNavigate();
-    const location = useLocation();
-    const { trips, addTrip, updateTrip } = useTrips();
-    const { addActivity, deleteActivity, getActivitiesByTrip } = useActivities();
-    const { getRoutesByTrip, addRoute, deleteRoute } = useTransportRoutes();
-    const { getNotesByTrip } = useNotes();
-    const { showToast } = useToast();
-
-    const [mode, setMode] = useState<ImportExportMode>('import');
-    const [exportTripId, setExportTripId] = useState<string>('');
-    const [exportFormat, setExportFormat] = useState<ExportFormat>('json');
-
-    const [rawText, setRawText] = useLocalStorageState('travelplanner_import_raw', '');
-    const [stage, setStage] = useLocalStorageState<Stage>('travelplanner_import_stage', 'input');
-    const [parsed, setParsed] = useLocalStorageState<ParsedItinerary | null>('travelplanner_import_parsed', null);
-    const [error, setError] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
-    const [parseProgress, setParseProgress] = useState('');
-    const [currency, setCurrency] = useState('USD');
-
-    const [activeTripId, setActiveTripId] = useState<string | null>(null);
-    const [activeTripName, setActiveTripName] = useState<string | null>(null);
-    const [totalImported, setTotalImported] = useState(0);
-
-    const [importTarget, setImportTarget] = useState<ImportTarget>('new_trip');
-    const [selectedTripIdForDay, setSelectedTripIdForDay] = useState<string | null>(null);
-    const [selectedDateForDay, setSelectedDateForDay] = useState<string | null>(null);
-    const [assistantPayload, setAssistantPayload] = useState<ParsedActivity[] | null>(null);
-    const [assistantImportMode, setAssistantImportMode] = useState<'add_to_day' | 'overwrite_trip' | 'replace_existing_day' | null>(null);
-    const [preselectedTripId, setPreselectedTripId] = useState<string | null>(null);
-    const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null);
-    const [activeScenarioName, setActiveScenarioName] = useState<string | null>(null);
-
-    const isAppending = activeTripId !== null;
-    const isSingleDayMode = importTarget === 'existing_trip';
-    const isReplaceDayMode = assistantImportMode === 'replace_existing_day';
-    const isOverwriteTripMode = assistantImportMode === 'overwrite_trip';
-    const selectedTripForDay = selectedTripIdForDay ? trips.find(t => t.id === selectedTripIdForDay) ?? null : null;
-    const dateOptionsForSelectedTrip = selectedTripForDay
-        ? getDateOptionsForTrip(selectedTripForDay.startDate, selectedTripForDay.endDate)
-        : [];
-
-    /** Shown so user knows which trip (and Live vs draft) will be changed before confirming. */
-    const editingContextLabel =
-        (assistantPayload != null || assistantImportMode != null) && selectedTripForDay
-            ? activeScenarioName != null
-                ? `${selectedTripForDay.name} → ${activeScenarioName}`
-                : `${selectedTripForDay.name} (Live)`
-            : null;
-
-    const assistantStateConsumed = useRef(false);
-    useEffect(() => {
-        if (assistantStateConsumed.current) return;
-        const state = location.state as {
-            fromAssistant?: boolean;
-            payload?: unknown[];
-            importMode?: 'add_to_day' | 'overwrite_trip' | 'replace_existing_day';
-            preselectedTripId?: string;
-            activeScenarioId?: string;
-            activeScenarioName?: string;
-        } | null;
-        if (state?.fromAssistant && Array.isArray(state?.payload) && state.payload.length > 0) {
-            assistantStateConsumed.current = true;
-            const activities = assistantPayloadToParsedActivities(state.payload);
-            if (activities.length > 0) {
-                setImportTarget('existing_trip');
-                setAssistantPayload(activities);
-                setStage('input');
-                if (state.importMode) setAssistantImportMode(state.importMode);
-                if (state.preselectedTripId) {
-                    setPreselectedTripId(state.preselectedTripId);
-                    setSelectedTripIdForDay(state.preselectedTripId);
-                }
-                if (state.activeScenarioId) setActiveScenarioId(state.activeScenarioId);
-                if (state.activeScenarioName != null) setActiveScenarioName(state.activeScenarioName);
-            }
-            navigate(location.pathname, { replace: true, state: {} });
-        }
-    }, [location.state, location.pathname, navigate]);
-
-    const updateParsedField = useCallback((field: keyof ParsedItinerary, value: string) => {
-        setParsed((prev: ParsedItinerary | null) => prev ? { ...prev, [field]: value } : prev);
-    }, [setParsed]);
-
-    const updateActivity = useCallback((index: number, field: keyof ParsedActivity, value: string) => {
-        setParsed((prev: ParsedItinerary | null) => {
-            if (!prev) return prev;
-            const activities = [...prev.activities];
-            activities[index] = { ...activities[index], [field]: value || undefined };
-            return { ...prev, activities };
-        });
-    }, [setParsed]);
-
-    const removeActivity = useCallback((index: number) => {
-        setParsed((prev: ParsedItinerary | null) => {
-            if (!prev) return prev;
-            const activities = prev.activities.filter((_: any, i: number) => i !== index);
-            return { ...prev, activities };
-        });
-    }, [setParsed]);
-
-    const handleDiscard = useCallback(() => {
-        setParsed(null);
-        setError(null);
-        setRawText('');
-        setStage('input');
-        logEvent('Import Discarded');
-    }, [setParsed, setRawText, setStage]);
-
-    const CHUNK_LIMITS: ParseItineraryOptions = { maxActivitiesPerChunk: 25, maxTransportPerChunk: 12 };
-
-    async function parseChunk(text: string, options?: ParseItineraryOptions): Promise<ParsedItinerary> {
-        return parseItineraryChunk(text, options);
-    }
-
-    const handleParse = async () => {
-        if (!rawText.trim()) return;
-        setLoading(true);
-        setError(null);
-        setParseProgress('');
-        logEvent('Import Parse Started', { is_append: isAppending, single_day: isSingleDayMode });
-
-        try {
-            setParseProgress('Parsing itinerary...');
-            let result: ParsedItinerary;
-            try {
-                result = await parseChunk(rawText.trim());
-            } catch (firstErr) {
-                const firstMsg = firstErr instanceof Error ? firstErr.message : '';
-                if (firstMsg !== 'TRUNCATED') throw firstErr;
-
-                const chunks = splitIntoChunks(rawText.trim(), 3);
-                if (chunks.length <= 1) {
-                    throw new Error('The AI response was too long even for a single chunk. Try pasting less text.');
-                }
-
-                logEvent('Import Auto Chunking', { chunk_count: chunks.length });
-                const results: ParsedItinerary[] = [];
-                for (let i = 0; i < chunks.length; i++) {
-                    setParseProgress(`Parsing chunk ${i + 1} of ${chunks.length}...`);
-                    try {
-                        const chunkResult = await parseChunk(chunks[i], CHUNK_LIMITS);
-                        results.push(chunkResult);
-                    } catch (chunkErr) {
-                        const chunkMsg = chunkErr instanceof Error ? chunkErr.message : '';
-                        if (chunkMsg === 'TRUNCATED') {
-                            const subChunks = splitIntoChunks(chunks[i], 2);
-                            for (let j = 0; j < subChunks.length; j++) {
-                                setParseProgress(`Parsing chunk ${i + 1}.${j + 1} of ${chunks.length}...`);
-                                results.push(await parseChunk(subChunks[j], CHUNK_LIMITS));
-                            }
-                        } else {
-                            throw chunkErr;
-                        }
-                    }
-                }
-
-                if (results.length === 0) {
-                    throw new Error('No activities were parsed from any chunk.');
-                }
-                result = mergeResults(results);
-            }
-
-            if (result.activities.length === 0) {
-                throw new Error('No activities were parsed from the input. Try providing more detail.');
-            }
-
-            if (isSingleDayMode && selectedDateForDay) {
-                result.activities = result.activities.map((a) => ({ ...a, date: selectedDateForDay }));
-                result.startDate = selectedDateForDay;
-                result.endDate = selectedDateForDay;
-            }
-
-            setParsed(result);
-            setStage('preview');
-            logEvent('Import Parse Success', { activity_count: result.activities.length, trip_name: result.tripName, is_append: isAppending, single_day: isSingleDayMode });
-        } catch (e) {
-            const msg = e instanceof Error ? e.message : 'Parsing failed';
-            console.error('Import parse error:', e);
-            setError(msg);
-            logEvent('Import Parse Failed', { error: msg, input_length: rawText.trim().length });
-        } finally {
-            setLoading(false);
-            setParseProgress('');
-        }
-    };
-
-    const handleConfirm = async () => {
-        if (!parsed || parsed.activities.length === 0) return;
-        setStage('saving');
-
-        try {
-            let tripId: string;
-            let tripMembers: string[] = [];
-            const targetDate = isSingleDayMode ? selectedDateForDay! : null;
-
-            if (isSingleDayMode && selectedTripIdForDay) {
-                tripId = selectedTripIdForDay;
-                const trip = selectedTripForDay ?? trips.find(t => t.id === tripId);
-                tripMembers = (trip?.members?.length ? trip.members : trip ? [trip.userId] : []).filter(Boolean);
-                setActiveTripId(tripId);
-                setActiveTripName(trip?.name ?? null);
-            } else if (isAppending && activeTripId) {
-                tripId = activeTripId;
-                const activeTrip = trips.find(t => t.id === tripId);
-                tripMembers = activeTrip?.members || (activeTrip ? [activeTrip.userId] : []);
-                await updateTrip(tripId, expandDateRange(tripId, parsed.startDate, parsed.endDate));
-            } else {
-                const trip = await addTrip({
-                    name: parsed.tripName,
-                    startDate: parsed.startDate,
-                    endDate: parsed.endDate,
-                    defaultCurrency: currency,
-                });
-                tripId = trip.id;
-                tripMembers = trip.members || [];
-                setActiveTripId(tripId);
-                setActiveTripName(parsed.tripName);
-            }
-
-            if (isOverwriteTripMode && (selectedTripIdForDay || preselectedTripId)) {
-                const overwriteTripId = selectedTripIdForDay ?? preselectedTripId!;
-                const overwriteTrip = trips.find(t => t.id === overwriteTripId);
-                const overwriteMembers = (overwriteTrip?.members?.length ? overwriteTrip!.members : overwriteTrip ? [overwriteTrip.userId] : []).filter(Boolean);
-
-                if (activeScenarioId) {
-                    const scenarioActivities: Omit<Activity, 'id'>[] = parsed.activities.map((act, i) => ({
-                        userId: overwriteTrip?.userId ?? '',
-                        tripId: overwriteTripId,
-                        tripMembers: overwriteMembers,
-                        date: act.date,
-                        title: act.title ?? '',
-                        details: act.details,
-                        time: act.time ?? undefined,
-                        location: act.location,
-                        category: act.category || 'other',
-                        notes: act.notes,
-                        cost: act.cost,
-                        currency: act.currency,
-                        order: i,
-                    }));
-                    overwriteScenarioActivities(overwriteTripId, activeScenarioId, scenarioActivities);
-                    setActiveTripId(overwriteTripId);
-                    setActiveTripName(overwriteTrip?.name ?? null);
-                    selectTripScenario(overwriteTripId, activeScenarioId);
-                    showToast(`Replaced draft with ${scenarioActivities.length} activities. View in Calendar (draft).`);
-                    logEvent('Import Confirmed', { trip_id: overwriteTripId, scenario_id: activeScenarioId, activity_count: scenarioActivities.length, import_mode: 'overwrite_trip_draft' });
-                    setStage('done');
-                    return;
-                }
-
-                const toDelete = getActivitiesByTrip(overwriteTripId);
-                for (const a of toDelete) await deleteActivity(a.id);
-                const groupedOverwrite = groupByDate(parsed.activities);
-                let overwriteCount = 0;
-                for (const [date, acts] of groupedOverwrite) {
-                    for (let i = 0; i < acts.length; i++) {
-                        const act = acts[i];
-                        await addActivity({
-                            tripId: overwriteTripId,
-                            date: String(date),
-                            title: act.title ?? '',
-                            details: act.details || undefined,
-                            time: act.time ?? undefined,
-                            location: act.location || undefined,
-                            category: act.category || 'other',
-                            notes: act.notes || undefined,
-                            cost: act.cost,
-                            currency: act.currency || undefined,
-                            order: i,
-                        } as Omit<Activity, 'id' | 'userId' | 'tripMembers'>, overwriteMembers);
-                        overwriteCount++;
-                    }
-                }
-                const existingRoutes = getRoutesByTrip(overwriteTripId);
-                for (const r of existingRoutes) await deleteRoute(r.id);
-                for (const route of parsed.transportRoutes ?? []) {
-                    await addRoute({
-                        tripId: overwriteTripId,
-                        date: route.date,
-                        type: route.type,
-                        from: route.from,
-                        to: route.to,
-                        departureTime: route.departureTime,
-                        arrivalTime: route.arrivalTime,
-                        bookingRef: route.bookingRef,
-                        notes: route.notes,
-                        cost: route.cost,
-                        currency: route.currency,
-                    }, overwriteMembers);
-                }
-                setActiveTripId(overwriteTripId);
-                setActiveTripName(overwriteTrip?.name ?? null);
-                selectTripScenario(overwriteTripId, null);
-                const routeCount = (parsed.transportRoutes ?? []).length;
-                showToast(`Replaced trip with ${overwriteCount} activities${routeCount > 0 ? ` and ${routeCount} transport` : ''}. View in Calendar or Spreadsheet (Live).`);
-                logEvent('Import Confirmed', { trip_id: overwriteTripId, activity_count: overwriteCount, transport_count: routeCount, import_mode: 'overwrite_trip' });
-                setStage('done');
-                return;
-            }
-
-            if (isReplaceDayMode && selectedDateForDay && activeScenarioId && tripId && tripMembers.length > 0) {
-                const dayActivities: Omit<Activity, 'id'>[] = parsed.activities.map((act, i) => ({
-                    userId: selectedTripForDay?.userId ?? '',
-                    tripId,
-                    tripMembers,
-                    date: selectedDateForDay,
-                    title: act.title ?? '',
-                    details: act.details,
-                    time: act.time ?? undefined,
-                    location: act.location,
-                    category: act.category || 'other',
-                    notes: act.notes,
-                    cost: act.cost,
-                    currency: act.currency,
-                    order: i,
-                }));
-                replaceScenarioDay(tripId, activeScenarioId, selectedDateForDay, dayActivities);
-                setActiveTripId(tripId);
-                setActiveTripName(selectedTripForDay?.name ?? null);
-                selectTripScenario(tripId, activeScenarioId);
-                showToast(`Replaced ${selectedDateForDay} in draft with ${dayActivities.length} activities. View in Calendar (draft).`);
-                logEvent('Import Confirmed', { trip_id: tripId, scenario_id: activeScenarioId, date: selectedDateForDay, activity_count: dayActivities.length, import_mode: 'replace_day_draft' });
-                setStage('done');
-                return;
-            }
-
-            const existingActivities = getActivitiesByTrip(tripId);
-            if (isSingleDayMode && isReplaceDayMode && selectedDateForDay) {
-                const toRemove = existingActivities.filter(a => a.date === selectedDateForDay);
-                for (const a of toRemove) await deleteActivity(a.id);
-            }
-            const maxOrderByDate = new Map<string, number>();
-            for (const a of existingActivities) {
-                const cur = maxOrderByDate.get(a.date) ?? -1;
-                if (a.order > cur) maxOrderByDate.set(a.date, a.order);
-            }
-            if (isReplaceDayMode && selectedDateForDay) maxOrderByDate.set(selectedDateForDay, -1);
-
-            const grouped = groupByDate(parsed.activities);
-            let addedCount = 0;
-            for (const [date, acts] of grouped) {
-                const useDate = String(targetDate ?? date);
-                const startOrder = (maxOrderByDate.get(useDate) ?? -1) + 1;
-                for (let i = 0; i < acts.length; i++) {
-                    const act = acts[i];
-                    const payload = {
-                        tripId: String(tripId),
-                        date: useDate,
-                        title: act.title ?? '',
-                        details: act.details || undefined,
-                        time: act.time ?? undefined,
-                        location: act.location || undefined,
-                        category: act.category || 'other',
-                        notes: act.notes || undefined,
-                        cost: act.cost,
-                        currency: act.currency || undefined,
-                        order: startOrder + i,
-                    };
-                    await addActivity(payload as Omit<Activity, 'id' | 'userId' | 'tripMembers'>, tripMembers);
-                    addedCount++;
-                }
-            }
-
-            for (const route of parsed.transportRoutes ?? []) {
-                await addRoute({
-                    tripId: String(tripId),
-                    date: String(targetDate ?? route.date),
-                    type: route.type,
-                    from: route.from,
-                    to: route.to,
-                    departureTime: route.departureTime,
-                    arrivalTime: route.arrivalTime,
-                    bookingRef: route.bookingRef,
-                    notes: route.notes,
-                    cost: route.cost,
-                    currency: route.currency,
-                }, tripMembers);
-            }
-
-            setTotalImported(prev => prev + addedCount);
-            if (isSingleDayMode && selectedDateForDay) {
-                selectTripScenario(tripId, null);
-                const tripName = selectedTripForDay?.name ?? activeTripName ?? parsed.tripName;
-                const verb = isReplaceDayMode ? 'Replaced' : 'Added';
-                showToast(`${verb} ${addedCount} activities ${isReplaceDayMode ? 'for' : 'to'} ${formatDate(selectedDateForDay)} in ${tripName}. View in Calendar or Spreadsheet (Live).`);
-            }
-            logEvent('Import Confirmed', { trip_id: tripId, trip_name: activeTripName ?? parsed.tripName, activity_count: addedCount, is_append: isAppending, single_day: isSingleDayMode });
-            setStage('done');
-        } catch (e) {
-            const msg = e instanceof Error ? e.message : 'Failed to save';
-            console.error('Import save error:', e);
-            setError(msg);
-            logEvent('Import Save Failed', { error: msg, trip_name: parsed.tripName, activity_count: parsed.activities.length, single_day: isSingleDayMode });
-            setStage('preview');
-        }
-    };
-
-    function expandDateRange(tripId: string, newStart: string, newEnd: string) {
-        const existing = getActivitiesByTrip(tripId);
-        let earliest = newStart;
-        let latest = newEnd;
-        for (const a of existing) {
-            if (a.date < earliest) earliest = a.date;
-            if (a.date > latest) latest = a.date;
-        }
-        return { startDate: earliest < newStart ? earliest : newStart, endDate: latest > newEnd ? latest : newEnd };
-    }
-
-    const handleAddMore = () => {
-        setRawText('');
-        setParsed(null);
-        setError(null);
-        setStage('input');
-    };
-
-    const handleStartFresh = () => {
-        setRawText('');
-        setParsed(null);
-        setError(null);
-        setActiveTripId(null);
-        setActiveTripName(null);
-        setTotalImported(0);
-        setCurrency('USD');
-        setStage('input');
-    };
-
-    const handleImportTargetChange = (target: ImportTarget) => {
-        setImportTarget(target);
-        if (target === 'new_trip') {
-            setSelectedTripIdForDay(null);
-            setSelectedDateForDay(null);
-            setAssistantPayload(null);
-            setActiveTripId(null);
-            setActiveTripName(null);
-            setTotalImported(0);
-        }
-    };
-
-    const handleSelectedTripForDayChange = (tripId: string) => {
-        setSelectedTripIdForDay(tripId || null);
-        if (tripId) {
-            const trip = trips.find(t => t.id === tripId);
-            setSelectedDateForDay(trip ? trip.startDate : null);
-        } else {
-            setSelectedDateForDay(null);
-        }
-    };
-
-    const handleAssistantPayloadContinue = () => {
-        if (!assistantPayload || assistantPayload.length === 0 || !selectedTripIdForDay || !selectedTripForDay) return;
-        if (isOverwriteTripMode) {
-            const dates = assistantPayload.map((a) => a.date).filter(Boolean).sort();
-            const start = dates[0] ?? selectedTripForDay.startDate;
-            const end = dates[dates.length - 1] ?? selectedTripForDay.endDate;
-            setParsed({
-                tripName: selectedTripForDay.name,
-                startDate: start,
-                endDate: end,
-                activities: [...assistantPayload],
-            });
-        } else {
-            if (!selectedDateForDay) return;
-            const normalized = assistantPayload.map((a) => ({ ...a, date: selectedDateForDay }));
-            setParsed({
-                tripName: selectedTripForDay.name,
-                startDate: selectedDateForDay,
-                endDate: selectedDateForDay,
-                activities: normalized,
-            });
-        }
-        setAssistantPayload(null);
-        setStage('preview');
-    };
-
-    const grouped = parsed ? groupByDate(parsed.activities) : null;
-    let globalIdx = 0;
-
-    const existingActivitiesForSelectedDay =
-        isSingleDayMode && selectedTripIdForDay && selectedDateForDay
-            ? getActivitiesByTrip(selectedTripIdForDay)
-                  .filter((a) => a.date === selectedDateForDay)
-                  .sort(compareActivitiesByTimeThenOrder)
-            : [];
-
-    const selectedExportTrip = trips.find(t => t.id === exportTripId) || null;
-
-    const handleExport = useCallback(() => {
-        if (!selectedExportTrip) {
-            showToast('Select a trip to export');
-            return;
-        }
-
-        try {
-            const activitiesForTrip = getActivitiesByTrip(selectedExportTrip.id);
-            const routesForTrip = getRoutesByTrip(selectedExportTrip.id);
-            const notesForTrip = getNotesByTrip(selectedExportTrip.id);
-            const baseFilename = `${slugifyFilename(selectedExportTrip.name)}-${selectedExportTrip.startDate}-${selectedExportTrip.endDate}`;
-
-            if (exportFormat === 'json') {
-                const payload = buildTripExportPayload({
-                    trip: selectedExportTrip,
-                    activities: activitiesForTrip,
-                    transportRoutes: routesForTrip,
-                    notes: notesForTrip,
-                });
-                downloadTextFile(`${baseFilename}.json`, JSON.stringify(payload, null, 2), 'application/json;charset=utf-8');
-            } else {
-                const csv = toTripCsv({
-                    trip: selectedExportTrip,
-                    activities: activitiesForTrip,
-                    transportRoutes: routesForTrip,
-                    notes: notesForTrip,
-                });
-                downloadTextFile(`${baseFilename}-trip.csv`, csv, 'text/csv;charset=utf-8');
-            }
-
-            logEvent('Trip Exported', {
-                trip_id: selectedExportTrip.id,
-                trip_name: selectedExportTrip.name,
-                format: exportFormat,
-                activity_count: activitiesForTrip.length,
-                route_count: routesForTrip.length,
-                note_count: notesForTrip.length,
-            });
-            showToast(`Exported ${selectedExportTrip.name} as ${exportFormat.toUpperCase()}`);
-        } catch (err) {
-            console.error('Export failed:', err);
-            showToast('Export failed. Please try again.');
-        }
-    }, [selectedExportTrip, showToast, getActivitiesByTrip, getRoutesByTrip, getNotesByTrip, exportFormat]);
-
-    return (
-        <div className="page-container animate-fade-in">
-            <header className="page-header">
-                <div>
-                    <h1>Import Itinerary</h1>
-                    <p>Paste an AI-generated itinerary and we'll parse it into a trip.</p>
-                </div>
-            </header>
-
-            <div className="flex items-center gap-xs mb-lg">
-                <button
-                    type="button"
-                    className={`btn btn-sm ${mode === 'import' ? 'btn-primary' : 'btn-ghost'}`}
-                    onClick={() => setMode('import')}
-                >
-                    Import
-                </button>
-                <button
-                    type="button"
-                    className={`btn btn-sm ${mode === 'export' ? 'btn-primary' : 'btn-ghost'}`}
-                    onClick={() => {
-                        setMode('export');
-                        if (!exportTripId && trips.length > 0) {
-                            setExportTripId(trips[0].id);
-                        }
-                    }}
-                >
-                    Export
-                </button>
-            </div>
-
-            {mode === 'import' && (
-                <div className="flex items-center gap-xs mb-md">
-                    <button
-                        type="button"
-                        className={`btn btn-sm ${importTarget === 'new_trip' ? 'btn-primary' : 'btn-ghost'}`}
-                        onClick={() => handleImportTargetChange('new_trip')}
-                    >
-                        New trip
-                    </button>
-                    <button
-                        type="button"
-                        className={`btn btn-sm ${importTarget === 'existing_trip' ? 'btn-primary' : 'btn-ghost'}`}
-                        onClick={() => handleImportTargetChange('existing_trip')}
-                        disabled={trips.length === 0}
-                    >
-                        Add to existing trip
-                    </button>
-                </div>
-            )}
-
-            {mode === 'export' && (
-                <div className="card p-xl flex flex-col gap-md">
-                    <div className="flex flex-wrap items-end gap-sm">
-                        <div className="flex flex-col gap-xs" style={{ minWidth: '240px', flex: '1 1 280px' }}>
-                            <label className="input-label">Select trip</label>
-                            <select
-                                className="input-field"
-                                value={exportTripId}
-                                onChange={(e) => setExportTripId(e.target.value)}
-                            >
-                                <option value="">Choose a trip...</option>
-                                {trips.map((t) => (
-                                    <option key={t.id} value={t.id}>
-                                        {t.name} ({t.startDate} to {t.endDate})
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className="flex flex-col gap-xs">
-                            <label className="input-label">Format</label>
-                            <select
-                                className="input-field"
-                                value={exportFormat}
-                                onChange={(e) => setExportFormat(e.target.value as ExportFormat)}
-                            >
-                                <option value="json">JSON</option>
-                                <option value="csv">CSV (trip.csv)</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <p className="text-sm text-tertiary">
-                        {exportFormat === 'json'
-                            ? 'JSON export includes trip metadata plus activities, transport routes, and notes.'
-                            : 'CSV export creates trip.csv with metadata and flattened itinerary records.'}
-                    </p>
-
-                    <div className="flex justify-end">
-                        <button
-                            type="button"
-                            className="btn btn-primary"
-                            onClick={handleExport}
-                            disabled={!exportTripId}
-                        >
-                            Export {exportFormat.toUpperCase()}
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* Input Stage */}
-            {mode === 'import' && stage === 'input' && !loading && (
-                <div className="flex flex-col gap-sm">
-                    {editingContextLabel && (
-                        <p className="text-sm font-medium" style={{ color: 'var(--text-color)' }}>
-                            Editing: {editingContextLabel}
-                        </p>
-                    )}
-                    {(isSingleDayMode || assistantPayload) && (
-                        <div className="flex flex-wrap items-end gap-sm">
-                            <div className="flex flex-col gap-xs" style={{ minWidth: '240px', flex: '1 1 280px' }}>
-                                <label className="input-label">Select trip</label>
-                                <select
-                                    className="input-field"
-                                    value={selectedTripIdForDay ?? ''}
-                                    onChange={(e) => handleSelectedTripForDayChange(e.target.value)}
-                                >
-                                    <option value="">{trips.length === 0 ? 'No trips yet' : 'Choose a trip...'}</option>
-                                    {trips.map((t) => (
-                                        <option key={t.id} value={t.id}>
-                                            {t.name} ({t.startDate} to {t.endDate})
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                            {selectedTripForDay && dateOptionsForSelectedTrip.length > 0 && !isOverwriteTripMode && (
-                                <div className="flex flex-col gap-xs" style={{ minWidth: '240px', flex: '1 1 280px' }}>
-                                    <label className="input-label">{isReplaceDayMode ? 'Day to replace' : 'Select day'}</label>
-                                    <select
-                                        className="input-field"
-                                        value={selectedDateForDay ?? ''}
-                                        onChange={(e) => setSelectedDateForDay(e.target.value || null)}
-                                    >
-                                        {dateOptionsForSelectedTrip.map((opt) => (
-                                            <option key={opt.value} value={opt.value}>
-                                                {opt.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                    {assistantPayload ? (
-                        <>
-                            <p className="text-sm text-secondary">
-                                {isOverwriteTripMode && (
-                                    <span className="font-medium text-primary">Replace entire trip — </span>
-                                )}
-                                {isReplaceDayMode && !isOverwriteTripMode && (
-                                    <span className="font-medium text-primary">Replace one day — </span>
-                                )}
-                                {assistantPayload.length} activit{assistantPayload.length === 1 ? 'y' : 'ies'} from Assistant.
-                                {isOverwriteTripMode
-                                    ? ' Select trip above, then continue to preview.'
-                                    : ' Select trip and day above, then continue to preview.'}
-                            </p>
-                            <div className="flex items-center gap-sm">
-                                <button
-                                    type="button"
-                                    className="btn btn-primary"
-                                    onClick={handleAssistantPayloadContinue}
-                                    disabled={!selectedTripIdForDay || (!isOverwriteTripMode && !selectedDateForDay)}
-                                >
-                                    Continue to preview
-                                </button>
-                            </div>
-                        </>
-                    ) : (
-                        <>
-                    {isAppending && !isSingleDayMode && (
-                        <div className="flex items-center gap-sm p-sm rounded-md text-sm text-secondary" style={{ backgroundColor: 'color-mix(in srgb, var(--primary-color) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--primary-color) 20%, transparent)' }}>
-                            <Plus size={16} className="text-primary shrink-0" />
-                            <span>Adding more days to <strong>{activeTripName}</strong> ({totalImported} activities imported so far)</span>
-                        </div>
-                    )}
-                    <label className="input-label" htmlFor="import-textarea">
-                        {isSingleDayMode
-                            ? 'Paste this day\'s itinerary'
-                            : isAppending
-                                ? 'Paste the next chunk of your itinerary'
-                                : 'Paste your itinerary'}
-                    </label>
-                    <textarea
-                        id="import-textarea"
-                        className="input-field"
-                        style={{ minHeight: '200px', resize: 'vertical', fontFamily: 'inherit', fontSize: '0.9rem', lineHeight: 1.5 }}
-                        value={rawText}
-                        onChange={e => setRawText(e.target.value)}
-                        placeholder={isSingleDayMode
-                            ? "Paste this day's activities (no dates needed)..."
-                            : isAppending
-                                ? "Paste the next set of days here..."
-                                : "Paste your itinerary here (from Gemini, ChatGPT, Claude, etc.)\n\nSupports tables, bullet lists, or any text format.\nLong itineraries are automatically split into chunks."}
-                        rows={12}
-                    />
-                    {error && (
-                        <div className="flex items-start gap-sm p-sm rounded-md text-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--error-color) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--error-color) 25%, transparent)', color: 'var(--error-color)', lineHeight: 1.4 }}>
-                            <AlertCircle size={16} className="shrink-0 mt-0.5" />
-                            <span>{error}</span>
-                        </div>
-                    )}
-                    <style>{`
-                        @media (max-width: 768px) {
-                            .mobile-column-reverse { flex-direction: column-reverse !important; align-items: stretch !important; }
-                            .mobile-column-reverse .btn { width: 100% !important; margin-left: 0 !important; }
-                        }
-                    `}</style>
-                    <div className="flex items-center gap-sm mobile-column-reverse">
-                        {isAppending && !isSingleDayMode && (
-                            <button className="btn btn-ghost" onClick={handleStartFresh}>
-                                Start New Trip
-                            </button>
-                        )}
-                        <button
-                            className="btn btn-primary"
-                            style={{ marginLeft: 'auto' }}
-                            onClick={handleParse}
-                            disabled={
-                                !rawText.trim() ||
-                                (isSingleDayMode && (!selectedTripIdForDay || !selectedDateForDay))
-                            }
-                        >
-                            Parse with AI
-                        </button>
-                    </div>
-                        </>
-                    )}
-                </div>
-            )}
-
-            {/* Loading / Parsing Stage */}
-            {mode === 'import' && stage === 'input' && loading && (
-                <LoadingJokes progress={parseProgress} />
-            )}
-
-            {/* Preview Stage */}
-            {mode === 'import' && stage === 'preview' && parsed && grouped && (() => { globalIdx = 0; return true; })() && (
-                <div className="flex flex-col gap-xl">
-                    <style>{`
-                        @media (max-width: 768px) {
-                            .mobile-actions { flex-wrap: wrap !important; padding: 0.5rem 0.75rem !important; }
-                            .mobile-actions-right { width: 100% !important; display: flex; gap: 0.75rem; }
-                            .mobile-actions-right .btn { flex: 1; }
-                            .mobile-discard { width: 100% !important; margin-bottom: 0.5rem; }
-                            .mobile-edit-row { flex-direction: column !important; align-items: stretch !important; gap: 0.5rem !important; }
-                        }
-                    `}</style>
-                    <div className="sticky-actions mobile-actions">
-                        <button className="btn btn-ghost mobile-discard" style={{ color: 'var(--error-color)' }} onClick={handleDiscard}>
-                            Discard
-                        </button>
-                        <div className="flex items-center gap-sm mobile-actions-right">
-                            <button className="btn btn-ghost" onClick={() => { setStage('input'); setError(null); }}>
-                                Re-paste
-                            </button>
-                            <button
-                                className="btn btn-primary"
-                                onClick={handleConfirm}
-                                disabled={parsed.activities.length === 0 || (!isSingleDayMode && !parsed.tripName.trim())}
-                            >
-                                {isOverwriteTripMode ? 'Replace Trip' : isReplaceDayMode ? 'Replace Day' : isSingleDayMode || isAppending ? 'Add Activities' : 'Create Trip'}
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="card p-xl flex flex-col gap-sm" style={{ background: 'linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 6%, transparent), color-mix(in srgb, var(--secondary-color) 6%, transparent))' }}>
-                        {isSingleDayMode ? (
-                            <>
-                                <p className="text-xs text-tertiary uppercase font-semibold mb-0" style={{ letterSpacing: '0.05em' }}>
-                                    {isOverwriteTripMode ? 'Replacing trip' : isReplaceDayMode ? 'Replacing day' : 'Adding to'}
-                                </p>
-                                <h2 className="text-xl mb-xs">{selectedTripForDay?.name ?? 'Trip'}</h2>
-                                {selectedDateForDay && !isOverwriteTripMode && (
-                                    <p className="text-sm text-tertiary mt-xs">Date: {formatDate(selectedDateForDay)}</p>
-                                )}
-                                {isOverwriteTripMode && (
-                                    <p className="text-sm text-tertiary mt-xs">All existing activities will be removed and replaced.</p>
-                                )}
-                            </>
-                        ) : isAppending ? (
-                            <>
-                                <p className="text-xs text-tertiary uppercase font-semibold mb-0" style={{ letterSpacing: '0.05em' }}>Adding to</p>
-                                <h2 className="text-xl mb-xs">{activeTripName}</h2>
-                            </>
-                        ) : (
-                            <div className="flex items-end gap-sm mobile-edit-row">
-                                <div className="flex flex-col gap-xs flex-1" style={{ minWidth: 0 }}>
-                                    <label className="text-xs text-tertiary uppercase font-semibold" style={{ letterSpacing: '0.04em' }}>Trip name</label>
-                                    <input
-                                        className="input-field"
-                                        value={parsed.tripName}
-                                        onChange={e => updateParsedField('tripName', e.target.value)}
-                                    />
-                                </div>
-                                <div className="flex flex-col gap-xs">
-                                    <label className="text-xs text-tertiary uppercase font-semibold" style={{ letterSpacing: '0.04em' }}>Currency</label>
-                                    <select className="input-field" value={currency} onChange={e => setCurrency(e.target.value)}>
-                                        {CURRENCY_LIST.map(c => <option key={c} value={c}>{c}</option>)}
-                                    </select>
-                                </div>
-                            </div>
-                        )}
-                        {!isSingleDayMode && (
-                            <div className="flex items-end gap-sm mobile-edit-row" style={{ flexDirection: 'row' }}>
-                                <div className="flex flex-col gap-xs flex-1" style={{ minWidth: 0 }}>
-                                    <label className="text-xs text-tertiary uppercase font-semibold" style={{ letterSpacing: '0.04em' }}>Start</label>
-                                    <input
-                                        type="date"
-                                        className="input-field"
-                                        value={parsed.startDate}
-                                        onChange={e => updateParsedField('startDate', e.target.value)}
-                                    />
-                                </div>
-                                <div className="flex flex-col gap-xs flex-1" style={{ minWidth: 0 }}>
-                                    <label className="text-xs text-tertiary uppercase font-semibold" style={{ letterSpacing: '0.04em' }}>End</label>
-                                    <input
-                                        type="date"
-                                        className="input-field"
-                                        value={parsed.endDate}
-                                        onChange={e => updateParsedField('endDate', e.target.value)}
-                                    />
-                                </div>
-                            </div>
-                        )}
-                        <p className="text-sm text-tertiary mt-xs">
-                            {parsed.activities.length} activit{parsed.activities.length === 1 ? 'y' : 'ies'} across {grouped.size} day{grouped.size === 1 ? '' : 's'}
-                            {isAppending && <> &middot; {totalImported} already imported</>}
-                        </p>
-                    </div>
-
-                    {isSingleDayMode && selectedDateForDay ? (
-                        <div
-                            className="flex gap-md"
-                            style={{
-                                alignItems: 'stretch',
-                                flexDirection: 'row',
-                                minHeight: 0,
-                                overflowX: 'auto',
-                                paddingBottom: '0.5rem',
-                            }}
-                        >
-                            <div
-                                className="rounded-lg border border-solid shrink-0"
-                                style={{
-                                    borderColor: 'var(--border-color)',
-                                    backgroundColor: 'color-mix(in srgb, var(--primary-color) 6%, var(--surface-color))',
-                                    flex: '1 1 0',
-                                    minWidth: 'min(280px, 45vw)',
-                                    maxWidth: '50%',
-                                    padding: '0.75rem',
-                                }}
-                            >
-                                <h3 className="font-bold text-primary pb-xs mb-xs" style={{ fontSize: '0.875rem', borderBottom: '2px solid color-mix(in srgb, var(--primary-color) 20%, transparent)' }}>
-                                    Importing — {formatDate(selectedDateForDay)}
-                                </h3>
-                                <p className="text-xs text-tertiary mb-sm">Will be added to this day.</p>
-                                <div className="flex flex-col gap-xs">
-                                    {parsed.activities.map((act) => {
-                                        const idx = globalIdx++;
-                                        return (
-                                            <div key={idx} className="flex items-start gap-xs p-xs bg-surface rounded-md border border-solid relative" style={{ padding: '0.4rem 0.5rem', borderColor: 'var(--border-color)' }}>
-                                                <span className="shrink-0" style={{ fontSize: '0.95rem', marginTop: '0.2rem' }}>
-                                                    {CATEGORY_EMOJIS[act.category || 'other']}
-                                                </span>
-                                                <div className="flex flex-col flex-1 min-w-0" style={{ gap: '0.15rem' }}>
-                                                    <input
-                                                        className="input-ghost font-semibold w-full"
-                                                        style={{ fontSize: '0.8125rem' }}
-                                                        value={act.title}
-                                                        onChange={e => updateActivity(idx, 'title', e.target.value)}
-                                                    />
-                                                    <div className="flex items-center gap-xs flex-wrap">
-                                                        <input
-                                                            type="time"
-                                                            className="input-ghost text-xs text-tertiary"
-                                                            style={{ width: 'auto', maxWidth: '90px' }}
-                                                            value={act.time || ''}
-                                                            onChange={e => updateActivity(idx, 'time', e.target.value)}
-                                                        />
-                                                        <select
-                                                            className="input-ghost text-xs text-secondary cursor-pointer"
-                                                            style={{ padding: '0.1rem 0.2rem', fontSize: '0.7rem' }}
-                                                            value={act.category || 'other'}
-                                                            onChange={e => updateActivity(idx, 'category', e.target.value)}
-                                                        >
-                                                            {CATEGORY_LIST.map(c => (
-                                                                <option key={c} value={c}>{CATEGORY_EMOJIS[c]} {c}</option>
-                                                            ))}
-                                                        </select>
-                                                    </div>
-                                                    {act.location && <span className="text-xs text-secondary truncate block" style={{ maxWidth: '100%' }} title={act.location}>{act.location}</span>}
-                                                    {act.details && <p className="text-xs text-secondary mt-0 px-0 truncate" style={{ lineHeight: 1.3, WebkitLineClamp: 2, display: '-webkit-box', WebkitBoxOrient: 'vertical', overflow: 'hidden' }} title={act.details}>{act.details}</p>}
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-ghost btn-icon shrink-0 opacity-50 hover:opacity-100 hover:text-danger hover:bg-danger/10"
-                                                    style={{ padding: '0.2rem' }}
-                                                    onClick={() => removeActivity(idx)}
-                                                    aria-label="Remove activity"
-                                                >
-                                                    <X size={12} />
-                                                </button>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                            <div
-                                className="rounded-lg border border-solid shrink-0"
-                                style={{
-                                    borderColor: 'var(--border-color)',
-                                    backgroundColor: 'var(--surface-color)',
-                                    flex: '1 1 0',
-                                    minWidth: 'min(280px, 45vw)',
-                                    maxWidth: '50%',
-                                    padding: '0.75rem',
-                                }}
-                            >
-                                <h3 className="font-bold text-secondary pb-xs mb-xs" style={{ fontSize: '0.875rem', borderBottom: '2px solid var(--border-color)' }}>
-                                    Existing on this day
-                                </h3>
-                                <p className="text-xs text-tertiary mb-sm">Already on this day. New ones add below.</p>
-                                <div className="flex flex-col gap-xs">
-                                    {existingActivitiesForSelectedDay.length === 0 ? (
-                                        <p className="text-xs text-tertiary italic">No activities yet.</p>
-                                    ) : (
-                                        existingActivitiesForSelectedDay.map((a) => (
-                                            <div key={a.id} className="flex items-start gap-xs p-xs rounded-md border border-solid" style={{ padding: '0.4rem 0.5rem', borderColor: 'var(--border-color)', backgroundColor: 'color-mix(in srgb, var(--text-tertiary) 8%, var(--surface-color))' }}>
-                                                <span className="shrink-0" style={{ fontSize: '0.95rem', marginTop: '0.2rem' }}>
-                                                    {CATEGORY_EMOJIS[a.category || 'other']}
-                                                </span>
-                                                <div className="flex flex-col flex-1 min-w-0" style={{ gap: '0.15rem' }}>
-                                                    <span className="font-semibold text-xs truncate block" title={a.title}>{a.title}</span>
-                                                    {(a.time || a.category) && (
-                                                        <span className="text-xs text-tertiary">{[a.time, a.category].filter(Boolean).join(' · ')}</span>
-                                                    )}
-                                                    {a.location && <span className="text-xs text-secondary truncate block" title={a.location}>{a.location}</span>}
-                                                </div>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    ) : (
-                    <div className="flex flex-col gap-xl">
-                        {[...grouped!.entries()].map(([date, acts]) => (
-                            <div key={date}>
-                                <h3 className="font-bold text-primary pb-xs mb-sm" style={{ fontSize: '0.95rem', borderBottom: '2px solid color-mix(in srgb, var(--primary-color) 15%, transparent)' }}>{formatDate(date)}</h3>
-                                <div className="flex flex-col gap-sm">
-                                    {acts.map((act) => {
-                                        const idx = globalIdx++;
-                                        return (
-                                            <div key={idx} className="flex items-start gap-sm p-sm bg-surface rounded-md border border-solid relative" style={{ padding: '0.65rem 0.85rem', borderColor: 'var(--border-color)' }}>
-                                                <span className="shrink-0" style={{ fontSize: '1.1rem', marginTop: '0.35rem' }}>
-                                                    {CATEGORY_EMOJIS[act.category || 'other']}
-                                                </span>
-                                                <div className="flex flex-col flex-1" style={{ minWidth: 0, gap: '0.25rem' }}>
-                                                    <input
-                                                        className="input-ghost font-semibold w-full text-base"
-                                                        value={act.title}
-                                                        onChange={e => updateActivity(idx, 'title', e.target.value)}
-                                                    />
-                                                    <div className="flex items-center gap-sm flex-wrap">
-                                                        <input
-                                                            type="time"
-                                                            className="input-ghost text-xs text-tertiary"
-                                                            style={{ width: 'auto', maxWidth: '110px' }}
-                                                            value={act.time || ''}
-                                                            onChange={e => updateActivity(idx, 'time', e.target.value)}
-                                                        />
-                                                        <select
-                                                            className="input-ghost text-xs text-secondary cursor-pointer"
-                                                            style={{ padding: '0.15rem 0.3rem' }}
-                                                            value={act.category || 'other'}
-                                                            onChange={e => updateActivity(idx, 'category', e.target.value)}
-                                                        >
-                                                            {CATEGORY_LIST.map(c => (
-                                                                <option key={c} value={c}>{CATEGORY_EMOJIS[c]} {c}</option>
-                                                            ))}
-                                                        </select>
-                                                    </div>
-                                                    {act.location && <span className="text-xs text-secondary px-1">{act.location}</span>}
-                                                    {act.details && <p className="text-sm text-secondary mt-xs px-1" style={{ lineHeight: 1.4 }}>{act.details}</p>}
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-ghost btn-icon shrink-0 mt-xs opacity-50 hover:opacity-100 hover:text-danger hover:bg-danger/10"
-                                                    style={{ padding: '0.25rem' }}
-                                                    onClick={() => removeActivity(idx)}
-                                                    aria-label="Remove activity"
-                                                >
-                                                    <X size={14} />
-                                                </button>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                    )}
-
-                    {parsed.activities.length === 0 && (
-                        <div className="flex items-start gap-sm p-sm rounded-md text-sm mt-md" style={{ backgroundColor: 'color-mix(in srgb, var(--error-color) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--error-color) 25%, transparent)', color: 'var(--error-color)', lineHeight: 1.4 }}>
-                            <AlertCircle size={16} className="shrink-0 mt-0.5" />
-                            <span>All activities have been removed. Add some back or discard this import.</span>
-                        </div>
-                    )}
-
-                    {error && (
-                        <div className="flex items-start gap-sm p-sm rounded-md text-sm mt-md" style={{ backgroundColor: 'color-mix(in srgb, var(--error-color) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--error-color) 25%, transparent)', color: 'var(--error-color)', lineHeight: 1.4 }}>
-                            <AlertCircle size={16} className="shrink-0 mt-0.5" />
-                            <span>{error}</span>
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* Saving Stage */}
-            {mode === 'import' && stage === 'saving' && (
-                <div className="flex flex-col items-center gap-sm text-tertiary" style={{ padding: '3rem 0' }}>
-                    <Loader2 size={32} className="spin" />
-                    <p>{isSingleDayMode || isAppending ? 'Adding activities...' : 'Creating trip and activities...'}</p>
-                </div>
-            )}
-
-            {/* Done Stage */}
-            {mode === 'import' && stage === 'done' && parsed && (
-                <div className="flex flex-col items-center text-center gap-sm" style={{ padding: '3rem 1rem' }}>
-                    <div className="sticky-actions mobile-actions w-full" style={{ position: 'relative', top: 'unset', marginBottom: '1.5rem' }}>
-                        <button className="btn btn-ghost mobile-discard" onClick={handleAddMore}>
-                            Add More Days
-                        </button>
-                        <div className="flex gap-sm items-center mobile-actions-right">
-                            <button className="btn btn-ghost" onClick={() => {
-                                setRawText('');
-                                setParsed(null);
-                                setStage('input');
-                            }}>
-                                New Trip
-                            </button>
-                            <button className="btn btn-primary" onClick={() => {
-                                setRawText('');
-                                setParsed(null);
-                                setStage('input');
-                                navigate('/spreadsheet');
-                            }}>
-                                View Trips
-                            </button>
-                        </div>
-                    </div>
-                    <div className="flex items-center justify-center text-secondary mb-sm" style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'color-mix(in srgb, var(--secondary-color) 12%, transparent)' }}>
-                        <Check size={40} />
-                    </div>
-                    <h2 className="text-xl">{isAppending ? 'Activities Added' : 'Trip Created'}</h2>
-                    <p className="text-secondary text-sm mb-sm">
-                        "{activeTripName ?? parsed.tripName}" now has {totalImported} activit{totalImported === 1 ? 'y' : 'ies'}.
-                    </p>
-                </div>
-            )}
-        </div>
-    );
-};
-
-export default ImportItinerary;
-</file>
-
-<file path="src/pages/Settings.tsx">
-import React, { useEffect, useState, useMemo } from 'react';
-import { Check, Sun, Moon, Trash2, RotateCcw } from 'lucide-react';
-import {
-  THEME_PRESETS,
-  isDarkPreset,
-  type ThemeConfig,
-  loadThemeConfig,
-  saveThemeConfig,
-  getResolvedTokens,
-  getDarkTokens,
-  applyTheme,
-  preloadPresetFonts,
-} from '../design-system/themes';
-import { useSettings, updateSettings, resetSettings, clearLocalDrafts, type AppSettings } from '../lib/settings';
-import { logEvent } from '../lib/amplitude';
-
-const TEXT_SIZE_OPTIONS = [
-  { label: 'Small', value: 75 },
-  { label: 'Default', value: 80 },
-  { label: 'Medium', value: 90 },
-  { label: 'Large', value: 100 },
-  { label: 'Extra Large', value: 112 },
-];
-
-const ZOOM_OPTIONS = [70, 80, 90, 100, 110, 120, 130, 140];
-
-const HEADER_COLOR_OPTIONS: { value: AppSettings['headerRowColor']; label: string; preview?: string }[] = [
-  { value: 'default', label: 'Default' },
-  { value: 'primary', label: 'Primary', preview: 'var(--primary-color)' },
-  { value: 'secondary', label: 'Secondary', preview: 'var(--secondary-color)' },
-  { value: 'accent', label: 'Accent', preview: 'var(--accent-color)' },
-  { value: 'slate', label: 'Slate', preview: 'var(--text-tertiary)' },
-  { value: 'transparent', label: 'None' },
-];
-
-function SettingsToggle({ id, label, description, checked, onChange }: {
-  id: string;
-  label: string;
-  description?: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <div className="flex flex-col gap-xs">
-      <label className="text-sm font-medium text-primary" htmlFor={id}>
-        <input
-          id={id}
-          type="checkbox"
-          checked={checked}
-          onChange={(e) => onChange(e.target.checked)}
-          style={{ marginRight: '0.5rem' }}
-        />
-        {label}
-      </label>
-      {description && <p className="text-sm text-subtle m-0" style={{ paddingLeft: '1.5rem' }}>{description}</p>}
-    </div>
-  );
-}
-
-const Settings: React.FC = () => {
-  const settings = useSettings();
-  const [themeConfig, setThemeConfig] = useState<ThemeConfig>(() => loadThemeConfig());
-
-  const resolvedTokens = useMemo(() => getResolvedTokens(themeConfig), [themeConfig]);
-  const activePreset = THEME_PRESETS.find((p) => p.id === themeConfig.presetId) ?? THEME_PRESETS[0];
-
-  useEffect(() => {
-    preloadPresetFonts();
-  }, []);
-
-  useEffect(() => {
-    document.body.classList.toggle('compact-layout', settings.compactLayout);
-    const useDarkPreset = isDarkPreset(themeConfig.presetId);
-    const effectiveDark = settings.darkMode || useDarkPreset;
-    document.body.classList.toggle('dark-mode', effectiveDark);
-    document.body.classList.toggle('theme-dark-preset', useDarkPreset);
-    document.documentElement.style.setProperty('color-scheme', effectiveDark ? 'dark' : 'light');
-    document.documentElement.style.setProperty('--text-size', `${settings.textSize}%`);
-
-    const tokens = useDarkPreset
-      ? getResolvedTokens(themeConfig)
-      : effectiveDark
-        ? getDarkTokens(getResolvedTokens(themeConfig))
-        : getResolvedTokens(themeConfig);
-    applyTheme(tokens);
-    saveThemeConfig(themeConfig);
-  }, [settings.compactLayout, settings.darkMode, settings.textSize, themeConfig]);
-
-  const set = (patch: Parameters<typeof updateSettings>[0]) => {
-    updateSettings(patch);
-  };
-
-  const selectPreset = (presetId: string) => {
-    setThemeConfig({ presetId, colorOverrides: {} });
-    logEvent('Theme Preset Selected', { preset: presetId });
-  };
-
-  const updateColor = (key: 'primaryColor' | 'secondaryColor' | 'accentColor', value: string) => {
-    setThemeConfig((prev) => ({
-      ...prev,
-      colorOverrides: { ...prev.colorOverrides, [key]: value },
-    }));
-    logEvent('Theme Color Customized', { color_key: key, color_value: value });
-  };
-
-  const resetColors = () => {
-    setThemeConfig((prev) => ({ ...prev, colorOverrides: {} }));
-  };
-
-  const hasOverrides = Object.values(themeConfig.colorOverrides).some(Boolean);
-
-  const colorFields = [
-    { key: 'primaryColor' as const, label: 'Primary', value: resolvedTokens.primaryColor },
-    { key: 'secondaryColor' as const, label: 'Secondary', value: resolvedTokens.secondaryColor },
-    { key: 'accentColor' as const, label: 'Accent', value: resolvedTokens.accentColor },
-  ];
-
-  return (
-    <div className="page-container animate-fade-in">
-      <style>{`
-        .preset-card {
-            position: relative; display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
-            padding: 1rem 0.75rem; border: 2px solid var(--border-color); border-radius: var(--radius-lg);
-            background-color: var(--surface-color); cursor: pointer; transition: all 0.2s ease;
-            font-family: inherit; text-align: center;
-        }
-        .preset-card:hover { border-color: var(--primary-color); transform: translateY(-2px); box-shadow: var(--shadow-md); }
-        .preset-card.active { border-color: var(--primary-color); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color) 15%, transparent); }
-        
-        .text-size-btn, .zoom-btn {
-            padding: 0.35rem 0.85rem; border-radius: var(--radius-full); border: 1px solid var(--border-color);
-            background-color: var(--surface-color); font-size: 0.8rem; font-family: inherit; cursor: pointer; transition: all 0.2s ease;
-        }
-        .text-size-btn:hover, .zoom-btn:hover { border-color: var(--primary-color); }
-        .text-size-btn.active, .zoom-btn.active { background-color: var(--primary-color); color: white; border-color: var(--primary-color); }
-
-        .dark-mode-toggle {
-            position: relative; width: 64px; height: 34px; border-radius: 17px; border: 2px solid var(--border-color);
-            background-color: var(--border-light); cursor: pointer; transition: all 0.3s ease; flex-shrink: 0; padding: 0;
-        }
-        .dark-mode-toggle.active { background-color: var(--primary-color); border-color: var(--primary-color); }
-        .toggle-thumb {
-            position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%;
-            background-color: var(--surface-color); box-shadow: 0 1px 3px rgb(0 0 0 / 0.2); transition: transform 0.3s ease;
-        }
-        .dark-mode-toggle.active .toggle-thumb { transform: translateX(30px); }
-        .toggle-icon { position: absolute; top: 50%; transform: translateY(-50%); display: flex; align-items: center; justify-content: center; transition: opacity 0.2s ease; }
-        .toggle-sun { left: 7px; color: var(--accent-color); opacity: 1; }
-        .toggle-moon { right: 7px; color: white; opacity: 0.4; }
-        .dark-mode-toggle.active .toggle-sun { opacity: 0.4; }
-        .dark-mode-toggle.active .toggle-moon { opacity: 1; }
-
-        .settings-section-title { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-tertiary); margin-bottom: 0.75rem; }
-
-        @media (max-width: 768px) {
-            .mobile-preset-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important; }
-        }
-      `}</style>
-      <header className="page-header">
-        <div>
-          <h1>Settings</h1>
-          <p>Customize your TravelPlanner experience. Settings sync across devices when signed in.</p>
-        </div>
-      </header>
-
-      {/* Appearance — dark mode toggle hidden for Discord, Neon, Midnight (always dark) */}
-      <div className="card p-lg mb-lg" style={{ background: 'linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 5%, var(--surface-color)), color-mix(in srgb, var(--secondary-color) 5%, var(--surface-color)))' }}>
-        <div className="flex justify-between items-center gap-md">
-          <div>
-            <h2 className="text-lg font-bold mb-xs">Appearance</h2>
-            <p className="text-sm text-subtle m-0">
-              {isDarkPreset(themeConfig.presetId) ? 'This theme is always dark — no toggle.' : settings.darkMode ? 'Dark mode is on — easy on the eyes.' : 'Light mode is on — bright and clear.'}
-            </p>
-          </div>
-          {!isDarkPreset(themeConfig.presetId) && (
-            <button
-              type="button"
-              className={`dark-mode-toggle ${settings.darkMode ? 'active' : ''}`}
-              onClick={() => {
-                set({ darkMode: !settings.darkMode });
-                logEvent('Dark Mode Toggled', { enabled: !settings.darkMode });
-              }}
-              aria-label={settings.darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
-              <span className="toggle-icon toggle-sun"><Sun size={16} /></span>
-              <span className="toggle-icon toggle-moon"><Moon size={16} /></span>
-              <span className="toggle-thumb" />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Theme — light and dark presets separated */}
-      <div className="card p-lg mb-lg">
-        <h2 className="text-lg font-bold mb-md">Theme</h2>
-        <p className="settings-section-title m-0 mb-sm">Themes</p>
-        <div className="grid grid-cols-auto-140 gap-md mobile-preset-grid mb-lg">
-          {THEME_PRESETS.filter((p) => !isDarkPreset(p.id)).map((preset) => (
-            <button
-              key={preset.id}
-              type="button"
-              className={`preset-card ${preset.id === themeConfig.presetId ? 'active' : ''}`}
-              onClick={() => selectPreset(preset.id)}
-              style={{ fontFamily: preset.tokens.fontFamily }}
-            >
-              <div className="flex gap-[4px] mb-[0.25rem]">
-                <span style={{ width: '20px', height: '20px', borderRadius: '50%', border: '1px solid rgba(0, 0, 0, 0.08)', background: preset.preview.bg }} />
-                <span style={{ width: '20px', height: '20px', borderRadius: '50%', border: '1px solid rgba(0, 0, 0, 0.08)', background: preset.preview.primary }} />
-                <span style={{ width: '20px', height: '20px', borderRadius: '50%', border: '1px solid rgba(0, 0, 0, 0.08)', background: preset.preview.secondary }} />
-                <span style={{ width: '20px', height: '20px', borderRadius: '50%', border: '1px solid rgba(0, 0, 0, 0.08)', background: preset.preview.accent }} />
-              </div>
-              <span className="font-semibold text-primary" style={{ fontSize: '0.85rem' }}>{preset.name}</span>
-              <span className="text-tertiary" style={{ fontSize: '0.7rem' }}>{preset.description}</span>
-              {preset.id === themeConfig.presetId && (
-                <span className="absolute flex items-center justify-center bg-primary text-white" style={{ top: '0.5rem', right: '0.5rem', width: '20px', height: '20px', borderRadius: '50%' }}><Check size={14} /></span>
-              )}
-            </button>
-          ))}
-        </div>
-        <p className="settings-section-title m-0 mb-sm">Dark themes</p>
-        <div className="grid grid-cols-auto-140 gap-md mobile-preset-grid">
-          {THEME_PRESETS.filter((p) => isDarkPreset(p.id)).map((preset) => (
-            <button
-              key={preset.id}
-              type="button"
-              className={`preset-card ${preset.id === themeConfig.presetId ? 'active' : ''}`}
-              onClick={() => selectPreset(preset.id)}
-              style={{ fontFamily: preset.tokens.fontFamily }}
-            >
-              <div className="flex gap-[4px] mb-[0.25rem]">
-                <span style={{ width: '20px', height: '20px', borderRadius: '50%', border: '1px solid rgba(0, 0, 0, 0.08)', background: preset.preview.bg }} />
-                <span style={{ width: '20px', height: '20px', borderRadius: '50%', border: '1px solid rgba(0, 0, 0, 0.08)', background: preset.preview.primary }} />
-                <span style={{ width: '20px', height: '20px', borderRadius: '50%', border: '1px solid rgba(0, 0, 0, 0.08)', background: preset.preview.secondary }} />
-                <span style={{ width: '20px', height: '20px', borderRadius: '50%', border: '1px solid rgba(0, 0, 0, 0.08)', background: preset.preview.accent }} />
-              </div>
-              <span className="font-semibold text-primary" style={{ fontSize: '0.85rem' }}>{preset.name}</span>
-              <span className="text-tertiary" style={{ fontSize: '0.7rem' }}>{preset.description}</span>
-              {preset.id === themeConfig.presetId && (
-                <span className="absolute flex items-center justify-center bg-primary text-white" style={{ top: '0.5rem', right: '0.5rem', width: '20px', height: '20px', borderRadius: '50%' }}><Check size={14} /></span>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Color palette */}
-      <div className="card p-lg mb-lg">
-        <div className="flex justify-between items-center mb-xs">
-          <h2 className="text-lg font-bold m-0">Color palette</h2>
-          {hasOverrides && (
-            <button type="button" className="btn btn-ghost btn-sm" onClick={resetColors}>
-              Reset to preset
-            </button>
-          )}
-        </div>
-        <p className="text-sm text-subtle mb-md">Override the {activePreset.name} theme colors.</p>
-        <div className="grid grid-cols-auto-160 gap-md mb-md">
-          {colorFields.map(({ key, label, value }) => (
-            <div key={key} className="flex flex-col gap-[0.25rem]">
-              <label className="text-xs text-tertiary uppercase font-semibold" style={{ letterSpacing: '0.04em' }}>{label}</label>
-              <div className="flex items-center gap-sm">
-                <input
-                  type="color"
-                  value={value}
-                  onChange={(e) => updateColor(key, e.target.value)}
-                  className="cursor-pointer"
-                  style={{ width: '2.5rem', height: '2rem', padding: 0, border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', background: 'none' }}
-                  aria-label={`${label} color`}
-                />
-                <input
-                  type="text"
-                  value={value}
-                  onChange={(e) => updateColor(key, e.target.value)}
-                  className="input-field flex-1 font-mono text-sm"
-                  style={{ minWidth: 0 }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Layout */}
-      <div className="card p-lg mb-lg">
-        <h2 className="text-lg font-bold mb-md">Layout</h2>
-        <div className="flex flex-col gap-md">
-          <SettingsToggle
-            id="compact-layout"
-            label="Compact layout"
-            description="Use tighter spacing to fit more information on screen."
-            checked={settings.compactLayout}
-            onChange={(v) => { set({ compactLayout: v }); logEvent('Compact Layout Toggled', { enabled: v }); }}
-          />
-          <div className="flex flex-col gap-xs" style={{ marginTop: '0.5rem' }}>
-            <label className="text-sm font-medium text-primary">Text size</label>
-            <div className="flex flex-wrap gap-sm">
-              {TEXT_SIZE_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  className={`text-size-btn ${settings.textSize === opt.value ? 'active' : ''}`}
-                  onClick={() => { set({ textSize: opt.value }); logEvent('Text Size Changed', { size: opt.label, value: opt.value }); }}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Weather */}
-      <div className="card p-lg mb-lg">
-        <h2 className="text-lg font-bold mb-md">Weather</h2>
-        <div className="flex flex-col gap-md">
-          <div className="flex flex-col gap-xs">
-            <label className="text-sm font-medium text-primary">Temperature unit</label>
-            <div className="flex gap-0" style={{ borderRadius: 'var(--radius-full)', border: '1px solid var(--border-color)', width: 'fit-content', overflow: 'hidden' }}>
-              {(['C', 'F'] as const).map((unit) => (
-                <button
-                  key={unit}
-                  type="button"
-                  className={`text-size-btn ${settings.temperatureUnit === unit ? 'active' : ''}`}
-                  style={{ borderRadius: 0, margin: 0 }}
-                  onClick={() => { set({ temperatureUnit: unit }); logEvent('Temperature Unit Changed', { unit }); }}
-                >
-                  °{unit}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="flex flex-col gap-xs">
-            <label className="text-sm font-medium text-primary">Hourly forecast time range</label>
-            <p className="text-sm text-subtle m-0">Show only these hours on the Weather page (e.g. 9am–9pm).</p>
-            <div className="flex items-center gap-2 flex-wrap">
-              <label className="text-sm text-subtle">From</label>
-              <select
-                value={settings.hourlyForecastStartHour ?? 9}
-                onChange={(e) => { set({ hourlyForecastStartHour: Number(e.target.value) }); logEvent('Setting Changed', { key: 'hourlyForecastStartHour', value: e.target.value }); }}
-                className="input-field"
-                style={{ width: '5rem' }}
-              >
-                {Array.from({ length: 24 }, (_, i) => (
-                  <option key={i} value={i}>{i === 0 ? '12am' : i < 12 ? `${i}am` : i === 12 ? '12pm' : `${i - 12}pm`}</option>
-                ))}
-              </select>
-              <span className="text-sm text-subtle">to</span>
-              <select
-                value={settings.hourlyForecastEndHour ?? 21}
-                onChange={(e) => { set({ hourlyForecastEndHour: Number(e.target.value) }); logEvent('Setting Changed', { key: 'hourlyForecastEndHour', value: e.target.value }); }}
-                className="input-field"
-                style={{ width: '5rem' }}
-              >
-                {Array.from({ length: 24 }, (_, i) => (
-                  <option key={i} value={i}>{i === 0 ? '12am' : i < 12 ? `${i}am` : i === 12 ? '12pm' : `${i - 12}pm`}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Spreadsheet */}
-      <div className="card p-lg mb-lg">
-        <h2 className="text-lg font-bold mb-md">Spreadsheet</h2>
-        <div className="flex flex-col gap-md">
-          <SettingsToggle
-            id="color-coded-rows"
-            label="Color-coded time rows"
-            description="Apply the morning/afternoon/evening tint across the entire spreadsheet row, not just the label."
-            checked={settings.colorCodedTimeRows}
-            onChange={(v) => { set({ colorCodedTimeRows: v }); logEvent('Setting Changed', { key: 'colorCodedTimeRows', value: v }); }}
-          />
-          {settings.colorCodedTimeRows && (
-            <div className="flex flex-col gap-xs" style={{ paddingLeft: '1.5rem' }}>
-              <label className="text-sm font-medium text-primary">
-                Row tint opacity — {settings.colorCodingOpacity}%
-              </label>
-              <input
-                type="range"
-                min={1}
-                max={20}
-                step={1}
-                value={settings.colorCodingOpacity}
-                onChange={(e) => set({ colorCodingOpacity: Number(e.target.value) })}
-                style={{ maxWidth: '220px', accentColor: 'var(--primary-color)' }}
-              />
-            </div>
-          )}
-          <div className="flex flex-col gap-xs">
-            <label className="text-sm font-medium text-primary">Day header row color</label>
-            <p className="text-sm text-subtle m-0">Tint the day column headers to distinguish them from the grid.</p>
-            <div className="flex flex-wrap gap-sm" style={{ marginTop: '0.25rem' }}>
-              {HEADER_COLOR_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  className={`zoom-btn ${settings.headerRowColor === opt.value ? 'active' : ''}`}
-                  onClick={() => { set({ headerRowColor: opt.value }); logEvent('Setting Changed', { key: 'headerRowColor', value: opt.value }); }}
-                  style={opt.preview ? { borderLeft: `3px solid ${opt.preview}` } : undefined}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <SettingsToggle
-            id="show-unscheduled"
-            label="Show unscheduled section"
-            description="Show the collapsible unscheduled activities section below the spreadsheet grid."
-            checked={settings.showUnscheduledSection}
-            onChange={(v) => { set({ showUnscheduledSection: v }); logEvent('Setting Changed', { key: 'showUnscheduledSection', value: v }); }}
-          />
-          <div className="flex flex-col gap-xs" style={{ marginTop: '0.25rem' }}>
-            <label className="text-sm font-medium text-primary">Default zoom level</label>
-            <div className="flex flex-wrap gap-sm">
-              {ZOOM_OPTIONS.map((z) => (
-                <button
-                  key={z}
-                  type="button"
-                  className={`zoom-btn ${settings.defaultSpreadsheetZoom === z ? 'active' : ''}`}
-                  onClick={() => { set({ defaultSpreadsheetZoom: z }); logEvent('Setting Changed', { key: 'defaultSpreadsheetZoom', value: z }); }}
-                >
-                  {z}%
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Calendar */}
-      <div className="card p-lg mb-lg">
-        <h2 className="text-lg font-bold mb-md">Calendar</h2>
-        <div className="flex flex-col gap-md">
-          <div className="flex flex-col gap-xs">
-            <label className="text-sm font-medium text-primary">Default view</label>
-            <div className="flex gap-sm">
-              {(['trip', 'day'] as const).map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  className={`text-size-btn ${settings.defaultCalendarView === v ? 'active' : ''}`}
-                  onClick={() => { set({ defaultCalendarView: v }); logEvent('Setting Changed', { key: 'defaultCalendarView', value: v }); }}
-                >
-                  {v.charAt(0).toUpperCase() + v.slice(1)}
-                </button>
-              ))}
-            </div>
-          </div>
-          <SettingsToggle
-            id="show-accommodation-cards"
-            label="Show accommodation on trip cards"
-            description="Display the accommodation row on calendar trip grid cards."
-            checked={settings.showAccommodationOnTripCards}
-            onChange={(v) => { set({ showAccommodationOnTripCards: v }); logEvent('Setting Changed', { key: 'showAccommodationOnTripCards', value: v }); }}
-          />
-        </div>
-      </div>
-
-      {/* Planning */}
-      <div className="card p-lg mb-lg">
-        <h2 className="text-lg font-bold mb-md">Planning</h2>
-        <div className="flex flex-col gap-md">
-          <SettingsToggle
-            id="show-planning-checks"
-            label="Show planning checks"
-            description="Display issue badges and conflict details on day pills."
-            checked={settings.showPlanningChecks}
-            onChange={(v) => { set({ showPlanningChecks: v }); logEvent('Setting Changed', { key: 'showPlanningChecks', value: v }); }}
-          />
-          <SettingsToggle
-            id="show-budget-warnings"
-            label="Show budget warnings"
-            description="Display budget threshold alerts on the Budget page."
-            checked={settings.showBudgetWarnings}
-            onChange={(v) => { set({ showBudgetWarnings: v }); logEvent('Setting Changed', { key: 'showBudgetWarnings', value: v }); }}
-          />
-        </div>
-      </div>
-
-      {/* Data */}
-      <div className="card p-lg mb-lg">
-        <h2 className="text-lg font-bold mb-md">Data</h2>
-        <div className="flex flex-col gap-md">
-          <div className="flex flex-col gap-xs">
-            <div className="flex items-center gap-sm">
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                onClick={() => {
-                  if (window.confirm('Delete all local what-if drafts? This cannot be undone.')) {
-                    void (async () => {
-                      await clearLocalDrafts();
-                      logEvent('Local Drafts Cleared');
-                    })();
-                  }
-                }}
-              >
-                <Trash2 size={14} /> Clear local drafts
-              </button>
-            </div>
-            <p className="text-sm text-subtle m-0" style={{ paddingLeft: '0.25rem' }}>Remove all what-if scenario snapshots stored in your browser (IndexedDB).</p>
-          </div>
-          <div className="flex flex-col gap-xs">
-            <div className="flex items-center gap-sm">
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                onClick={() => {
-                  if (window.confirm('Reset all settings to defaults? Your theme selection will be kept.')) {
-                    resetSettings();
-                    logEvent('Settings Reset');
-                  }
-                }}
-              >
-                <RotateCcw size={14} /> Reset all settings
-              </button>
-            </div>
-            <p className="text-sm text-subtle m-0" style={{ paddingLeft: '0.25rem' }}>Restore all settings to their default values.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default Settings;
 </file>
 
 <file path="src/pages/Assistant.tsx">
@@ -19579,12 +17500,1782 @@ Notes: ${effectiveTrip.aiPreferences?.notes || 'none set'}`;
 export default Assistant;
 </file>
 
+<file path="src/pages/ImportItinerary.tsx">
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Loader2, Check, AlertCircle, Plus, X, Plane } from 'lucide-react';
+import { useTrips, useActivities, useTransportRoutes, useNotes } from '../lib/store';
+import { useLocalStorageState } from '../hooks/useLocalStorageState';
+import { CATEGORY_EMOJIS } from '../lib/types';
+import type { Activity } from '../lib/types';
+import { useToast } from '../components/Toast';
+import { selectTripScenario, replaceScenarioDay, overwriteScenarioActivities } from '../lib/scenarios';
+import { buildTripExportPayload, downloadTextFile, slugifyFilename, toTripCsv } from '../lib/exportTrip';
+import { compareActivitiesByTimeThenOrder } from '../lib/itinerary';
+import { parseItineraryChunk, type ParseItineraryOptions, type ParsedActivity, type ParsedItinerary } from '../lib/ai/actions/importItinerary';
+
+type Stage = 'input' | 'preview' | 'saving' | 'done';
+type ImportExportMode = 'import' | 'export';
+type ExportFormat = 'json' | 'csv';
+type ImportTarget = 'new_trip' | 'existing_trip';
+
+const CATEGORY_LIST = ['sightseeing', 'food', 'accommodation', 'transport', 'shopping', 'other'] as const;
+const CURRENCY_LIST = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'KRW', 'TWD', 'THB', 'SGD'];
+
+function splitIntoChunks(text: string, maxChunks: number): string[] {
+    const lines = text.split('\n');
+    if (lines.length <= 10) return [text];
+
+    const dayPattern = /^(?:\|?\s*)?(?:\d{1,2}\/\d{1,2}(?:\/\d{2,4})?|\d{4}-\d{2}-\d{2}|day\s*\d+|(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*(?:day)?|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d|\t+\d{4}-\d{2}-\d{2})/i;
+
+    const dayStarts: number[] = [];
+    for (let i = 0; i < lines.length; i++) {
+        if (dayPattern.test(lines[i].trim())) {
+            dayStarts.push(i);
+        }
+    }
+
+    if (dayStarts.length >= 2) {
+        const dayGroups: string[] = [];
+        for (let i = 0; i < dayStarts.length; i++) {
+            const start = dayStarts[i];
+            const end = i + 1 < dayStarts.length ? dayStarts[i + 1] : lines.length;
+            dayGroups.push(lines.slice(start, end).join('\n'));
+        }
+        const header = dayStarts[0] > 0 ? lines.slice(0, dayStarts[0]).join('\n').trim() : '';
+
+        const daysPerChunk = Math.ceil(dayGroups.length / maxChunks);
+        const chunks: string[] = [];
+        for (let i = 0; i < dayGroups.length; i += daysPerChunk) {
+            const slice = dayGroups.slice(i, i + daysPerChunk).join('\n');
+            chunks.push(header ? `${header}\n${slice}` : slice);
+        }
+        return chunks;
+    }
+
+    const linesPerChunk = Math.ceil(lines.length / maxChunks);
+    const chunks: string[] = [];
+    for (let i = 0; i < lines.length; i += linesPerChunk) {
+        chunks.push(lines.slice(i, i + linesPerChunk).join('\n'));
+    }
+    return chunks;
+}
+
+function mergeResults(results: ParsedItinerary[]): ParsedItinerary {
+    const allActivities = results.flatMap(r => r.activities);
+    const allRoutes = results.flatMap(r => r.transportRoutes ?? []);
+    const dates = results.flatMap(r => [r.startDate, r.endDate]).sort();
+    return {
+        tripName: results[0].tripName,
+        startDate: dates[0],
+        endDate: dates[dates.length - 1],
+        activities: allActivities,
+        transportRoutes: allRoutes.length > 0 ? allRoutes : undefined,
+    };
+}
+
+function groupByDate(activities: ParsedActivity[]): Map<string, ParsedActivity[]> {
+    const map = new Map<string, ParsedActivity[]>();
+    for (const act of activities) {
+        const list = map.get(act.date) ?? [];
+        list.push(act);
+        map.set(act.date, list);
+    }
+    return new Map([...map.entries()].sort(([a], [b]) => a.localeCompare(b)));
+}
+
+function formatDate(dateStr: string): string {
+    try {
+        const d = new Date(dateStr + 'T00:00:00');
+        return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    } catch {
+        return dateStr;
+    }
+}
+
+function getDateOptionsForTrip(startDate: string, endDate: string): { value: string; label: string }[] {
+    const start = new Date(startDate + 'T00:00:00');
+    const end = new Date(endDate + 'T00:00:00');
+    const options: { value: string; label: string }[] = [];
+    const cursor = new Date(start);
+    let dayIndex = 0;
+    while (cursor <= end) {
+        const dateStr = cursor.toISOString().slice(0, 10);
+        options.push({
+            value: dateStr,
+            label: `Day ${dayIndex + 1}: ${formatDate(dateStr)}`,
+        });
+        cursor.setDate(cursor.getDate() + 1);
+        dayIndex++;
+    }
+    return options;
+}
+
+const LOADING_MESSAGES = [
+    "Analyzing your itinerary...",
+    "Extracting dates and times...",
+    "Categorizing activities...",
+    "Structuring the schedule...",
+    "Almost done...",
+    "Just a little more..."
+];
+
+const LoadingJokes: React.FC<{ progress: string }> = ({ progress }) => {
+    const [msgIdx, setMsgIdx] = React.useState(0);
+
+    React.useEffect(() => {
+        const interval = setInterval(() => {
+            setMsgIdx(prev => (prev + 1) % LOADING_MESSAGES.length);
+        }, 10000);
+        return () => clearInterval(interval);
+    }, []);
+
+    // Explicit progress overrides rotating messages (e.g. chunking progress)
+    const displayMessage = progress || LOADING_MESSAGES[msgIdx];
+
+    return (
+        <div className="flex flex-col items-center text-center gap-xl" style={{ padding: '4rem 2rem' }}>
+            <div className="text-primary animate-plane-bob">
+                <Plane size={48} />
+            </div>
+            <p className="flex items-center gap-sm text-sm text-tertiary loading-spinner-before">{displayMessage}</p>
+        </div>
+    );
+};
+
+function assistantPayloadToParsedActivities(raw: unknown[]): ParsedActivity[] {
+    return raw.map((item: any) => ({
+        date: typeof item.date === 'string' ? item.date : '',
+        title: typeof item.title === 'string' ? item.title : 'Activity',
+        details: typeof item.details === 'string' ? item.details : undefined,
+        time: typeof item.time === 'string' ? item.time : undefined,
+        location: typeof item.location === 'string' ? item.location : undefined,
+        category: ['sightseeing', 'food', 'accommodation', 'transport', 'shopping', 'other'].includes(item.category) ? item.category : 'other',
+        notes: typeof item.notes === 'string' ? item.notes : undefined,
+        cost: typeof item.cost === 'number' ? item.cost : undefined,
+        currency: typeof item.currency === 'string' ? item.currency : undefined,
+    })).filter(a => a.date && a.title);
+}
+
+const ImportItinerary: React.FC = () => {
+    const navigate = useNavigate();
+    const location = useLocation();
+    const { trips, addTrip, updateTrip } = useTrips();
+    const { addActivity, deleteActivity, getActivitiesByTrip } = useActivities();
+    const { getRoutesByTrip, addRoute, deleteRoute } = useTransportRoutes();
+    const { getNotesByTrip } = useNotes();
+    const { showToast } = useToast();
+
+    const [mode, setMode] = useState<ImportExportMode>('import');
+    const [exportTripId, setExportTripId] = useState<string>('');
+    const [exportFormat, setExportFormat] = useState<ExportFormat>('json');
+
+    const [rawText, setRawText] = useLocalStorageState('travelplanner_import_raw', '');
+    const [stage, setStage] = useLocalStorageState<Stage>('travelplanner_import_stage', 'input');
+    const [parsed, setParsed] = useLocalStorageState<ParsedItinerary | null>('travelplanner_import_parsed', null);
+    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [parseProgress, setParseProgress] = useState('');
+    const [currency, setCurrency] = useState('USD');
+
+    const [activeTripId, setActiveTripId] = useState<string | null>(null);
+    const [activeTripName, setActiveTripName] = useState<string | null>(null);
+    const [totalImported, setTotalImported] = useState(0);
+
+    const [importTarget, setImportTarget] = useState<ImportTarget>('new_trip');
+    const [selectedTripIdForDay, setSelectedTripIdForDay] = useState<string | null>(null);
+    const [selectedDateForDay, setSelectedDateForDay] = useState<string | null>(null);
+    const [assistantPayload, setAssistantPayload] = useState<ParsedActivity[] | null>(null);
+    const [assistantImportMode, setAssistantImportMode] = useState<'add_to_day' | 'overwrite_trip' | 'replace_existing_day' | null>(null);
+    const [preselectedTripId, setPreselectedTripId] = useState<string | null>(null);
+    const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null);
+    const [activeScenarioName, setActiveScenarioName] = useState<string | null>(null);
+
+    const isAppending = activeTripId !== null;
+    const isSingleDayMode = importTarget === 'existing_trip';
+    const isReplaceDayMode = assistantImportMode === 'replace_existing_day';
+    const isOverwriteTripMode = assistantImportMode === 'overwrite_trip';
+    const selectedTripForDay = selectedTripIdForDay ? trips.find(t => t.id === selectedTripIdForDay) ?? null : null;
+    const dateOptionsForSelectedTrip = selectedTripForDay
+        ? getDateOptionsForTrip(selectedTripForDay.startDate, selectedTripForDay.endDate)
+        : [];
+
+    /** Shown so user knows which trip (and Live vs draft) will be changed before confirming. */
+    const editingContextLabel =
+        (assistantPayload != null || assistantImportMode != null) && selectedTripForDay
+            ? activeScenarioName != null
+                ? `${selectedTripForDay.name} → ${activeScenarioName}`
+                : `${selectedTripForDay.name} (Live)`
+            : null;
+
+    const assistantStateConsumed = useRef(false);
+    useEffect(() => {
+        if (assistantStateConsumed.current) return;
+        const state = location.state as {
+            fromAssistant?: boolean;
+            payload?: unknown[];
+            importMode?: 'add_to_day' | 'overwrite_trip' | 'replace_existing_day';
+            preselectedTripId?: string;
+            activeScenarioId?: string;
+            activeScenarioName?: string;
+        } | null;
+        if (state?.fromAssistant && Array.isArray(state?.payload) && state.payload.length > 0) {
+            assistantStateConsumed.current = true;
+            const activities = assistantPayloadToParsedActivities(state.payload);
+            if (activities.length > 0) {
+                setImportTarget('existing_trip');
+                setAssistantPayload(activities);
+                setStage('input');
+                if (state.importMode) setAssistantImportMode(state.importMode);
+                if (state.preselectedTripId) {
+                    setPreselectedTripId(state.preselectedTripId);
+                    setSelectedTripIdForDay(state.preselectedTripId);
+                }
+                if (state.activeScenarioId) setActiveScenarioId(state.activeScenarioId);
+                if (state.activeScenarioName != null) setActiveScenarioName(state.activeScenarioName);
+            }
+            navigate(location.pathname, { replace: true, state: {} });
+        }
+    }, [location.state, location.pathname, navigate]);
+
+    const updateParsedField = useCallback((field: keyof ParsedItinerary, value: string) => {
+        setParsed((prev: ParsedItinerary | null) => prev ? { ...prev, [field]: value } : prev);
+    }, [setParsed]);
+
+    const updateActivity = useCallback((index: number, field: keyof ParsedActivity, value: string) => {
+        setParsed((prev: ParsedItinerary | null) => {
+            if (!prev) return prev;
+            const activities = [...prev.activities];
+            activities[index] = { ...activities[index], [field]: value || undefined };
+            return { ...prev, activities };
+        });
+    }, [setParsed]);
+
+    const removeActivity = useCallback((index: number) => {
+        setParsed((prev: ParsedItinerary | null) => {
+            if (!prev) return prev;
+            const activities = prev.activities.filter((_: any, i: number) => i !== index);
+            return { ...prev, activities };
+        });
+    }, [setParsed]);
+
+    const handleDiscard = useCallback(() => {
+        setParsed(null);
+        setError(null);
+        setRawText('');
+        setStage('input');
+    }, [setParsed, setRawText, setStage]);
+
+    const CHUNK_LIMITS: ParseItineraryOptions = { maxActivitiesPerChunk: 25, maxTransportPerChunk: 12 };
+
+    async function parseChunk(text: string, options?: ParseItineraryOptions): Promise<ParsedItinerary> {
+        return parseItineraryChunk(text, options);
+    }
+
+    const handleParse = async () => {
+        if (!rawText.trim()) return;
+        setLoading(true);
+        setError(null);
+        setParseProgress('');
+
+        try {
+            setParseProgress('Parsing itinerary...');
+            let result: ParsedItinerary;
+            try {
+                result = await parseChunk(rawText.trim());
+            } catch (firstErr) {
+                const firstMsg = firstErr instanceof Error ? firstErr.message : '';
+                if (firstMsg !== 'TRUNCATED') throw firstErr;
+
+                const chunks = splitIntoChunks(rawText.trim(), 3);
+                if (chunks.length <= 1) {
+                    throw new Error('The AI response was too long even for a single chunk. Try pasting less text.');
+                }
+
+                const results: ParsedItinerary[] = [];
+                for (let i = 0; i < chunks.length; i++) {
+                    setParseProgress(`Parsing chunk ${i + 1} of ${chunks.length}...`);
+                    try {
+                        const chunkResult = await parseChunk(chunks[i], CHUNK_LIMITS);
+                        results.push(chunkResult);
+                    } catch (chunkErr) {
+                        const chunkMsg = chunkErr instanceof Error ? chunkErr.message : '';
+                        if (chunkMsg === 'TRUNCATED') {
+                            const subChunks = splitIntoChunks(chunks[i], 2);
+                            for (let j = 0; j < subChunks.length; j++) {
+                                setParseProgress(`Parsing chunk ${i + 1}.${j + 1} of ${chunks.length}...`);
+                                results.push(await parseChunk(subChunks[j], CHUNK_LIMITS));
+                            }
+                        } else {
+                            throw chunkErr;
+                        }
+                    }
+                }
+
+                if (results.length === 0) {
+                    throw new Error('No activities were parsed from any chunk.');
+                }
+                result = mergeResults(results);
+            }
+
+            if (result.activities.length === 0) {
+                throw new Error('No activities were parsed from the input. Try providing more detail.');
+            }
+
+            if (isSingleDayMode && selectedDateForDay) {
+                result.activities = result.activities.map((a) => ({ ...a, date: selectedDateForDay }));
+                result.startDate = selectedDateForDay;
+                result.endDate = selectedDateForDay;
+            }
+
+            setParsed(result);
+            setStage('preview');
+        } catch (e) {
+            const msg = e instanceof Error ? e.message : 'Parsing failed';
+            console.error('Import parse error:', e);
+            setError(msg);
+        } finally {
+            setLoading(false);
+            setParseProgress('');
+        }
+    };
+
+    const handleConfirm = async () => {
+        if (!parsed || parsed.activities.length === 0) return;
+        setStage('saving');
+
+        try {
+            let tripId: string;
+            let tripMembers: string[] = [];
+            const targetDate = isSingleDayMode ? selectedDateForDay! : null;
+
+            if (isSingleDayMode && selectedTripIdForDay) {
+                tripId = selectedTripIdForDay;
+                const trip = selectedTripForDay ?? trips.find(t => t.id === tripId);
+                tripMembers = (trip?.members?.length ? trip.members : trip ? [trip.userId] : []).filter(Boolean);
+                setActiveTripId(tripId);
+                setActiveTripName(trip?.name ?? null);
+            } else if (isAppending && activeTripId) {
+                tripId = activeTripId;
+                const activeTrip = trips.find(t => t.id === tripId);
+                tripMembers = activeTrip?.members || (activeTrip ? [activeTrip.userId] : []);
+                await updateTrip(tripId, expandDateRange(tripId, parsed.startDate, parsed.endDate));
+            } else {
+                const trip = await addTrip({
+                    name: parsed.tripName,
+                    startDate: parsed.startDate,
+                    endDate: parsed.endDate,
+                    defaultCurrency: currency,
+                });
+                tripId = trip.id;
+                tripMembers = trip.members || [];
+                setActiveTripId(tripId);
+                setActiveTripName(parsed.tripName);
+            }
+
+            if (isOverwriteTripMode && (selectedTripIdForDay || preselectedTripId)) {
+                const overwriteTripId = selectedTripIdForDay ?? preselectedTripId!;
+                const overwriteTrip = trips.find(t => t.id === overwriteTripId);
+                const overwriteMembers = (overwriteTrip?.members?.length ? overwriteTrip!.members : overwriteTrip ? [overwriteTrip.userId] : []).filter(Boolean);
+
+                if (activeScenarioId) {
+                    const scenarioActivities: Omit<Activity, 'id'>[] = parsed.activities.map((act, i) => ({
+                        userId: overwriteTrip?.userId ?? '',
+                        tripId: overwriteTripId,
+                        tripMembers: overwriteMembers,
+                        date: act.date,
+                        title: act.title ?? '',
+                        details: act.details,
+                        time: act.time ?? undefined,
+                        location: act.location,
+                        category: act.category || 'other',
+                        notes: act.notes,
+                        cost: act.cost,
+                        currency: act.currency,
+                        order: i,
+                    }));
+                    overwriteScenarioActivities(overwriteTripId, activeScenarioId, scenarioActivities);
+                    setActiveTripId(overwriteTripId);
+                    setActiveTripName(overwriteTrip?.name ?? null);
+                    selectTripScenario(overwriteTripId, activeScenarioId);
+                    showToast(`Replaced draft with ${scenarioActivities.length} activities. View in Calendar (draft).`);
+                    setStage('done');
+                    return;
+                }
+
+                const toDelete = getActivitiesByTrip(overwriteTripId);
+                for (const a of toDelete) await deleteActivity(a.id);
+                const groupedOverwrite = groupByDate(parsed.activities);
+                let overwriteCount = 0;
+                for (const [date, acts] of groupedOverwrite) {
+                    for (let i = 0; i < acts.length; i++) {
+                        const act = acts[i];
+                        await addActivity({
+                            tripId: overwriteTripId,
+                            date: String(date),
+                            title: act.title ?? '',
+                            details: act.details || undefined,
+                            time: act.time ?? undefined,
+                            location: act.location || undefined,
+                            category: act.category || 'other',
+                            notes: act.notes || undefined,
+                            cost: act.cost,
+                            currency: act.currency || undefined,
+                            order: i,
+                        } as Omit<Activity, 'id' | 'userId' | 'tripMembers'>, overwriteMembers);
+                        overwriteCount++;
+                    }
+                }
+                const existingRoutes = getRoutesByTrip(overwriteTripId);
+                for (const r of existingRoutes) await deleteRoute(r.id);
+                for (const route of parsed.transportRoutes ?? []) {
+                    await addRoute({
+                        tripId: overwriteTripId,
+                        date: route.date,
+                        type: route.type,
+                        from: route.from,
+                        to: route.to,
+                        departureTime: route.departureTime,
+                        arrivalTime: route.arrivalTime,
+                        bookingRef: route.bookingRef,
+                        notes: route.notes,
+                        cost: route.cost,
+                        currency: route.currency,
+                    }, overwriteMembers);
+                }
+                setActiveTripId(overwriteTripId);
+                setActiveTripName(overwriteTrip?.name ?? null);
+                selectTripScenario(overwriteTripId, null);
+                const routeCount = (parsed.transportRoutes ?? []).length;
+                showToast(`Replaced trip with ${overwriteCount} activities${routeCount > 0 ? ` and ${routeCount} transport` : ''}. View in Calendar or Spreadsheet (Live).`);
+                setStage('done');
+                return;
+            }
+
+            if (isReplaceDayMode && selectedDateForDay && activeScenarioId && tripId && tripMembers.length > 0) {
+                const dayActivities: Omit<Activity, 'id'>[] = parsed.activities.map((act, i) => ({
+                    userId: selectedTripForDay?.userId ?? '',
+                    tripId,
+                    tripMembers,
+                    date: selectedDateForDay,
+                    title: act.title ?? '',
+                    details: act.details,
+                    time: act.time ?? undefined,
+                    location: act.location,
+                    category: act.category || 'other',
+                    notes: act.notes,
+                    cost: act.cost,
+                    currency: act.currency,
+                    order: i,
+                }));
+                replaceScenarioDay(tripId, activeScenarioId, selectedDateForDay, dayActivities);
+                setActiveTripId(tripId);
+                setActiveTripName(selectedTripForDay?.name ?? null);
+                selectTripScenario(tripId, activeScenarioId);
+                showToast(`Replaced ${selectedDateForDay} in draft with ${dayActivities.length} activities. View in Calendar (draft).`);
+                setStage('done');
+                return;
+            }
+
+            const existingActivities = getActivitiesByTrip(tripId);
+            if (isSingleDayMode && isReplaceDayMode && selectedDateForDay) {
+                const toRemove = existingActivities.filter(a => a.date === selectedDateForDay);
+                for (const a of toRemove) await deleteActivity(a.id);
+            }
+            const maxOrderByDate = new Map<string, number>();
+            for (const a of existingActivities) {
+                const cur = maxOrderByDate.get(a.date) ?? -1;
+                if (a.order > cur) maxOrderByDate.set(a.date, a.order);
+            }
+            if (isReplaceDayMode && selectedDateForDay) maxOrderByDate.set(selectedDateForDay, -1);
+
+            const grouped = groupByDate(parsed.activities);
+            let addedCount = 0;
+            for (const [date, acts] of grouped) {
+                const useDate = String(targetDate ?? date);
+                const startOrder = (maxOrderByDate.get(useDate) ?? -1) + 1;
+                for (let i = 0; i < acts.length; i++) {
+                    const act = acts[i];
+                    const payload = {
+                        tripId: String(tripId),
+                        date: useDate,
+                        title: act.title ?? '',
+                        details: act.details || undefined,
+                        time: act.time ?? undefined,
+                        location: act.location || undefined,
+                        category: act.category || 'other',
+                        notes: act.notes || undefined,
+                        cost: act.cost,
+                        currency: act.currency || undefined,
+                        order: startOrder + i,
+                    };
+                    await addActivity(payload as Omit<Activity, 'id' | 'userId' | 'tripMembers'>, tripMembers);
+                    addedCount++;
+                }
+            }
+
+            for (const route of parsed.transportRoutes ?? []) {
+                await addRoute({
+                    tripId: String(tripId),
+                    date: String(targetDate ?? route.date),
+                    type: route.type,
+                    from: route.from,
+                    to: route.to,
+                    departureTime: route.departureTime,
+                    arrivalTime: route.arrivalTime,
+                    bookingRef: route.bookingRef,
+                    notes: route.notes,
+                    cost: route.cost,
+                    currency: route.currency,
+                }, tripMembers);
+            }
+
+            setTotalImported(prev => prev + addedCount);
+            if (isSingleDayMode && selectedDateForDay) {
+                selectTripScenario(tripId, null);
+                const tripName = selectedTripForDay?.name ?? activeTripName ?? parsed.tripName;
+                const verb = isReplaceDayMode ? 'Replaced' : 'Added';
+                showToast(`${verb} ${addedCount} activities ${isReplaceDayMode ? 'for' : 'to'} ${formatDate(selectedDateForDay)} in ${tripName}. View in Calendar or Spreadsheet (Live).`);
+            }
+            setStage('done');
+        } catch (e) {
+            const msg = e instanceof Error ? e.message : 'Failed to save';
+            console.error('Import save error:', e);
+            setError(msg);
+            setStage('preview');
+        }
+    };
+
+    function expandDateRange(tripId: string, newStart: string, newEnd: string) {
+        const existing = getActivitiesByTrip(tripId);
+        let earliest = newStart;
+        let latest = newEnd;
+        for (const a of existing) {
+            if (a.date < earliest) earliest = a.date;
+            if (a.date > latest) latest = a.date;
+        }
+        return { startDate: earliest < newStart ? earliest : newStart, endDate: latest > newEnd ? latest : newEnd };
+    }
+
+    const handleAddMore = () => {
+        setRawText('');
+        setParsed(null);
+        setError(null);
+        setStage('input');
+    };
+
+    const handleStartFresh = () => {
+        setRawText('');
+        setParsed(null);
+        setError(null);
+        setActiveTripId(null);
+        setActiveTripName(null);
+        setTotalImported(0);
+        setCurrency('USD');
+        setStage('input');
+    };
+
+    const handleImportTargetChange = (target: ImportTarget) => {
+        setImportTarget(target);
+        if (target === 'new_trip') {
+            setSelectedTripIdForDay(null);
+            setSelectedDateForDay(null);
+            setAssistantPayload(null);
+            setActiveTripId(null);
+            setActiveTripName(null);
+            setTotalImported(0);
+        }
+    };
+
+    const handleSelectedTripForDayChange = (tripId: string) => {
+        setSelectedTripIdForDay(tripId || null);
+        if (tripId) {
+            const trip = trips.find(t => t.id === tripId);
+            setSelectedDateForDay(trip ? trip.startDate : null);
+        } else {
+            setSelectedDateForDay(null);
+        }
+    };
+
+    const handleAssistantPayloadContinue = () => {
+        if (!assistantPayload || assistantPayload.length === 0 || !selectedTripIdForDay || !selectedTripForDay) return;
+        if (isOverwriteTripMode) {
+            const dates = assistantPayload.map((a) => a.date).filter(Boolean).sort();
+            const start = dates[0] ?? selectedTripForDay.startDate;
+            const end = dates[dates.length - 1] ?? selectedTripForDay.endDate;
+            setParsed({
+                tripName: selectedTripForDay.name,
+                startDate: start,
+                endDate: end,
+                activities: [...assistantPayload],
+            });
+        } else {
+            if (!selectedDateForDay) return;
+            const normalized = assistantPayload.map((a) => ({ ...a, date: selectedDateForDay }));
+            setParsed({
+                tripName: selectedTripForDay.name,
+                startDate: selectedDateForDay,
+                endDate: selectedDateForDay,
+                activities: normalized,
+            });
+        }
+        setAssistantPayload(null);
+        setStage('preview');
+    };
+
+    const grouped = parsed ? groupByDate(parsed.activities) : null;
+    let globalIdx = 0;
+
+    const existingActivitiesForSelectedDay =
+        isSingleDayMode && selectedTripIdForDay && selectedDateForDay
+            ? getActivitiesByTrip(selectedTripIdForDay)
+                  .filter((a) => a.date === selectedDateForDay)
+                  .sort(compareActivitiesByTimeThenOrder)
+            : [];
+
+    const selectedExportTrip = trips.find(t => t.id === exportTripId) || null;
+
+    const handleExport = useCallback(() => {
+        if (!selectedExportTrip) {
+            showToast('Select a trip to export');
+            return;
+        }
+
+        try {
+            const activitiesForTrip = getActivitiesByTrip(selectedExportTrip.id);
+            const routesForTrip = getRoutesByTrip(selectedExportTrip.id);
+            const notesForTrip = getNotesByTrip(selectedExportTrip.id);
+            const baseFilename = `${slugifyFilename(selectedExportTrip.name)}-${selectedExportTrip.startDate}-${selectedExportTrip.endDate}`;
+
+            if (exportFormat === 'json') {
+                const payload = buildTripExportPayload({
+                    trip: selectedExportTrip,
+                    activities: activitiesForTrip,
+                    transportRoutes: routesForTrip,
+                    notes: notesForTrip,
+                });
+                downloadTextFile(`${baseFilename}.json`, JSON.stringify(payload, null, 2), 'application/json;charset=utf-8');
+            } else {
+                const csv = toTripCsv({
+                    trip: selectedExportTrip,
+                    activities: activitiesForTrip,
+                    transportRoutes: routesForTrip,
+                    notes: notesForTrip,
+                });
+                downloadTextFile(`${baseFilename}-trip.csv`, csv, 'text/csv;charset=utf-8');
+            }
+
+            showToast(`Exported ${selectedExportTrip.name} as ${exportFormat.toUpperCase()}`);
+        } catch (err) {
+            console.error('Export failed:', err);
+            showToast('Export failed. Please try again.');
+        }
+    }, [selectedExportTrip, showToast, getActivitiesByTrip, getRoutesByTrip, getNotesByTrip, exportFormat]);
+
+    return (
+        <div className="page-container animate-fade-in">
+            <header className="page-header">
+                <div>
+                    <h1>Import Itinerary</h1>
+                    <p>Paste an AI-generated itinerary and we'll parse it into a trip.</p>
+                </div>
+            </header>
+
+            <div className="flex items-center gap-xs mb-lg">
+                <button
+                    type="button"
+                    className={`btn btn-sm ${mode === 'import' ? 'btn-primary' : 'btn-ghost'}`}
+                    onClick={() => setMode('import')}
+                >
+                    Import
+                </button>
+                <button
+                    type="button"
+                    className={`btn btn-sm ${mode === 'export' ? 'btn-primary' : 'btn-ghost'}`}
+                    onClick={() => {
+                        setMode('export');
+                        if (!exportTripId && trips.length > 0) {
+                            setExportTripId(trips[0].id);
+                        }
+                    }}
+                >
+                    Export
+                </button>
+            </div>
+
+            {mode === 'import' && (
+                <div className="flex items-center gap-xs mb-md">
+                    <button
+                        type="button"
+                        className={`btn btn-sm ${importTarget === 'new_trip' ? 'btn-primary' : 'btn-ghost'}`}
+                        onClick={() => handleImportTargetChange('new_trip')}
+                    >
+                        New trip
+                    </button>
+                    <button
+                        type="button"
+                        className={`btn btn-sm ${importTarget === 'existing_trip' ? 'btn-primary' : 'btn-ghost'}`}
+                        onClick={() => handleImportTargetChange('existing_trip')}
+                        disabled={trips.length === 0}
+                    >
+                        Add to existing trip
+                    </button>
+                </div>
+            )}
+
+            {mode === 'export' && (
+                <div className="card p-xl flex flex-col gap-md">
+                    <div className="flex flex-wrap items-end gap-sm">
+                        <div className="flex flex-col gap-xs" style={{ minWidth: '240px', flex: '1 1 280px' }}>
+                            <label className="input-label">Select trip</label>
+                            <select
+                                className="input-field"
+                                value={exportTripId}
+                                onChange={(e) => setExportTripId(e.target.value)}
+                            >
+                                <option value="">Choose a trip...</option>
+                                {trips.map((t) => (
+                                    <option key={t.id} value={t.id}>
+                                        {t.name} ({t.startDate} to {t.endDate})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="flex flex-col gap-xs">
+                            <label className="input-label">Format</label>
+                            <select
+                                className="input-field"
+                                value={exportFormat}
+                                onChange={(e) => setExportFormat(e.target.value as ExportFormat)}
+                            >
+                                <option value="json">JSON</option>
+                                <option value="csv">CSV (trip.csv)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <p className="text-sm text-tertiary">
+                        {exportFormat === 'json'
+                            ? 'JSON export includes trip metadata plus activities, transport routes, and notes.'
+                            : 'CSV export creates trip.csv with metadata and flattened itinerary records.'}
+                    </p>
+
+                    <div className="flex justify-end">
+                        <button
+                            type="button"
+                            className="btn btn-primary"
+                            onClick={handleExport}
+                            disabled={!exportTripId}
+                        >
+                            Export {exportFormat.toUpperCase()}
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Input Stage */}
+            {mode === 'import' && stage === 'input' && !loading && (
+                <div className="flex flex-col gap-sm">
+                    {editingContextLabel && (
+                        <p className="text-sm font-medium" style={{ color: 'var(--text-color)' }}>
+                            Editing: {editingContextLabel}
+                        </p>
+                    )}
+                    {(isSingleDayMode || assistantPayload) && (
+                        <div className="flex flex-wrap items-end gap-sm">
+                            <div className="flex flex-col gap-xs" style={{ minWidth: '240px', flex: '1 1 280px' }}>
+                                <label className="input-label">Select trip</label>
+                                <select
+                                    className="input-field"
+                                    value={selectedTripIdForDay ?? ''}
+                                    onChange={(e) => handleSelectedTripForDayChange(e.target.value)}
+                                >
+                                    <option value="">{trips.length === 0 ? 'No trips yet' : 'Choose a trip...'}</option>
+                                    {trips.map((t) => (
+                                        <option key={t.id} value={t.id}>
+                                            {t.name} ({t.startDate} to {t.endDate})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            {selectedTripForDay && dateOptionsForSelectedTrip.length > 0 && !isOverwriteTripMode && (
+                                <div className="flex flex-col gap-xs" style={{ minWidth: '240px', flex: '1 1 280px' }}>
+                                    <label className="input-label">{isReplaceDayMode ? 'Day to replace' : 'Select day'}</label>
+                                    <select
+                                        className="input-field"
+                                        value={selectedDateForDay ?? ''}
+                                        onChange={(e) => setSelectedDateForDay(e.target.value || null)}
+                                    >
+                                        {dateOptionsForSelectedTrip.map((opt) => (
+                                            <option key={opt.value} value={opt.value}>
+                                                {opt.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    {assistantPayload ? (
+                        <>
+                            <p className="text-sm text-secondary">
+                                {isOverwriteTripMode && (
+                                    <span className="font-medium text-primary">Replace entire trip — </span>
+                                )}
+                                {isReplaceDayMode && !isOverwriteTripMode && (
+                                    <span className="font-medium text-primary">Replace one day — </span>
+                                )}
+                                {assistantPayload.length} activit{assistantPayload.length === 1 ? 'y' : 'ies'} from Assistant.
+                                {isOverwriteTripMode
+                                    ? ' Select trip above, then continue to preview.'
+                                    : ' Select trip and day above, then continue to preview.'}
+                            </p>
+                            <div className="flex items-center gap-sm">
+                                <button
+                                    type="button"
+                                    className="btn btn-primary"
+                                    onClick={handleAssistantPayloadContinue}
+                                    disabled={!selectedTripIdForDay || (!isOverwriteTripMode && !selectedDateForDay)}
+                                >
+                                    Continue to preview
+                                </button>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                    {isAppending && !isSingleDayMode && (
+                        <div className="flex items-center gap-sm p-sm rounded-md text-sm text-secondary" style={{ backgroundColor: 'color-mix(in srgb, var(--primary-color) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--primary-color) 20%, transparent)' }}>
+                            <Plus size={16} className="text-primary shrink-0" />
+                            <span>Adding more days to <strong>{activeTripName}</strong> ({totalImported} activities imported so far)</span>
+                        </div>
+                    )}
+                    <label className="input-label" htmlFor="import-textarea">
+                        {isSingleDayMode
+                            ? 'Paste this day\'s itinerary'
+                            : isAppending
+                                ? 'Paste the next chunk of your itinerary'
+                                : 'Paste your itinerary'}
+                    </label>
+                    <textarea
+                        id="import-textarea"
+                        className="input-field"
+                        style={{ minHeight: '200px', resize: 'vertical', fontFamily: 'inherit', fontSize: '0.9rem', lineHeight: 1.5 }}
+                        value={rawText}
+                        onChange={e => setRawText(e.target.value)}
+                        placeholder={isSingleDayMode
+                            ? "Paste this day's activities (no dates needed)..."
+                            : isAppending
+                                ? "Paste the next set of days here..."
+                                : "Paste your itinerary here (from Gemini, ChatGPT, Claude, etc.)\n\nSupports tables, bullet lists, or any text format.\nLong itineraries are automatically split into chunks."}
+                        rows={12}
+                    />
+                    {error && (
+                        <div className="flex items-start gap-sm p-sm rounded-md text-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--error-color) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--error-color) 25%, transparent)', color: 'var(--error-color)', lineHeight: 1.4 }}>
+                            <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                            <span>{error}</span>
+                        </div>
+                    )}
+                    <style>{`
+                        @media (max-width: 768px) {
+                            .mobile-column-reverse { flex-direction: column-reverse !important; align-items: stretch !important; }
+                            .mobile-column-reverse .btn { width: 100% !important; margin-left: 0 !important; }
+                        }
+                    `}</style>
+                    <div className="flex items-center gap-sm mobile-column-reverse">
+                        {isAppending && !isSingleDayMode && (
+                            <button className="btn btn-ghost" onClick={handleStartFresh}>
+                                Start New Trip
+                            </button>
+                        )}
+                        <button
+                            className="btn btn-primary"
+                            style={{ marginLeft: 'auto' }}
+                            onClick={handleParse}
+                            disabled={
+                                !rawText.trim() ||
+                                (isSingleDayMode && (!selectedTripIdForDay || !selectedDateForDay))
+                            }
+                        >
+                            Parse with AI
+                        </button>
+                    </div>
+                        </>
+                    )}
+                </div>
+            )}
+
+            {/* Loading / Parsing Stage */}
+            {mode === 'import' && stage === 'input' && loading && (
+                <LoadingJokes progress={parseProgress} />
+            )}
+
+            {/* Preview Stage */}
+            {mode === 'import' && stage === 'preview' && parsed && grouped && (() => { globalIdx = 0; return true; })() && (
+                <div className="flex flex-col gap-xl">
+                    <style>{`
+                        @media (max-width: 768px) {
+                            .mobile-actions { flex-wrap: wrap !important; padding: 0.5rem 0.75rem !important; }
+                            .mobile-actions-right { width: 100% !important; display: flex; gap: 0.75rem; }
+                            .mobile-actions-right .btn { flex: 1; }
+                            .mobile-discard { width: 100% !important; margin-bottom: 0.5rem; }
+                            .mobile-edit-row { flex-direction: column !important; align-items: stretch !important; gap: 0.5rem !important; }
+                        }
+                    `}</style>
+                    <div className="sticky-actions mobile-actions">
+                        <button className="btn btn-ghost mobile-discard" style={{ color: 'var(--error-color)' }} onClick={handleDiscard}>
+                            Discard
+                        </button>
+                        <div className="flex items-center gap-sm mobile-actions-right">
+                            <button className="btn btn-ghost" onClick={() => { setStage('input'); setError(null); }}>
+                                Re-paste
+                            </button>
+                            <button
+                                className="btn btn-primary"
+                                onClick={handleConfirm}
+                                disabled={parsed.activities.length === 0 || (!isSingleDayMode && !parsed.tripName.trim())}
+                            >
+                                {isOverwriteTripMode ? 'Replace Trip' : isReplaceDayMode ? 'Replace Day' : isSingleDayMode || isAppending ? 'Add Activities' : 'Create Trip'}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="card p-xl flex flex-col gap-sm" style={{ background: 'linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 6%, transparent), color-mix(in srgb, var(--secondary-color) 6%, transparent))' }}>
+                        {isSingleDayMode ? (
+                            <>
+                                <p className="text-xs text-tertiary uppercase font-semibold mb-0" style={{ letterSpacing: '0.05em' }}>
+                                    {isOverwriteTripMode ? 'Replacing trip' : isReplaceDayMode ? 'Replacing day' : 'Adding to'}
+                                </p>
+                                <h2 className="text-xl mb-xs">{selectedTripForDay?.name ?? 'Trip'}</h2>
+                                {selectedDateForDay && !isOverwriteTripMode && (
+                                    <p className="text-sm text-tertiary mt-xs">Date: {formatDate(selectedDateForDay)}</p>
+                                )}
+                                {isOverwriteTripMode && (
+                                    <p className="text-sm text-tertiary mt-xs">All existing activities will be removed and replaced.</p>
+                                )}
+                            </>
+                        ) : isAppending ? (
+                            <>
+                                <p className="text-xs text-tertiary uppercase font-semibold mb-0" style={{ letterSpacing: '0.05em' }}>Adding to</p>
+                                <h2 className="text-xl mb-xs">{activeTripName}</h2>
+                            </>
+                        ) : (
+                            <div className="flex items-end gap-sm mobile-edit-row">
+                                <div className="flex flex-col gap-xs flex-1" style={{ minWidth: 0 }}>
+                                    <label className="text-xs text-tertiary uppercase font-semibold" style={{ letterSpacing: '0.04em' }}>Trip name</label>
+                                    <input
+                                        className="input-field"
+                                        value={parsed.tripName}
+                                        onChange={e => updateParsedField('tripName', e.target.value)}
+                                    />
+                                </div>
+                                <div className="flex flex-col gap-xs">
+                                    <label className="text-xs text-tertiary uppercase font-semibold" style={{ letterSpacing: '0.04em' }}>Currency</label>
+                                    <select className="input-field" value={currency} onChange={e => setCurrency(e.target.value)}>
+                                        {CURRENCY_LIST.map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                        )}
+                        {!isSingleDayMode && (
+                            <div className="flex items-end gap-sm mobile-edit-row" style={{ flexDirection: 'row' }}>
+                                <div className="flex flex-col gap-xs flex-1" style={{ minWidth: 0 }}>
+                                    <label className="text-xs text-tertiary uppercase font-semibold" style={{ letterSpacing: '0.04em' }}>Start</label>
+                                    <input
+                                        type="date"
+                                        className="input-field"
+                                        value={parsed.startDate}
+                                        onChange={e => updateParsedField('startDate', e.target.value)}
+                                    />
+                                </div>
+                                <div className="flex flex-col gap-xs flex-1" style={{ minWidth: 0 }}>
+                                    <label className="text-xs text-tertiary uppercase font-semibold" style={{ letterSpacing: '0.04em' }}>End</label>
+                                    <input
+                                        type="date"
+                                        className="input-field"
+                                        value={parsed.endDate}
+                                        onChange={e => updateParsedField('endDate', e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                        )}
+                        <p className="text-sm text-tertiary mt-xs">
+                            {parsed.activities.length} activit{parsed.activities.length === 1 ? 'y' : 'ies'} across {grouped.size} day{grouped.size === 1 ? '' : 's'}
+                            {isAppending && <> &middot; {totalImported} already imported</>}
+                        </p>
+                    </div>
+
+                    {isSingleDayMode && selectedDateForDay ? (
+                        <div
+                            className="flex gap-md"
+                            style={{
+                                alignItems: 'stretch',
+                                flexDirection: 'row',
+                                minHeight: 0,
+                                overflowX: 'auto',
+                                paddingBottom: '0.5rem',
+                            }}
+                        >
+                            <div
+                                className="rounded-lg border border-solid shrink-0"
+                                style={{
+                                    borderColor: 'var(--border-color)',
+                                    backgroundColor: 'color-mix(in srgb, var(--primary-color) 6%, var(--surface-color))',
+                                    flex: '1 1 0',
+                                    minWidth: 'min(280px, 45vw)',
+                                    maxWidth: '50%',
+                                    padding: '0.75rem',
+                                }}
+                            >
+                                <h3 className="font-bold text-primary pb-xs mb-xs" style={{ fontSize: '0.875rem', borderBottom: '2px solid color-mix(in srgb, var(--primary-color) 20%, transparent)' }}>
+                                    Importing — {formatDate(selectedDateForDay)}
+                                </h3>
+                                <p className="text-xs text-tertiary mb-sm">Will be added to this day.</p>
+                                <div className="flex flex-col gap-xs">
+                                    {parsed.activities.map((act) => {
+                                        const idx = globalIdx++;
+                                        return (
+                                            <div key={idx} className="flex items-start gap-xs p-xs bg-surface rounded-md border border-solid relative" style={{ padding: '0.4rem 0.5rem', borderColor: 'var(--border-color)' }}>
+                                                <span className="shrink-0" style={{ fontSize: '0.95rem', marginTop: '0.2rem' }}>
+                                                    {CATEGORY_EMOJIS[act.category || 'other']}
+                                                </span>
+                                                <div className="flex flex-col flex-1 min-w-0" style={{ gap: '0.15rem' }}>
+                                                    <input
+                                                        className="input-ghost font-semibold w-full"
+                                                        style={{ fontSize: '0.8125rem' }}
+                                                        value={act.title}
+                                                        onChange={e => updateActivity(idx, 'title', e.target.value)}
+                                                    />
+                                                    <div className="flex items-center gap-xs flex-wrap">
+                                                        <input
+                                                            type="time"
+                                                            className="input-ghost text-xs text-tertiary"
+                                                            style={{ width: 'auto', maxWidth: '90px' }}
+                                                            value={act.time || ''}
+                                                            onChange={e => updateActivity(idx, 'time', e.target.value)}
+                                                        />
+                                                        <select
+                                                            className="input-ghost text-xs text-secondary cursor-pointer"
+                                                            style={{ padding: '0.1rem 0.2rem', fontSize: '0.7rem' }}
+                                                            value={act.category || 'other'}
+                                                            onChange={e => updateActivity(idx, 'category', e.target.value)}
+                                                        >
+                                                            {CATEGORY_LIST.map(c => (
+                                                                <option key={c} value={c}>{CATEGORY_EMOJIS[c]} {c}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    {act.location && <span className="text-xs text-secondary truncate block" style={{ maxWidth: '100%' }} title={act.location}>{act.location}</span>}
+                                                    {act.details && <p className="text-xs text-secondary mt-0 px-0 truncate" style={{ lineHeight: 1.3, WebkitLineClamp: 2, display: '-webkit-box', WebkitBoxOrient: 'vertical', overflow: 'hidden' }} title={act.details}>{act.details}</p>}
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-ghost btn-icon shrink-0 opacity-50 hover:opacity-100 hover:text-danger hover:bg-danger/10"
+                                                    style={{ padding: '0.2rem' }}
+                                                    onClick={() => removeActivity(idx)}
+                                                    aria-label="Remove activity"
+                                                >
+                                                    <X size={12} />
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                            <div
+                                className="rounded-lg border border-solid shrink-0"
+                                style={{
+                                    borderColor: 'var(--border-color)',
+                                    backgroundColor: 'var(--surface-color)',
+                                    flex: '1 1 0',
+                                    minWidth: 'min(280px, 45vw)',
+                                    maxWidth: '50%',
+                                    padding: '0.75rem',
+                                }}
+                            >
+                                <h3 className="font-bold text-secondary pb-xs mb-xs" style={{ fontSize: '0.875rem', borderBottom: '2px solid var(--border-color)' }}>
+                                    Existing on this day
+                                </h3>
+                                <p className="text-xs text-tertiary mb-sm">Already on this day. New ones add below.</p>
+                                <div className="flex flex-col gap-xs">
+                                    {existingActivitiesForSelectedDay.length === 0 ? (
+                                        <p className="text-xs text-tertiary italic">No activities yet.</p>
+                                    ) : (
+                                        existingActivitiesForSelectedDay.map((a) => (
+                                            <div key={a.id} className="flex items-start gap-xs p-xs rounded-md border border-solid" style={{ padding: '0.4rem 0.5rem', borderColor: 'var(--border-color)', backgroundColor: 'color-mix(in srgb, var(--text-tertiary) 8%, var(--surface-color))' }}>
+                                                <span className="shrink-0" style={{ fontSize: '0.95rem', marginTop: '0.2rem' }}>
+                                                    {CATEGORY_EMOJIS[a.category || 'other']}
+                                                </span>
+                                                <div className="flex flex-col flex-1 min-w-0" style={{ gap: '0.15rem' }}>
+                                                    <span className="font-semibold text-xs truncate block" title={a.title}>{a.title}</span>
+                                                    {(a.time || a.category) && (
+                                                        <span className="text-xs text-tertiary">{[a.time, a.category].filter(Boolean).join(' · ')}</span>
+                                                    )}
+                                                    {a.location && <span className="text-xs text-secondary truncate block" title={a.location}>{a.location}</span>}
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                    <div className="flex flex-col gap-xl">
+                        {[...grouped!.entries()].map(([date, acts]) => (
+                            <div key={date}>
+                                <h3 className="font-bold text-primary pb-xs mb-sm" style={{ fontSize: '0.95rem', borderBottom: '2px solid color-mix(in srgb, var(--primary-color) 15%, transparent)' }}>{formatDate(date)}</h3>
+                                <div className="flex flex-col gap-sm">
+                                    {acts.map((act) => {
+                                        const idx = globalIdx++;
+                                        return (
+                                            <div key={idx} className="flex items-start gap-sm p-sm bg-surface rounded-md border border-solid relative" style={{ padding: '0.65rem 0.85rem', borderColor: 'var(--border-color)' }}>
+                                                <span className="shrink-0" style={{ fontSize: '1.1rem', marginTop: '0.35rem' }}>
+                                                    {CATEGORY_EMOJIS[act.category || 'other']}
+                                                </span>
+                                                <div className="flex flex-col flex-1" style={{ minWidth: 0, gap: '0.25rem' }}>
+                                                    <input
+                                                        className="input-ghost font-semibold w-full text-base"
+                                                        value={act.title}
+                                                        onChange={e => updateActivity(idx, 'title', e.target.value)}
+                                                    />
+                                                    <div className="flex items-center gap-sm flex-wrap">
+                                                        <input
+                                                            type="time"
+                                                            className="input-ghost text-xs text-tertiary"
+                                                            style={{ width: 'auto', maxWidth: '110px' }}
+                                                            value={act.time || ''}
+                                                            onChange={e => updateActivity(idx, 'time', e.target.value)}
+                                                        />
+                                                        <select
+                                                            className="input-ghost text-xs text-secondary cursor-pointer"
+                                                            style={{ padding: '0.15rem 0.3rem' }}
+                                                            value={act.category || 'other'}
+                                                            onChange={e => updateActivity(idx, 'category', e.target.value)}
+                                                        >
+                                                            {CATEGORY_LIST.map(c => (
+                                                                <option key={c} value={c}>{CATEGORY_EMOJIS[c]} {c}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    {act.location && <span className="text-xs text-secondary px-1">{act.location}</span>}
+                                                    {act.details && <p className="text-sm text-secondary mt-xs px-1" style={{ lineHeight: 1.4 }}>{act.details}</p>}
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-ghost btn-icon shrink-0 mt-xs opacity-50 hover:opacity-100 hover:text-danger hover:bg-danger/10"
+                                                    style={{ padding: '0.25rem' }}
+                                                    onClick={() => removeActivity(idx)}
+                                                    aria-label="Remove activity"
+                                                >
+                                                    <X size={14} />
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    )}
+
+                    {parsed.activities.length === 0 && (
+                        <div className="flex items-start gap-sm p-sm rounded-md text-sm mt-md" style={{ backgroundColor: 'color-mix(in srgb, var(--error-color) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--error-color) 25%, transparent)', color: 'var(--error-color)', lineHeight: 1.4 }}>
+                            <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                            <span>All activities have been removed. Add some back or discard this import.</span>
+                        </div>
+                    )}
+
+                    {error && (
+                        <div className="flex items-start gap-sm p-sm rounded-md text-sm mt-md" style={{ backgroundColor: 'color-mix(in srgb, var(--error-color) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--error-color) 25%, transparent)', color: 'var(--error-color)', lineHeight: 1.4 }}>
+                            <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                            <span>{error}</span>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Saving Stage */}
+            {mode === 'import' && stage === 'saving' && (
+                <div className="flex flex-col items-center gap-sm text-tertiary" style={{ padding: '3rem 0' }}>
+                    <Loader2 size={32} className="spin" />
+                    <p>{isSingleDayMode || isAppending ? 'Adding activities...' : 'Creating trip and activities...'}</p>
+                </div>
+            )}
+
+            {/* Done Stage */}
+            {mode === 'import' && stage === 'done' && parsed && (
+                <div className="flex flex-col items-center text-center gap-sm" style={{ padding: '3rem 1rem' }}>
+                    <div className="sticky-actions mobile-actions w-full" style={{ position: 'relative', top: 'unset', marginBottom: '1.5rem' }}>
+                        <button className="btn btn-ghost mobile-discard" onClick={handleAddMore}>
+                            Add More Days
+                        </button>
+                        <div className="flex gap-sm items-center mobile-actions-right">
+                            <button className="btn btn-ghost" onClick={() => {
+                                setRawText('');
+                                setParsed(null);
+                                setStage('input');
+                            }}>
+                                New Trip
+                            </button>
+                            <button className="btn btn-primary" onClick={() => {
+                                setRawText('');
+                                setParsed(null);
+                                setStage('input');
+                                navigate('/spreadsheet');
+                            }}>
+                                View Trips
+                            </button>
+                        </div>
+                    </div>
+                    <div className="flex items-center justify-center text-secondary mb-sm" style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'color-mix(in srgb, var(--secondary-color) 12%, transparent)' }}>
+                        <Check size={40} />
+                    </div>
+                    <h2 className="text-xl">{isAppending ? 'Activities Added' : 'Trip Created'}</h2>
+                    <p className="text-secondary text-sm mb-sm">
+                        "{activeTripName ?? parsed.tripName}" now has {totalImported} activit{totalImported === 1 ? 'y' : 'ies'}.
+                    </p>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default ImportItinerary;
+</file>
+
+<file path="src/pages/Settings.tsx">
+import React, { useEffect, useState, useMemo } from 'react';
+import { Check, Sun, Moon, Trash2, RotateCcw } from 'lucide-react';
+import {
+  THEME_PRESETS,
+  isDarkPreset,
+  type ThemeConfig,
+  loadThemeConfig,
+  saveThemeConfig,
+  getResolvedTokens,
+  getDarkTokens,
+  applyTheme,
+  preloadPresetFonts,
+} from '../design-system/themes';
+import { useSettings, updateSettings, resetSettings, clearLocalDrafts, type AppSettings } from '../lib/settings';
+
+const TEXT_SIZE_OPTIONS = [
+  { label: 'Small', value: 75 },
+  { label: 'Default', value: 80 },
+  { label: 'Medium', value: 90 },
+  { label: 'Large', value: 100 },
+  { label: 'Extra Large', value: 112 },
+];
+
+const ZOOM_OPTIONS = [70, 80, 90, 100, 110, 120, 130, 140];
+
+const HEADER_COLOR_OPTIONS: { value: AppSettings['headerRowColor']; label: string; preview?: string }[] = [
+  { value: 'default', label: 'Default' },
+  { value: 'primary', label: 'Primary', preview: 'var(--primary-color)' },
+  { value: 'secondary', label: 'Secondary', preview: 'var(--secondary-color)' },
+  { value: 'accent', label: 'Accent', preview: 'var(--accent-color)' },
+  { value: 'slate', label: 'Slate', preview: 'var(--text-tertiary)' },
+  { value: 'transparent', label: 'None' },
+];
+
+function SettingsToggle({ id, label, description, checked, onChange }: {
+  id: string;
+  label: string;
+  description?: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-xs">
+      <label className="text-sm font-medium text-primary" htmlFor={id}>
+        <input
+          id={id}
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          style={{ marginRight: '0.5rem' }}
+        />
+        {label}
+      </label>
+      {description && <p className="text-sm text-subtle m-0" style={{ paddingLeft: '1.5rem' }}>{description}</p>}
+    </div>
+  );
+}
+
+const Settings: React.FC = () => {
+  const settings = useSettings();
+  const [themeConfig, setThemeConfig] = useState<ThemeConfig>(() => loadThemeConfig());
+
+  const resolvedTokens = useMemo(() => getResolvedTokens(themeConfig), [themeConfig]);
+  const activePreset = THEME_PRESETS.find((p) => p.id === themeConfig.presetId) ?? THEME_PRESETS[0];
+
+  useEffect(() => {
+    preloadPresetFonts();
+  }, []);
+
+  useEffect(() => {
+    document.body.classList.toggle('compact-layout', settings.compactLayout);
+    const useDarkPreset = isDarkPreset(themeConfig.presetId);
+    const effectiveDark = settings.darkMode || useDarkPreset;
+    document.body.classList.toggle('dark-mode', effectiveDark);
+    document.body.classList.toggle('theme-dark-preset', useDarkPreset);
+    document.documentElement.style.setProperty('color-scheme', effectiveDark ? 'dark' : 'light');
+    document.documentElement.style.setProperty('--text-size', `${settings.textSize}%`);
+
+    const tokens = useDarkPreset
+      ? getResolvedTokens(themeConfig)
+      : effectiveDark
+        ? getDarkTokens(getResolvedTokens(themeConfig))
+        : getResolvedTokens(themeConfig);
+    applyTheme(tokens);
+    saveThemeConfig(themeConfig);
+  }, [settings.compactLayout, settings.darkMode, settings.textSize, themeConfig]);
+
+  const set = (patch: Parameters<typeof updateSettings>[0]) => {
+    updateSettings(patch);
+  };
+
+  const selectPreset = (presetId: string) => {
+    setThemeConfig({ presetId, colorOverrides: {} });
+  };
+
+  const updateColor = (key: 'primaryColor' | 'secondaryColor' | 'accentColor', value: string) => {
+    setThemeConfig((prev) => ({
+      ...prev,
+      colorOverrides: { ...prev.colorOverrides, [key]: value },
+    }));
+  };
+
+  const resetColors = () => {
+    setThemeConfig((prev) => ({ ...prev, colorOverrides: {} }));
+  };
+
+  const hasOverrides = Object.values(themeConfig.colorOverrides).some(Boolean);
+
+  const colorFields = [
+    { key: 'primaryColor' as const, label: 'Primary', value: resolvedTokens.primaryColor },
+    { key: 'secondaryColor' as const, label: 'Secondary', value: resolvedTokens.secondaryColor },
+    { key: 'accentColor' as const, label: 'Accent', value: resolvedTokens.accentColor },
+  ];
+
+  return (
+    <div className="page-container animate-fade-in">
+      <style>{`
+        .preset-card {
+            position: relative; display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
+            padding: 1rem 0.75rem; border: 2px solid var(--border-color); border-radius: var(--radius-lg);
+            background-color: var(--surface-color); cursor: pointer; transition: all 0.2s ease;
+            font-family: inherit; text-align: center;
+        }
+        .preset-card:hover { border-color: var(--primary-color); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+        .preset-card.active { border-color: var(--primary-color); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color) 15%, transparent); }
+        
+        .text-size-btn, .zoom-btn {
+            padding: 0.35rem 0.85rem; border-radius: var(--radius-full); border: 1px solid var(--border-color);
+            background-color: var(--surface-color); font-size: 0.8rem; font-family: inherit; cursor: pointer; transition: all 0.2s ease;
+        }
+        .text-size-btn:hover, .zoom-btn:hover { border-color: var(--primary-color); }
+        .text-size-btn.active, .zoom-btn.active { background-color: var(--primary-color); color: white; border-color: var(--primary-color); }
+
+        .dark-mode-toggle {
+            position: relative; width: 64px; height: 34px; border-radius: 17px; border: 2px solid var(--border-color);
+            background-color: var(--border-light); cursor: pointer; transition: all 0.3s ease; flex-shrink: 0; padding: 0;
+        }
+        .dark-mode-toggle.active { background-color: var(--primary-color); border-color: var(--primary-color); }
+        .toggle-thumb {
+            position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%;
+            background-color: var(--surface-color); box-shadow: 0 1px 3px rgb(0 0 0 / 0.2); transition: transform 0.3s ease;
+        }
+        .dark-mode-toggle.active .toggle-thumb { transform: translateX(30px); }
+        .toggle-icon { position: absolute; top: 50%; transform: translateY(-50%); display: flex; align-items: center; justify-content: center; transition: opacity 0.2s ease; }
+        .toggle-sun { left: 7px; color: var(--accent-color); opacity: 1; }
+        .toggle-moon { right: 7px; color: white; opacity: 0.4; }
+        .dark-mode-toggle.active .toggle-sun { opacity: 0.4; }
+        .dark-mode-toggle.active .toggle-moon { opacity: 1; }
+
+        .settings-section-title { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-tertiary); margin-bottom: 0.75rem; }
+
+        @media (max-width: 768px) {
+            .mobile-preset-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important; }
+        }
+      `}</style>
+      <header className="page-header">
+        <div>
+          <h1>Settings</h1>
+          <p>Customize your TravelPlanner experience. Settings sync across devices when signed in.</p>
+        </div>
+      </header>
+
+      {/* Appearance — dark mode toggle hidden for Discord, Neon, Midnight (always dark) */}
+      <div className="card p-lg mb-lg" style={{ background: 'linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 5%, var(--surface-color)), color-mix(in srgb, var(--secondary-color) 5%, var(--surface-color)))' }}>
+        <div className="flex justify-between items-center gap-md">
+          <div>
+            <h2 className="text-lg font-bold mb-xs">Appearance</h2>
+            <p className="text-sm text-subtle m-0">
+              {isDarkPreset(themeConfig.presetId) ? 'This theme is always dark — no toggle.' : settings.darkMode ? 'Dark mode is on — easy on the eyes.' : 'Light mode is on — bright and clear.'}
+            </p>
+          </div>
+          {!isDarkPreset(themeConfig.presetId) && (
+            <button
+              type="button"
+              className={`dark-mode-toggle ${settings.darkMode ? 'active' : ''}`}
+              onClick={() => {
+                set({ darkMode: !settings.darkMode });
+              }}
+              aria-label={settings.darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              <span className="toggle-icon toggle-sun"><Sun size={16} /></span>
+              <span className="toggle-icon toggle-moon"><Moon size={16} /></span>
+              <span className="toggle-thumb" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Theme — light and dark presets separated */}
+      <div className="card p-lg mb-lg">
+        <h2 className="text-lg font-bold mb-md">Theme</h2>
+        <p className="settings-section-title m-0 mb-sm">Themes</p>
+        <div className="grid grid-cols-auto-140 gap-md mobile-preset-grid mb-lg">
+          {THEME_PRESETS.filter((p) => !isDarkPreset(p.id)).map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              className={`preset-card ${preset.id === themeConfig.presetId ? 'active' : ''}`}
+              onClick={() => selectPreset(preset.id)}
+              style={{ fontFamily: preset.tokens.fontFamily }}
+            >
+              <div className="flex gap-[4px] mb-[0.25rem]">
+                <span style={{ width: '20px', height: '20px', borderRadius: '50%', border: '1px solid rgba(0, 0, 0, 0.08)', background: preset.preview.bg }} />
+                <span style={{ width: '20px', height: '20px', borderRadius: '50%', border: '1px solid rgba(0, 0, 0, 0.08)', background: preset.preview.primary }} />
+                <span style={{ width: '20px', height: '20px', borderRadius: '50%', border: '1px solid rgba(0, 0, 0, 0.08)', background: preset.preview.secondary }} />
+                <span style={{ width: '20px', height: '20px', borderRadius: '50%', border: '1px solid rgba(0, 0, 0, 0.08)', background: preset.preview.accent }} />
+              </div>
+              <span className="font-semibold text-primary" style={{ fontSize: '0.85rem' }}>{preset.name}</span>
+              <span className="text-tertiary" style={{ fontSize: '0.7rem' }}>{preset.description}</span>
+              {preset.id === themeConfig.presetId && (
+                <span className="absolute flex items-center justify-center bg-primary text-white" style={{ top: '0.5rem', right: '0.5rem', width: '20px', height: '20px', borderRadius: '50%' }}><Check size={14} /></span>
+              )}
+            </button>
+          ))}
+        </div>
+        <p className="settings-section-title m-0 mb-sm">Dark themes</p>
+        <div className="grid grid-cols-auto-140 gap-md mobile-preset-grid">
+          {THEME_PRESETS.filter((p) => isDarkPreset(p.id)).map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              className={`preset-card ${preset.id === themeConfig.presetId ? 'active' : ''}`}
+              onClick={() => selectPreset(preset.id)}
+              style={{ fontFamily: preset.tokens.fontFamily }}
+            >
+              <div className="flex gap-[4px] mb-[0.25rem]">
+                <span style={{ width: '20px', height: '20px', borderRadius: '50%', border: '1px solid rgba(0, 0, 0, 0.08)', background: preset.preview.bg }} />
+                <span style={{ width: '20px', height: '20px', borderRadius: '50%', border: '1px solid rgba(0, 0, 0, 0.08)', background: preset.preview.primary }} />
+                <span style={{ width: '20px', height: '20px', borderRadius: '50%', border: '1px solid rgba(0, 0, 0, 0.08)', background: preset.preview.secondary }} />
+                <span style={{ width: '20px', height: '20px', borderRadius: '50%', border: '1px solid rgba(0, 0, 0, 0.08)', background: preset.preview.accent }} />
+              </div>
+              <span className="font-semibold text-primary" style={{ fontSize: '0.85rem' }}>{preset.name}</span>
+              <span className="text-tertiary" style={{ fontSize: '0.7rem' }}>{preset.description}</span>
+              {preset.id === themeConfig.presetId && (
+                <span className="absolute flex items-center justify-center bg-primary text-white" style={{ top: '0.5rem', right: '0.5rem', width: '20px', height: '20px', borderRadius: '50%' }}><Check size={14} /></span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Color palette */}
+      <div className="card p-lg mb-lg">
+        <div className="flex justify-between items-center mb-xs">
+          <h2 className="text-lg font-bold m-0">Color palette</h2>
+          {hasOverrides && (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={resetColors}>
+              Reset to preset
+            </button>
+          )}
+        </div>
+        <p className="text-sm text-subtle mb-md">Override the {activePreset.name} theme colors.</p>
+        <div className="grid grid-cols-auto-160 gap-md mb-md">
+          {colorFields.map(({ key, label, value }) => (
+            <div key={key} className="flex flex-col gap-[0.25rem]">
+              <label className="text-xs text-tertiary uppercase font-semibold" style={{ letterSpacing: '0.04em' }}>{label}</label>
+              <div className="flex items-center gap-sm">
+                <input
+                  type="color"
+                  value={value}
+                  onChange={(e) => updateColor(key, e.target.value)}
+                  className="cursor-pointer"
+                  style={{ width: '2.5rem', height: '2rem', padding: 0, border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', background: 'none' }}
+                  aria-label={`${label} color`}
+                />
+                <input
+                  type="text"
+                  value={value}
+                  onChange={(e) => updateColor(key, e.target.value)}
+                  className="input-field flex-1 font-mono text-sm"
+                  style={{ minWidth: 0 }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Layout */}
+      <div className="card p-lg mb-lg">
+        <h2 className="text-lg font-bold mb-md">Layout</h2>
+        <div className="flex flex-col gap-md">
+          <SettingsToggle
+            id="compact-layout"
+            label="Compact layout"
+            description="Use tighter spacing to fit more information on screen."
+            checked={settings.compactLayout}
+            onChange={(v) => { set({ compactLayout: v }); }}
+          />
+          <div className="flex flex-col gap-xs" style={{ marginTop: '0.5rem' }}>
+            <label className="text-sm font-medium text-primary">Text size</label>
+            <div className="flex flex-wrap gap-sm">
+              {TEXT_SIZE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={`text-size-btn ${settings.textSize === opt.value ? 'active' : ''}`}
+                  onClick={() => { set({ textSize: opt.value }); }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Weather */}
+      <div className="card p-lg mb-lg">
+        <h2 className="text-lg font-bold mb-md">Weather</h2>
+        <div className="flex flex-col gap-md">
+          <div className="flex flex-col gap-xs">
+            <label className="text-sm font-medium text-primary">Temperature unit</label>
+            <div className="flex gap-0" style={{ borderRadius: 'var(--radius-full)', border: '1px solid var(--border-color)', width: 'fit-content', overflow: 'hidden' }}>
+              {(['C', 'F'] as const).map((unit) => (
+                <button
+                  key={unit}
+                  type="button"
+                  className={`text-size-btn ${settings.temperatureUnit === unit ? 'active' : ''}`}
+                  style={{ borderRadius: 0, margin: 0 }}
+                  onClick={() => { set({ temperatureUnit: unit }); }}
+                >
+                  °{unit}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-col gap-xs">
+            <label className="text-sm font-medium text-primary">Hourly forecast time range</label>
+            <p className="text-sm text-subtle m-0">Show only these hours on the Weather page (e.g. 9am–9pm).</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <label className="text-sm text-subtle">From</label>
+              <select
+                value={settings.hourlyForecastStartHour ?? 9}
+                onChange={(e) => { set({ hourlyForecastStartHour: Number(e.target.value) }); }}
+                className="input-field"
+                style={{ width: '5rem' }}
+              >
+                {Array.from({ length: 24 }, (_, i) => (
+                  <option key={i} value={i}>{i === 0 ? '12am' : i < 12 ? `${i}am` : i === 12 ? '12pm' : `${i - 12}pm`}</option>
+                ))}
+              </select>
+              <span className="text-sm text-subtle">to</span>
+              <select
+                value={settings.hourlyForecastEndHour ?? 21}
+                onChange={(e) => { set({ hourlyForecastEndHour: Number(e.target.value) }); }}
+                className="input-field"
+                style={{ width: '5rem' }}
+              >
+                {Array.from({ length: 24 }, (_, i) => (
+                  <option key={i} value={i}>{i === 0 ? '12am' : i < 12 ? `${i}am` : i === 12 ? '12pm' : `${i - 12}pm`}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Spreadsheet */}
+      <div className="card p-lg mb-lg">
+        <h2 className="text-lg font-bold mb-md">Spreadsheet</h2>
+        <div className="flex flex-col gap-md">
+          <SettingsToggle
+            id="color-coded-rows"
+            label="Color-coded time rows"
+            description="Apply the morning/afternoon/evening tint across the entire spreadsheet row, not just the label."
+            checked={settings.colorCodedTimeRows}
+            onChange={(v) => { set({ colorCodedTimeRows: v }); }}
+          />
+          {settings.colorCodedTimeRows && (
+            <div className="flex flex-col gap-xs" style={{ paddingLeft: '1.5rem' }}>
+              <label className="text-sm font-medium text-primary">
+                Row tint opacity — {settings.colorCodingOpacity}%
+              </label>
+              <input
+                type="range"
+                min={1}
+                max={20}
+                step={1}
+                value={settings.colorCodingOpacity}
+                onChange={(e) => set({ colorCodingOpacity: Number(e.target.value) })}
+                style={{ maxWidth: '220px', accentColor: 'var(--primary-color)' }}
+              />
+            </div>
+          )}
+          <div className="flex flex-col gap-xs">
+            <label className="text-sm font-medium text-primary">Day header row color</label>
+            <p className="text-sm text-subtle m-0">Tint the day column headers to distinguish them from the grid.</p>
+            <div className="flex flex-wrap gap-sm" style={{ marginTop: '0.25rem' }}>
+              {HEADER_COLOR_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={`zoom-btn ${settings.headerRowColor === opt.value ? 'active' : ''}`}
+                  onClick={() => { set({ headerRowColor: opt.value }); }}
+                  style={opt.preview ? { borderLeft: `3px solid ${opt.preview}` } : undefined}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <SettingsToggle
+            id="show-unscheduled"
+            label="Show unscheduled section"
+            description="Show the collapsible unscheduled activities section below the spreadsheet grid."
+            checked={settings.showUnscheduledSection}
+            onChange={(v) => { set({ showUnscheduledSection: v }); }}
+          />
+          <div className="flex flex-col gap-xs" style={{ marginTop: '0.25rem' }}>
+            <label className="text-sm font-medium text-primary">Default zoom level</label>
+            <div className="flex flex-wrap gap-sm">
+              {ZOOM_OPTIONS.map((z) => (
+                <button
+                  key={z}
+                  type="button"
+                  className={`zoom-btn ${settings.defaultSpreadsheetZoom === z ? 'active' : ''}`}
+                  onClick={() => { set({ defaultSpreadsheetZoom: z }); }}
+                >
+                  {z}%
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Calendar */}
+      <div className="card p-lg mb-lg">
+        <h2 className="text-lg font-bold mb-md">Calendar</h2>
+        <div className="flex flex-col gap-md">
+          <div className="flex flex-col gap-xs">
+            <label className="text-sm font-medium text-primary">Default view</label>
+            <div className="flex gap-sm">
+              {(['trip', 'day'] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  className={`text-size-btn ${settings.defaultCalendarView === v ? 'active' : ''}`}
+                  onClick={() => { set({ defaultCalendarView: v }); }}
+                >
+                  {v.charAt(0).toUpperCase() + v.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+          <SettingsToggle
+            id="show-accommodation-cards"
+            label="Show accommodation on trip cards"
+            description="Display the accommodation row on calendar trip grid cards."
+            checked={settings.showAccommodationOnTripCards}
+            onChange={(v) => { set({ showAccommodationOnTripCards: v }); }}
+          />
+        </div>
+      </div>
+
+      {/* Planning */}
+      <div className="card p-lg mb-lg">
+        <h2 className="text-lg font-bold mb-md">Planning</h2>
+        <div className="flex flex-col gap-md">
+          <SettingsToggle
+            id="show-planning-checks"
+            label="Show planning checks"
+            description="Display issue badges and conflict details on day pills."
+            checked={settings.showPlanningChecks}
+            onChange={(v) => { set({ showPlanningChecks: v }); }}
+          />
+          <SettingsToggle
+            id="show-budget-warnings"
+            label="Show budget warnings"
+            description="Display budget threshold alerts on the Budget page."
+            checked={settings.showBudgetWarnings}
+            onChange={(v) => { set({ showBudgetWarnings: v }); }}
+          />
+        </div>
+      </div>
+
+      {/* Data */}
+      <div className="card p-lg mb-lg">
+        <h2 className="text-lg font-bold mb-md">Data</h2>
+        <div className="flex flex-col gap-md">
+          <div className="flex flex-col gap-xs">
+            <div className="flex items-center gap-sm">
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => {
+                  if (window.confirm('Delete all local what-if drafts? This cannot be undone.')) {
+                    void (async () => {
+                      await clearLocalDrafts();
+                    })();
+                  }
+                }}
+              >
+                <Trash2 size={14} /> Clear local drafts
+              </button>
+            </div>
+            <p className="text-sm text-subtle m-0" style={{ paddingLeft: '0.25rem' }}>Remove all what-if scenario snapshots stored in your browser (IndexedDB).</p>
+          </div>
+          <div className="flex flex-col gap-xs">
+            <div className="flex items-center gap-sm">
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => {
+                  if (window.confirm('Reset all settings to defaults? Your theme selection will be kept.')) {
+                    resetSettings();
+                  }
+                }}
+              >
+                <RotateCcw size={14} /> Reset all settings
+              </button>
+            </div>
+            <p className="text-sm text-subtle m-0" style={{ paddingLeft: '0.25rem' }}>Restore all settings to their default values.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Settings;
+</file>
+
 <file path="worker/src/index.ts">
 import { GoogleGenAI } from '@google/genai';
 
 interface Env {
     GEMINI_API_KEYS: string; // Comma-separated list of keys
     GOOGLE_PLACES_API_KEY: string;
+    /** Firebase project ID — used as expected JWT aud and in iss host path. */
+    FIREBASE_PROJECT_ID: string;
     /** Optional: comma-separated web origins (e.g. https://app.example.com). If unset, Access-Control-Allow-Origin is *. */
     ALLOWED_ORIGINS?: string;
     GEMINI_API_KEY?: string; // legacy single key (wrangler secret)
@@ -19616,6 +19307,172 @@ const RATE_MAX_PLACES = 120;
 
 const rateBuckets = new Map<string, { count: number; resetAt: number }>();
 
+const FIREBASE_JWKS_URL =
+    'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
+const JWKS_CACHE_TTL_MS = 3_600_000;
+const JWT_CLOCK_SKEW_SEC = 60;
+
+let jwksCache: { keys: unknown[]; fetchedAt: number } = { keys: [], fetchedAt: 0 };
+
+interface FirebaseJwkKey {
+    kid?: string;
+    kty?: string;
+    n?: string;
+    e?: string;
+}
+
+function b64UrlToUint8Array(segment: string): Uint8Array {
+    let base64 = segment.replace(/-/g, '+').replace(/_/g, '/');
+    const pad = base64.length % 4;
+    if (pad) base64 += '='.repeat(4 - pad);
+    const binary = atob(base64);
+    const out = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
+    return out;
+}
+
+async function getCachedJwksKeys(): Promise<unknown[]> {
+    const now = Date.now();
+    if (jwksCache.keys.length > 0 && now - jwksCache.fetchedAt < JWKS_CACHE_TTL_MS) {
+        return jwksCache.keys;
+    }
+    const res = await fetch(FIREBASE_JWKS_URL);
+    if (!res.ok) {
+        throw new Error(`JWKS HTTP ${res.status}`);
+    }
+    const data = (await res.json()) as { keys?: unknown[] };
+    const keys = Array.isArray(data.keys) ? data.keys : [];
+    jwksCache = { keys, fetchedAt: now };
+    return keys;
+}
+
+function isFirebaseJwkKey(k: unknown): k is FirebaseJwkKey {
+    if (k === null || typeof k !== 'object') return false;
+    const o = k as Record<string, unknown>;
+    return o.kty === 'RSA' && typeof o.n === 'string' && typeof o.e === 'string';
+}
+
+async function importRsaVerifyKeyFromJwk(jwk: FirebaseJwkKey): Promise<CryptoKey> {
+    return crypto.subtle.importKey(
+        'jwk',
+        {
+            kty: 'RSA',
+            n: jwk.n,
+            e: jwk.e,
+            alg: 'RS256',
+            ext: true,
+        } as JsonWebKey,
+        { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+        false,
+        ['verify'],
+    );
+}
+
+/**
+ * Verifies Firebase ID token (RS256) via JWKS + Web Crypto. Returns null if valid.
+ */
+async function verifyFirebaseIdToken(token: string, projectId: string): Promise<string | null> {
+    const parts = token.split('.');
+    if (parts.length !== 3) return 'Malformed token';
+
+    const [headerB64, payloadB64, sigB64] = parts;
+    let headerJson: { alg?: string; kid?: string };
+    let payload: Record<string, unknown>;
+    try {
+        headerJson = JSON.parse(new TextDecoder().decode(b64UrlToUint8Array(headerB64))) as {
+            alg?: string;
+            kid?: string;
+        };
+        payload = JSON.parse(new TextDecoder().decode(b64UrlToUint8Array(payloadB64))) as Record<
+            string,
+            unknown
+        >;
+    } catch {
+        return 'Invalid token encoding';
+    }
+
+    if (headerJson.alg !== 'RS256') return 'Invalid algorithm';
+    const kid = headerJson.kid;
+    if (!kid || typeof kid !== 'string') return 'Missing key id';
+
+    const keys = await getCachedJwksKeys();
+    const jwk = keys.find((k) => isFirebaseJwkKey(k) && k.kid === kid);
+    if (!jwk || !isFirebaseJwkKey(jwk)) return 'Unknown signing key';
+
+    let cryptoKey: CryptoKey;
+    try {
+        cryptoKey = await importRsaVerifyKeyFromJwk(jwk);
+    } catch {
+        return 'Invalid signing key';
+    }
+
+    const signedBytes = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
+    let sigBytes: Uint8Array;
+    try {
+        sigBytes = b64UrlToUint8Array(sigB64);
+    } catch {
+        return 'Invalid signature encoding';
+    }
+
+    let ok: boolean;
+    try {
+        ok = await crypto.subtle.verify(
+            { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+            cryptoKey,
+            sigBytes,
+            signedBytes,
+        );
+    } catch {
+        return 'Verification failed';
+    }
+    if (!ok) return 'Invalid signature';
+
+    const nowSec = Math.floor(Date.now() / 1000);
+    const exp = payload.exp;
+    if (typeof exp !== 'number' || exp < nowSec - JWT_CLOCK_SKEW_SEC) {
+        return 'Token expired';
+    }
+
+    const expectedIss = `https://securetoken.google.com/${projectId}`;
+    if (payload.iss !== expectedIss) return 'Invalid issuer';
+
+    const aud = payload.aud;
+    if (aud !== projectId) return 'Invalid audience';
+
+    return null;
+}
+
+async function requireFirebaseAuth(
+    request: Request,
+    env: Env,
+    cors: Record<string, string> | null,
+): Promise<Response | null> {
+    const projectId = env.FIREBASE_PROJECT_ID?.trim();
+    if (!projectId) {
+        return json({ error: 'Server misconfiguration' }, 500, cors);
+    }
+
+    const auth = request.headers.get('Authorization');
+    if (!auth || !auth.startsWith('Bearer ')) {
+        return json({ error: 'Unauthorized' }, 401, cors);
+    }
+    const token = auth.slice(7).trim();
+    if (!token) {
+        return json({ error: 'Unauthorized' }, 401, cors);
+    }
+
+    try {
+        const err = await verifyFirebaseIdToken(token, projectId);
+        if (err) {
+            return json({ error: 'Unauthorized' }, 401, cors);
+        }
+    } catch {
+        return json({ error: 'Unauthorized' }, 401, cors);
+    }
+
+    return null;
+}
+
 function getClientId(request: Request): string {
     return request.headers.get('CF-Connecting-IP')
         ?? request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim()
@@ -19646,7 +19503,7 @@ function corsHeadersFor(request: Request, env: Env): Record<string, string> | nu
     const origin = request.headers.get('Origin');
     const base: Record<string, string> = {
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     };
     if (allowed.length === 0) {
         return { ...base, 'Access-Control-Allow-Origin': '*' };
@@ -19664,6 +19521,18 @@ function json(data: unknown, status = 200, cors: Record<string, string> | null):
         ...(cors ?? { 'Access-Control-Allow-Origin': '*' }),
     };
     return new Response(JSON.stringify(data), { status, headers });
+}
+
+/** Generic client-safe message; full detail is logged via logWorkerError. */
+function sanitizeClientError(status: number): string {
+    if (status === 400) return 'Invalid request parameters';
+    if (status === 429) return 'Too many requests';
+    if (status >= 500) return 'Upstream service error';
+    return 'Request failed';
+}
+
+function logWorkerError(path: string, status: number, detail: string): void {
+    console.error('Worker error:', { path, status, detail });
 }
 
 async function readJsonBody(request: Request, cors: Record<string, string> | null): Promise<unknown | Response> {
@@ -19748,12 +19617,15 @@ async function handlePlacesNearby(request: Request, env: Env, cors: Record<strin
         const data = await res.json() as Record<string, unknown>;
         if (!res.ok) {
             const errMsg = (data as { error?: { message?: string } }).error?.message ?? `Google returned ${res.status}`;
-            return json({ error: errMsg }, res.status >= 500 ? 502 : res.status, cors);
+            const outStatus = res.status >= 500 ? 502 : res.status;
+            logWorkerError(new URL(request.url).pathname, res.status, errMsg);
+            return json({ error: sanitizeClientError(outStatus) }, outStatus, cors);
         }
         return json(data, 200, cors);
     } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        return json({ error: msg }, 502, cors);
+        logWorkerError(new URL(request.url).pathname, 502, msg);
+        return json({ error: sanitizeClientError(502) }, 502, cors);
     }
 }
 
@@ -19780,13 +19652,19 @@ async function handlePlacesDetails(request: Request, env: Env, cors: Record<stri
                 },
                 body: JSON.stringify({ textQuery: query, pageSize: 1 }),
             });
-            const data = await res.json() as { places?: Array<{ id?: string }> };
-            if (!res.ok) return json({ error: 'Place resolution failed' }, res.status >= 500 ? 502 : res.status, cors);
+            const data = await res.json() as { places?: Array<{ id?: string }>; error?: { message?: string } };
+            if (!res.ok) {
+                const errMsg = data.error?.message ?? `Google returned ${res.status}`;
+                const outStatus = res.status >= 500 ? 502 : res.status;
+                logWorkerError(new URL(request.url).pathname, res.status, errMsg);
+                return json({ error: sanitizeClientError(outStatus) }, outStatus, cors);
+            }
             const placeId = data.places?.[0]?.id ?? null;
             return json({ placeId }, 200, cors);
         } catch (e) {
             const msg = e instanceof Error ? e.message : String(e);
-            return json({ error: msg }, 502, cors);
+            logWorkerError(new URL(request.url).pathname, 502, msg);
+            return json({ error: sanitizeClientError(502) }, 502, cors);
         }
     }
 
@@ -19806,12 +19684,15 @@ async function handlePlacesDetails(request: Request, env: Env, cors: Record<stri
             const data = await res.json() as Record<string, unknown>;
             if (!res.ok) {
                 const errMsg = (data as { error?: { message?: string } }).error?.message ?? `Google returned ${res.status}`;
-                return json({ error: errMsg }, res.status >= 500 ? 502 : res.status, cors);
+                const outStatus = res.status >= 500 ? 502 : res.status;
+                logWorkerError(new URL(request.url).pathname, res.status, errMsg);
+                return json({ error: sanitizeClientError(outStatus) }, outStatus, cors);
             }
             return json(data, 200, cors);
         } catch (e) {
             const msg = e instanceof Error ? e.message : String(e);
-            return json({ error: msg }, 502, cors);
+            logWorkerError(new URL(request.url).pathname, 502, msg);
+            return json({ error: sanitizeClientError(502) }, 502, cors);
         }
     }
 
@@ -19837,6 +19718,15 @@ export default {
         }
 
         const url = new URL(request.url);
+        const requiresFirebaseAuth =
+            url.pathname.endsWith('/generate') ||
+            url.pathname.endsWith('/places/nearby') ||
+            url.pathname.endsWith('/places/details');
+        if (requiresFirebaseAuth) {
+            const authResponse = await requireFirebaseAuth(request, env, cors);
+            if (authResponse) return authResponse;
+        }
+
         const clientId = getClientId(request);
 
         if (url.pathname.endsWith('/places/nearby')) {
@@ -19928,28 +19818,60 @@ export default {
                 }
 
                 if (/400|invalid|bad/i.test(message)) {
-                    return json({ error: message }, 400, cors);
+                    logWorkerError(url.pathname, 400, message);
+                    return json({ error: sanitizeClientError(400) }, 400, cors);
                 }
             }
         }
 
         const finalMessage = lastError instanceof Error ? lastError.message : String(lastError);
         const status = /429|quota|rate/i.test(finalMessage) ? 429 : 500;
-        return json({ error: `All keys failed. Last error: ${finalMessage}` }, status, cors);
+        logWorkerError(url.pathname, status, finalMessage);
+        return json({ error: sanitizeClientError(status) }, status, cors);
     },
 };
 </file>
 
 <file path="src/components/Sidebar.tsx">
 import React, { useState } from 'react';
-import { NavLink } from 'react-router-dom';
-import { Calendar, CloudSun, Map, Table, Wallet, StickyNote, Upload, Settings, LogOut, User, Bot, Backpack } from 'lucide-react';
+import { NavLink, useLocation, matchPath } from 'react-router-dom';
+import { Calendar, CalendarDays, CloudSun, Map, Table, Wallet, StickyNote, Upload, Settings, LogOut, User, Bot, Backpack } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
+import { useTrips } from '../lib/store';
+import { getDefaultDayDateStr } from '../lib/tripDefaultDay';
 import './Sidebar.css';
+
+const CALENDAR_VIEW_KEY = 'travelplanner_calendar_view';
+
+function getCalendarSelectedTripId(): string | null {
+  try {
+    const raw = localStorage.getItem(CALENDAR_VIEW_KEY);
+    if (!raw) return null;
+    const p = JSON.parse(raw) as { selectedTripId?: string | null };
+    return p.selectedTripId ?? null;
+  } catch {
+    return null;
+  }
+}
 
 const Sidebar: React.FC = () => {
   const { user, signOut } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(true);
+  const location = useLocation();
+  const { trips } = useTrips();
+
+  const selectedTripId = getCalendarSelectedTripId();
+  const trip = selectedTripId ? trips.find((t) => t.id === selectedTripId) : undefined;
+
+  const dayHref =
+    !selectedTripId
+      ? '/spreadsheet'
+      : trip
+        ? `/trip/${selectedTripId}/day/${getDefaultDayDateStr(trip)}`
+        : `/trip/${selectedTripId}`;
+
+  const isDayActive =
+    matchPath({ path: '/trip/:tripId/day/:date', end: false }, location.pathname) != null;
 
   const toggleSidebarFromLogo = () => {
     setIsCollapsed((prev) => !prev);
@@ -19958,6 +19880,7 @@ const Sidebar: React.FC = () => {
   const navLinks = [
     { to: 'spreadsheet', icon: <Table size={20} />, label: 'Trips' },
     { to: 'calendar', icon: <Calendar size={20} />, label: 'Calendar' },
+    { to: '__day__', icon: <CalendarDays size={20} />, label: 'Day' },
     { to: 'weather', icon: <CloudSun size={20} />, label: 'Weather' },
     { to: 'transportation', icon: <Map size={20} />, label: 'Transportation' },
     { to: 'budget', icon: <Wallet size={20} />, label: 'Budget' },
@@ -19981,16 +19904,30 @@ const Sidebar: React.FC = () => {
       </div>
 
       <nav className="sidebar-nav">
-        {navLinks.map((link) => (
-          <NavLink
-            key={link.to}
-            to={link.to}
-            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-          >
-            <span className="nav-icon">{link.icon}</span>
-            <span className="nav-label">{link.label}</span>
-          </NavLink>
-        ))}
+        {navLinks.map((link) =>
+          link.to === '__day__' ? (
+            <NavLink
+              key="__day__"
+              to={dayHref}
+              title={!selectedTripId ? 'Select a trip on Calendar or Trips, then open Day view' : undefined}
+              className={`nav-item ${isDayActive ? 'active' : ''}`}
+              style={!selectedTripId ? { opacity: 0.65 } : undefined}
+              aria-current={isDayActive ? 'page' : undefined}
+            >
+              <span className="nav-icon">{link.icon}</span>
+              <span className="nav-label">{link.label}</span>
+            </NavLink>
+          ) : (
+            <NavLink
+              key={link.to}
+              to={link.to}
+              className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+            >
+              <span className="nav-icon">{link.icon}</span>
+              <span className="nav-label">{link.label}</span>
+            </NavLink>
+          ),
+        )}
       </nav>
 
       <div className="sidebar-bottom">
@@ -20045,7 +19982,6 @@ import { TRANSPORT_EMOJIS } from '../lib/types';
 import { useLocalStorageState } from '../lib/persist';
 import Markdown from '../components/Markdown';
 import { useToast } from '../components/Toast';
-import { logEvent } from '../lib/amplitude';
 import { suggestTransportOptions } from '../lib/ai/actions/transport';
 import ConflictList from '../components/ConflictList';
 import { getTripPlanningConflicts } from '../lib/planning/conflicts';
@@ -20171,7 +20107,6 @@ const Transportation: React.FC = () => {
         setAiRoutesLoading(true);
         setAiRoutesError(null);
         setAiRoutesSuggestion(null);
-        logEvent('AI Route Suggestion Requested', { from: formData.from.trim(), to: formData.to.trim() });
         try {
             const text = await suggestTransportOptions({
                 from: formData.from,
@@ -20205,10 +20140,8 @@ const Transportation: React.FC = () => {
 
         if (editingRoute) {
             await updateRoute(editingRoute.id, routeData);
-            logEvent('Route Updated', { transport_type: routeData.type, from: routeData.from, to: routeData.to, date: routeData.date });
         } else {
             await addRoute(routeData as Omit<TransportRoute, 'id' | 'userId' | 'tripMembers'>, selectedTrip?.members || []);
-            logEvent('Route Created', { transport_type: routeData.type, from: routeData.from, to: routeData.to, date: routeData.date, cost: routeData.cost, currency: routeData.currency });
         }
         resetForm();
     };
@@ -20217,10 +20150,8 @@ const Transportation: React.FC = () => {
         const route = routes.find(r => r.id === id);
         if (!route) return;
         deleteRoute(id);
-        logEvent('Route Deleted', { transport_type: route.type, from: route.from, to: route.to });
         showToast(`Route "${route.from} → ${route.to}" deleted`, () => {
             restoreRoute(route);
-            logEvent('Route Delete Undone', { transport_type: route.type });
         });
     };
 
@@ -20339,8 +20270,8 @@ const Transportation: React.FC = () => {
                                         <Markdown>{aiRoutesSuggestion}</Markdown>
                                     </div>
                                     <div className="flex gap-sm">
-                                        <button type="button" className="btn btn-primary btn-sm" onClick={() => { setFormData(p => ({ ...p, notes: (p.notes ? p.notes + '\n\n' : '') + aiRoutesSuggestion })); setAiRoutesSuggestion(null); logEvent('AI Route Suggestion Accepted', { from: formData.from.trim(), to: formData.to.trim() }); }}>Accept</button>
-                                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setAiRoutesSuggestion(null); logEvent('AI Route Suggestion Declined', { from: formData.from.trim(), to: formData.to.trim() }); }}>Decline</button>
+                                        <button type="button" className="btn btn-primary btn-sm" onClick={() => { setFormData(p => ({ ...p, notes: (p.notes ? p.notes + '\n\n' : '') + aiRoutesSuggestion })); setAiRoutesSuggestion(null); }}>Accept</button>
+                                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setAiRoutesSuggestion(null); }}>Decline</button>
                                     </div>
                                 </div>
                             )}
@@ -21565,114 +21496,6 @@ body.dark-mode img {
 }
 </file>
 
-<file path="src/App.tsx">
-import React, { Suspense, useEffect, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Sidebar from './components/Sidebar';
-import { AuthProvider, useAuth } from './lib/AuthContext';
-import AnalyticsProvider from './lib/amplitude';
-import { ToastProvider } from './components/Toast';
-import { loadThemeConfig, getResolvedTokens, getDarkTokens, applyTheme } from './design-system/themes';
-import { getSettingsSnapshot } from './lib/settings';
-import OnlineStatus from './components/OnlineStatus';
-import GeminiUsageHeader from './components/GeminiUsageHeader';
-import { Loader2 } from 'lucide-react';
-import './theme.css';
-import TripDefaultRedirect from './pages/TripDefaultRedirect';
-
-const Login = lazy(() => import('./pages/Login'));
-const CalendarView = lazy(() => import('./pages/CalendarView'));
-const Weather = lazy(() => import('./pages/Weather'));
-const Transportation = lazy(() => import('./pages/Transportation'));
-const SpreadsheetView = lazy(() => import('./pages/SpreadsheetView'));
-const Budget = lazy(() => import('./pages/Budget'));
-const Notes = lazy(() => import('./pages/Notes'));
-const Packing = lazy(() => import('./pages/Packing'));
-const Settings = lazy(() => import('./pages/Settings'));
-const ImportItinerary = lazy(() => import('./pages/ImportItinerary'));
-const Assistant = lazy(() => import('./pages/Assistant'));
-const TripDayView = lazy(() => import('./pages/TripDayView'));
-
-function AuthGate({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
-        <Loader2 size={32} className="spin" style={{ color: 'var(--primary-color)' }} />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <Suspense fallback={null}>
-        <Login />
-      </Suspense>
-    );
-  }
-
-  return <>{children}</>;
-}
-
-const App: React.FC = () => {
-  useEffect(() => {
-    const config = loadThemeConfig();
-    let tokens = getResolvedTokens(config);
-
-    const s = getSettingsSnapshot();
-    if (s.textSize) document.documentElement.style.setProperty('--text-size', `${s.textSize}%`);
-    if (s.compactLayout) document.body.classList.add('compact-layout');
-    if (s.darkMode) {
-      tokens = getDarkTokens(tokens);
-      document.body.classList.add('dark-mode');
-      document.documentElement.style.setProperty('color-scheme', 'dark');
-    }
-
-    applyTheme(tokens);
-  }, []);
-
-  return (
-    <Router basename="/travelplanner/">
-      <AuthProvider>
-        <AnalyticsProvider />
-        <ToastProvider>
-          <AuthGate>
-            <OnlineStatus />
-            <div className="app-container">
-              <Sidebar />
-              <main className="main-content">
-                <GeminiUsageHeader />
-                <Suspense fallback={null}>
-                  <Routes>
-                    <Route path="/" element={<Navigate to="/spreadsheet" replace />} />
-                    <Route path="/calendar" element={<CalendarView />} />
-                    <Route path="/trip/:tripId/day/:date" element={<TripDayView />} />
-                    <Route path="/trip/:tripId" element={<TripDefaultRedirect />} />
-                    <Route path="/weather" element={<Weather />} />
-                    <Route path="/transportation" element={<Transportation />} />
-                    <Route path="/spreadsheet" element={<SpreadsheetView />} />
-                    <Route path="/budget" element={<Budget />} />
-                    <Route path="/notes" element={<Notes />} />
-                    <Route path="/packing" element={<Packing />} />
-                    <Route path="/import" element={<ImportItinerary />} />
-                    <Route path="/assistant" element={<Assistant />} />
-                    <Route path="/settings" element={<Settings />} />
-                    <Route path="*" element={<Navigate to="/spreadsheet" replace />} />
-                  </Routes>
-                </Suspense>
-              </main>
-            </div>
-          </AuthGate>
-        </ToastProvider>
-      </AuthProvider>
-    </Router>
-  );
-};
-
-export default App;
-</file>
-
 <file path="src/lib/store.ts">
 import { useState, useEffect, useCallback } from 'react';
 import {
@@ -22201,6 +22024,112 @@ export function usePackingItems() {
 }
 </file>
 
+<file path="src/App.tsx">
+import React, { Suspense, useEffect, lazy } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import Sidebar from './components/Sidebar';
+import { AuthProvider, useAuth } from './lib/AuthContext';
+import { ToastProvider } from './components/Toast';
+import { loadThemeConfig, getResolvedTokens, getDarkTokens, applyTheme } from './design-system/themes';
+import { getSettingsSnapshot } from './lib/settings';
+import OnlineStatus from './components/OnlineStatus';
+import GeminiUsageHeader from './components/GeminiUsageHeader';
+import { Loader2 } from 'lucide-react';
+import './theme.css';
+import TripDefaultRedirect from './pages/TripDefaultRedirect';
+
+const Login = lazy(() => import('./pages/Login'));
+const CalendarView = lazy(() => import('./pages/CalendarView'));
+const Weather = lazy(() => import('./pages/Weather'));
+const Transportation = lazy(() => import('./pages/Transportation'));
+const SpreadsheetView = lazy(() => import('./pages/SpreadsheetView'));
+const Budget = lazy(() => import('./pages/Budget'));
+const Notes = lazy(() => import('./pages/Notes'));
+const Packing = lazy(() => import('./pages/Packing'));
+const Settings = lazy(() => import('./pages/Settings'));
+const ImportItinerary = lazy(() => import('./pages/ImportItinerary'));
+const Assistant = lazy(() => import('./pages/Assistant'));
+const TripDayView = lazy(() => import('./pages/TripDayView'));
+
+function AuthGate({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+        <Loader2 size={32} className="spin" style={{ color: 'var(--primary-color)' }} />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <Suspense fallback={null}>
+        <Login />
+      </Suspense>
+    );
+  }
+
+  return <>{children}</>;
+}
+
+const App: React.FC = () => {
+  useEffect(() => {
+    const config = loadThemeConfig();
+    let tokens = getResolvedTokens(config);
+
+    const s = getSettingsSnapshot();
+    if (s.textSize) document.documentElement.style.setProperty('--text-size', `${s.textSize}%`);
+    if (s.compactLayout) document.body.classList.add('compact-layout');
+    if (s.darkMode) {
+      tokens = getDarkTokens(tokens);
+      document.body.classList.add('dark-mode');
+      document.documentElement.style.setProperty('color-scheme', 'dark');
+    }
+
+    applyTheme(tokens);
+  }, []);
+
+  return (
+    <Router basename="/travelplanner/">
+      <AuthProvider>
+        <ToastProvider>
+          <AuthGate>
+            <OnlineStatus />
+            <div className="app-container">
+              <Sidebar />
+              <main className="main-content">
+                <GeminiUsageHeader />
+                <Suspense fallback={null}>
+                  <Routes>
+                    <Route path="/" element={<Navigate to="/spreadsheet" replace />} />
+                    <Route path="/calendar" element={<CalendarView />} />
+                    <Route path="/trip/:tripId/day/:date" element={<TripDayView />} />
+                    <Route path="/trip/:tripId" element={<TripDefaultRedirect />} />
+                    <Route path="/weather" element={<Weather />} />
+                    <Route path="/transportation" element={<Transportation />} />
+                    <Route path="/spreadsheet" element={<SpreadsheetView />} />
+                    <Route path="/budget" element={<Budget />} />
+                    <Route path="/notes" element={<Notes />} />
+                    <Route path="/packing" element={<Packing />} />
+                    <Route path="/import" element={<ImportItinerary />} />
+                    <Route path="/assistant" element={<Assistant />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="*" element={<Navigate to="/spreadsheet" replace />} />
+                  </Routes>
+                </Suspense>
+              </main>
+            </div>
+          </AuthGate>
+        </ToastProvider>
+      </AuthProvider>
+    </Router>
+  );
+};
+
+export default App;
+</file>
+
 <file path="src/pages/SpreadsheetView.tsx">
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -22220,12 +22149,11 @@ import NoteEditor from '../components/NoteEditor';
 import ScenarioSwitcher from '../components/ScenarioSwitcher';
 import WeatherBadge from '../components/WeatherBadge';
 import NearbyRestaurants from '../components/NearbyRestaurants';
-import { getNearbyPlacesLabel } from '../lib/services/placesService';
+import { getNearbyPlacesLabel } from '../lib/places';
 import ActivityReviews from '../components/ActivityReviews';
 import { useToast } from '../components/Toast';
 import { useWeatherForTrip } from '../lib/weather';
 import { compareActivitiesByTimeThenOrder, getEffectiveDayLocations } from '../lib/itinerary';
-import { logEvent } from '../lib/amplitude';
 import { getTripEmoji } from '../lib/tripEmoji';
 import { getTripPlanningConflicts } from '../lib/planning/conflicts';
 import { useSettings } from '../lib/settings';
@@ -22449,12 +22377,6 @@ const SpreadsheetView: React.FC = () => {
         } else {
             updateActivity(activityId, { date: dateStr, time: newTime });
         }
-        logEvent('Activity Moved in Spreadsheet', {
-            activity_title: activity.title,
-            from_date: activity.date,
-            to_date: dateStr,
-            to_slot: slot,
-        });
     };
 
     const handleSaveActivity = (data: Omit<Activity, 'id' | 'userId' | 'tripMembers'> | ({ id: string } & Partial<Omit<Activity, 'userId'>>)) => {
@@ -22466,7 +22388,6 @@ const SpreadsheetView: React.FC = () => {
             } else {
                 updateActivity(data.id, data);
             }
-            logEvent('Activity Updated', { activity_title: data.title, source: 'spreadsheet', scenario_mode: Boolean(activeScenario) });
         } else {
             const trip = trips.find(t => t.id === selectedTripId);
             if (selectedTripId && activeScenario) {
@@ -22482,7 +22403,6 @@ const SpreadsheetView: React.FC = () => {
             } else {
                 addActivity(data as Omit<import('../lib/types').Activity, 'id' | 'userId' | 'tripMembers'>, trip?.members || []);
             }
-            logEvent('Activity Created', { activity_title: data.title, date: data.date, source: 'spreadsheet', scenario_mode: Boolean(activeScenario) });
         }
         setEditingActivity(null);
         setAddingCell(null);
@@ -22497,12 +22417,10 @@ const SpreadsheetView: React.FC = () => {
         } else {
             deleteActivity(id);
         }
-        logEvent('Activity Deleted', { activity_title: act.title, source: 'spreadsheet', scenario_mode: Boolean(activeScenario) });
         setEditingActivity(null);
         if (!activeScenario) {
             showToast(`"${act.title}" deleted`, () => {
                 restoreActivity(act);
-                logEvent('Activity Delete Undone', { activity_title: act.title });
             });
         }
     };
@@ -22526,7 +22444,6 @@ const SpreadsheetView: React.FC = () => {
             updatedAt: now,
         } as Omit<import('../lib/types').Note, 'id' | 'userId' | 'tripMembers'>, trip?.members || []);
 
-        logEvent('Note Created', { trip_id: selectedTripId, source: 'spreadsheet', date: dateStr });
         setQuickNoteContent('');
         setQuickNoteForDate(null);
     }, [addNote, quickNoteContent, selectedTripId, trips, tripNotes.length]);
@@ -22534,10 +22451,8 @@ const SpreadsheetView: React.FC = () => {
     const handleDeleteNoteFromModal = useCallback((note: Note) => {
         deleteNote(note.id);
         setEditingNote(null);
-        logEvent('Note Deleted', { note_id: note.id, source: 'spreadsheet' });
         showToast('Note deleted', () => {
             restoreNote(note);
-            logEvent('Note Delete Undone', { note_id: note.id });
         });
     }, [deleteNote, restoreNote, showToast]);
 
@@ -22546,11 +22461,9 @@ const SpreadsheetView: React.FC = () => {
         try {
             if ('id' in tripData) {
                 await updateTrip(tripData.id, tripData);
-                logEvent('Trip Updated', { trip_name: tripData.name, start_date: tripData.startDate, end_date: tripData.endDate });
             } else {
                 const newTrip = await addTrip(tripData);
                 setSelectedTripId(newTrip.id);
-                logEvent('Trip Created', { trip_name: tripData.name, start_date: tripData.startDate, end_date: tripData.endDate, default_currency: tripData.defaultCurrency });
             }
             setShowTripForm(false);
             setEditingTrip(null);
@@ -22566,12 +22479,10 @@ const SpreadsheetView: React.FC = () => {
         const deletedActivities = getActivitiesByTrip(id);
         deleteTrip(id);
         deletedActivities.forEach(a => deleteActivity(a.id));
-        logEvent('Trip Deleted', { trip_name: trip.name });
         if (selectedTripId === id) setSelectedTripId(null);
         showToast(`"${trip.name}" deleted`, () => {
             restoreTrip(trip);
             deletedActivities.forEach(a => restoreActivity(a));
-            logEvent('Trip Delete Undone', { trip_name: trip.name });
         });
     };
 
@@ -22988,7 +22899,6 @@ const SpreadsheetView: React.FC = () => {
                                         const d = format(focusedDate, 'yyyy-MM-dd');
                                         setAddingUnscheduledForDate(d);
                                         setUnscheduledOpen(true);
-                                        logEvent('Unscheduled Activity Add Clicked', { date: d, source: 'spreadsheet' });
                                     }}
                                 >
                                     <Plus size={14} /> Add without time
@@ -23011,7 +22921,6 @@ const SpreadsheetView: React.FC = () => {
                                             onClick={() => {
                                                 const d = format(focusedDate, 'yyyy-MM-dd');
                                                 setAddingUnscheduledForDate(d);
-                                                logEvent('Unscheduled Activity Add Clicked', { date: d, source: 'spreadsheet_empty' });
                                             }}
                                         >
                                             <Plus size={14} /> Add activity
@@ -23172,7 +23081,6 @@ const SpreadsheetView: React.FC = () => {
                             onSave={(data) => {
                                 updateNote(editingNote.id, { ...data, updatedAt: new Date().toISOString() });
                                 setEditingNote(null);
-                                logEvent('Note Updated', { note_id: editingNote.id, source: 'spreadsheet' });
                             }}
                             onCancel={() => setEditingNote(null)}
                             onDelete={() => handleDeleteNoteFromModal(editingNote)}
@@ -23202,7 +23110,6 @@ import { format, isSameDay } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, Info } from 'lucide-react';
 import { CATEGORY_EMOJIS } from '../lib/types';
-import { logEvent } from '../lib/amplitude';
 import ScenarioSwitcher from '../components/ScenarioSwitcher';
 import WeatherBadge from '../components/WeatherBadge';
 import { useCalendarViewController } from './useCalendarViewController';
@@ -23359,7 +23266,6 @@ const CalendarView: React.FC = () => {
                                         if (!selectedTripId) return;
                                         navigate(`/trip/${selectedTripId}/day/${dateStr}`);
                                         setCurrentDate(day);
-                                        logEvent('Calendar View Changed', { view_mode: 'day', source: 'trip_card_click' });
                                     }}
                                 >
                                     <div className={styles['trip-card-header']}>

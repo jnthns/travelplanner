@@ -5,8 +5,8 @@ primary_stack: react19_typescript_vite_firebase_firestore_cloudflare_worker_gemi
 llm_instructions: |
   Use this file to resolve entity→collection→code paths. Dates YYYY-MM-DD.
   Firestore writes must strip undefined (see store.ts stripUndefined).
-  AI calls only via generateWithGemini through src/lib/services/aiService.ts (proxy).
-  Places only via worker proxy (src/lib/places.ts or placesService).
+  AI calls only via generateWithGemini from src/lib/gemini.ts (proxy).
+  Places only via worker proxy (src/lib/places.ts).
 entities:
   - name: Trip
     typescript_type: Trip
@@ -70,13 +70,11 @@ entities:
 
 integrations:
   ai_generation:
-    facade_file: src/lib/services/aiService.ts
-    implementation: src/lib/gemini.ts
+    client_file: src/lib/gemini.ts
     worker_route: POST /generate
     env_frontend: VITE_AI_PROXY_URL
   google_places:
     client_file: src/lib/places.ts
-    facade_file: src/lib/services/placesService.ts
     worker_routes: [POST /places/nearby, POST /places/details]
   weather:
     client_file: src/lib/weather.ts

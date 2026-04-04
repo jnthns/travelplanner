@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { getCachedAiText } from '../cache';
-import { generateWithGemini } from '../../services/aiService';
+import { generateWithGemini } from '../../gemini';
 import { getEffectiveDayLocations } from '../../itinerary';
 import type { Activity, Trip } from '../../types';
 
@@ -22,7 +22,7 @@ export interface ActivityDescriptionSuggestion {
 
 const ACTIVITY_DESCRIPTION_CACHE_VERSION = 'v3';
 
-function formatAiPreferenceContext(trip: Trip): string {
+export function formatAiPreferenceContext(trip: Trip): string {
   const prefs = trip.aiPreferences;
   if (!prefs) return 'AI preferences: none set.';
   return `AI preferences:

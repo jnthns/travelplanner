@@ -232,7 +232,7 @@ function corsHeadersFor(request: Request, env: Env): Record<string, string> | nu
     const origin = request.headers.get('Origin');
     const base: Record<string, string> = {
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     };
     if (allowed.length === 0) {
         return { ...base, 'Access-Control-Allow-Origin': '*' };
@@ -432,14 +432,23 @@ export default {
     async fetch(request: Request, env: Env): Promise<Response> {
         const cors = corsHeadersFor(request, env);
         if (!cors) {
+            // Reflect the origin so the browser can read the error body (non-sensitive).
+            const blockedOrigin = request.headers.get('Origin') ?? '*';
             return new Response(JSON.stringify({ error: 'Origin not allowed' }), {
                 status: 403,
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': blockedOrigin,
+                    'Vary': 'Origin',
+                },
             });
         }
 
         if (request.method === 'OPTIONS') {
-            return new Response(null, { status: 204, headers: cors });
+            return new Response(null, {
+                status: 204,
+                headers: { ...cors, 'Access-Control-Max-Age': '86400' },
+            });
         }
 
         if (request.method !== 'POST') {
