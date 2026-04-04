@@ -1,6 +1,18 @@
 {
     // Cloudflare Worker config for TravelPlanner AI proxy
+    //
+    // Required secrets (set via `wrangler secret put <NAME>`):
+    //   GEMINI_API_KEYS          — comma-separated Gemini API keys
+    //   GOOGLE_PLACES_API_KEY    — Google Places API key
+    //   FIREBASE_PROJECT_ID      — must match VITE_FIREBASE_PROJECT_ID
+    //
+    // Optional secrets:
+    //   ALLOWED_ORIGINS          — comma-separated origins (e.g. https://you.github.io)
+    //                              If unset, all origins are allowed (*).
+    //                              LOCAL DEV: either leave unset, or include http://localhost:5173
+    //
     "name": "travelplanner-ai",
     "main": "src/index.ts",
-    "compatibility_date": "2025-01-01"
+    "compatibility_date": "2025-01-01",
+    "compatibility_flags": ["nodejs_compat"]
 }

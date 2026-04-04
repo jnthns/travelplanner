@@ -501,6 +501,10 @@ body.dark-mode img {
   .page-container {
     padding: 1rem;
   }
+
+  .main-content {
+    padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 /* Utility Classes (Tailwind-style) */

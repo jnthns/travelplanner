@@ -115,7 +115,7 @@ Run silently before every output:
 - [ ] No new deps introduced silently
 - [ ] Types verified — no regressions introduced
 
-_Project-specific checks (Firestore writes, Amplitude events, etc.)
+_Project-specific checks (Firestore writes, etc.)
 belong in the overlay file, not here._
 
 ---

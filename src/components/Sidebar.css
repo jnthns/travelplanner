@@ -190,22 +190,9 @@
     padding: 0.5rem 0;
 }
 
-/* Mobile: sidebar narrower by default; expand to full width when not collapsed */
+/* Mobile: bottom tab bar is primary nav; hide sidebar */
 @media (max-width: 768px) {
     .sidebar {
-        width: 56px;
-    }
-
-    .sidebar:not(.collapsed) {
-        width: 200px;
-        position: absolute;
-        height: 100vh;
-        z-index: 100;
-        box-shadow: 4px 0 10px rgba(0, 0, 0, 0.1);
-    }
-
-    .sidebar:not(.collapsed) .logo-text,
-    .sidebar:not(.collapsed) .nav-label {
-        display: inline;
+        display: none;
     }
 }

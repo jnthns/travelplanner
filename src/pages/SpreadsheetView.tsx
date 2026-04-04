@@ -16,11 +16,12 @@ import NoteEditor from '../components/NoteEditor';
 import ScenarioSwitcher from '../components/ScenarioSwitcher';
 import WeatherBadge from '../components/WeatherBadge';
 import NearbyRestaurants from '../components/NearbyRestaurants';
-import { getNearbyPlacesLabel } from '../lib/services/placesService';
+import { getNearbyPlacesLabel } from '../lib/places';
 import ActivityReviews from '../components/ActivityReviews';
 import { useToast } from '../components/Toast';
 import { useWeatherForTrip } from '../lib/weather';
 import { compareActivitiesByTimeThenOrder, getEffectiveDayLocations } from '../lib/itinerary';
+import { buildLlmCopyText } from '../lib/itinerarySerializer';
 import { getTripEmoji } from '../lib/tripEmoji';
 import { getTripPlanningConflicts } from '../lib/planning/conflicts';
 import { useSettings } from '../lib/settings';
@@ -105,6 +106,8 @@ const SpreadsheetView: React.FC = () => {
     const [conflictsExpandedDate, setConflictsExpandedDate] = useState<string | null>(null);
     const [showNearbyRestaurantsInModal, setShowNearbyRestaurantsInModal] = useState(false);
     const [showReviewsInModal, setShowReviewsInModal] = useState(false);
+    const [clipboardFallbackText, setClipboardFallbackText] = useState<string | null>(null);
+    const clipboardTextareaRef = useRef<HTMLTextAreaElement>(null);
 
     const clampZoom = useCallback((value: number) => Math.min(140, Math.max(70, Math.round(value))), []);
     const zoomScale = clampZoom(sheetZoom) / 100;
@@ -373,6 +376,21 @@ const SpreadsheetView: React.FC = () => {
         updateItineraryDay(selectedTrip.id, dateStr, updates);
     }, [activeScenario, selectedTrip, selectedTripId, updateItineraryDay]);
 
+    const handleCopyForLlm = useCallback(async () => {
+        if (!effectiveTrip) return;
+        const text = buildLlmCopyText(effectiveTrip, effectiveActivities);
+        try {
+            if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(text);
+                showToast('Copied!', undefined, 2000);
+            } else {
+                throw new Error('clipboard unavailable');
+            }
+        } catch {
+            setClipboardFallbackText(text);
+        }
+    }, [effectiveTrip, effectiveActivities, showToast]);
+
     if (tripsLoading) {
         return <div className={`page-container animate-fade-in ${styles['spreadsheet-page']}`} />;
     }
@@ -488,6 +506,16 @@ const SpreadsheetView: React.FC = () => {
                     <div className={styles['day-nav-wrapper']}>
                         <div className={styles['spreadsheet-toolbar']}>
                             <ScenarioSwitcher trip={selectedTrip} activities={effectiveActivities} routes={effectiveRoutes} />
+                            <div className={styles['llm-copy-group']}>
+                                <button
+                                    type="button"
+                                    className="btn btn-ghost btn-sm"
+                                    onClick={() => void handleCopyForLlm()}
+                                    title="Copy destinations and preferences to clipboard for use with a local AI"
+                                >
+                                    📋 Copy for AI
+                                </button>
+                            </div>
                             <div className={styles['zoom-controls']}>
                                 <button
                                     type="button"
@@ -963,6 +991,41 @@ const SpreadsheetView: React.FC = () => {
                     onClose={() => setSharingTrip(null)}
                 />
             )}
+
+            {clipboardFallbackText != null &&
+                createPortal(
+                    <div className={styles['sheet-modal-overlay']} onClick={() => setClipboardFallbackText(null)}>
+                        <div className={styles['sheet-modal']} onClick={(e) => e.stopPropagation()}>
+                            <h3 className="font-semibold" style={{ marginBottom: '0.75rem' }}>
+                                Copy text
+                            </h3>
+                            <p className="text-secondary text-sm" style={{ marginBottom: '0.5rem' }}>
+                                Clipboard is not available. Select the text below or use Select All.
+                            </p>
+                            <textarea
+                                ref={clipboardTextareaRef}
+                                readOnly
+                                className="textarea textarea-bordered w-full min-h-32 font-mono text-sm"
+                                value={clipboardFallbackText}
+                            />
+                            <div className="flex gap-2 justify-end mt-3">
+                                <button
+                                    type="button"
+                                    className="btn btn-ghost btn-sm"
+                                    onClick={() => {
+                                        clipboardTextareaRef.current?.select();
+                                    }}
+                                >
+                                    Select All
+                                </button>
+                                <button type="button" className="btn btn-primary btn-sm" onClick={() => setClipboardFallbackText(null)}>
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>,
+                    document.body,
+                )}
         </div>
     );
 };

@@ -1,5 +1,5 @@
 import { getCachedAiText } from '../cache';
-import { generateWithGemini } from '../../services/aiService';
+import { generateWithGemini } from '../../gemini';
 
 export async function generateActivityGuide(title: string): Promise<string> {
   const normalizedTitle = title.trim();

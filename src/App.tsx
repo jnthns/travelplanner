@@ -1,6 +1,7 @@
 import React, { Suspense, useEffect, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
+import BottomTabBar from './components/BottomTabBar';
 import { AuthProvider, useAuth } from './lib/AuthContext';
 import { ToastProvider } from './components/Toast';
 import { loadThemeConfig, getResolvedTokens, getDarkTokens, applyTheme } from './design-system/themes';
@@ -71,6 +72,7 @@ const App: React.FC = () => {
             <OnlineStatus />
             <div className="app-container">
               <Sidebar />
+              <BottomTabBar />
               <main className="main-content">
                 <GeminiUsageHeader />
                 <Suspense fallback={null}>

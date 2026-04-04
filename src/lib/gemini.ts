@@ -6,23 +6,13 @@ import {
   recordAiRequestRetry,
   recordAiRequestSuccess,
 } from './aiUsage';
+import { getProxyUrl } from './proxyUrl';
 
 const MIN_CALL_SPACING_MS = 1200;
 export const DEFAULT_GEMINI_MODEL = 'gemini-3-flash-preview';
 
 let lastCallAt = 0;
 const inflight = new Map<string, Promise<string>>();
-
-function getProxyUrl(): string {
-  const url = import.meta.env.VITE_AI_PROXY_URL as string | undefined;
-  if (!url?.trim()) {
-    throw new Error('AI proxy URL is not set. Add VITE_AI_PROXY_URL to your environment.');
-  }
-  if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    throw new Error(`AI proxy URL must be an absolute address (e.g. https://your-worker.workers.dev). Currently set to: "${url}"`);
-  }
-  return url.replace(/\/+$/, '');
-}
 
 function isRateLimitError(err: unknown): boolean {
   if (!err) return false;

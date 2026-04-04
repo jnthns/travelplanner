@@ -106,7 +106,6 @@ Surface findings from this checklist in your diagnosis before proposing a fix.
 - [ ] No `undefined` passed to Firestore — `stripUndefined()` called
 - [ ] Exported functions have return types
 - [ ] Dates are ISO strings, manipulated via `date-fns`
-- [ ] New user actions emit an Amplitude event
 - [ ] Lazy-loaded components wrapped in `<Suspense>`
 - [ ] Loading and error states handled
 - [ ] Fix works on first render, not just after re-render

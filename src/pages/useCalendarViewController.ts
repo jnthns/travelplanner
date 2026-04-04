@@ -4,7 +4,8 @@ import { useTrips, useActivities, useTransportRoutes } from '../lib/store';
 import { CATEGORY_COLORS } from '../lib/types';
 import { useToast } from '../components/Toast';
 import { generateDayActivityDescriptions, generateDaySummary, generateOptimizedRoute } from '../lib/ai/actions/calendar';
-import { getNearbyPlacesLabel } from '../lib/services/placesService';
+import { generateFillGapsSuggestions, type FillGapSuggestionRow } from '../lib/ai/actions/fillGaps';
+import { getNearbyPlacesLabel } from '../lib/places';
 import { getTripPlanningConflicts } from '../lib/planning/conflicts';
 import { useSettings } from '../lib/settings';
 import { useWeatherForTrip } from '../lib/weather';
@@ -19,8 +20,7 @@ import {
 } from '../lib/scenarios';
 import { prefetchTripDocumentsForOfflineCache } from '../lib/prefetchTripCache';
 import type { Activity } from '../lib/types';
-
-const CALENDAR_VIEW_KEY = 'travelplanner_calendar_view';
+import { CALENDAR_VIEW_KEY } from '../lib/useDayNavHref';
 
 export type CalendarViewMode = 'day' | 'trip';
 
@@ -35,6 +35,22 @@ export interface PendingActivityDescription {
     title: string;
     summary: string;
     tips: string[];
+}
+
+const ACTIVITY_CATEGORIES: NonNullable<Activity['category']>[] = [
+    'sightseeing',
+    'food',
+    'accommodation',
+    'transport',
+    'shopping',
+    'other',
+];
+
+function normalizeActivityCategory(raw: string): NonNullable<Activity['category']> {
+    const c = raw.toLowerCase().trim();
+    return ACTIVITY_CATEGORIES.includes(c as NonNullable<Activity['category']>)
+        ? (c as NonNullable<Activity['category']>)
+        : 'other';
 }
 
 function loadCalendarPrefs(): CalendarPrefs {
@@ -97,6 +113,9 @@ export function useCalendarViewController(options?: UseCalendarViewControllerOpt
     const [descriptionLoading, setDescriptionLoading] = useState(false);
     const [descriptionError, setDescriptionError] = useState<string | null>(null);
     const [pendingDescriptions, setPendingDescriptions] = useState<PendingActivityDescription[] | null>(null);
+    const [fillGapsLoading, setFillGapsLoading] = useState(false);
+    const [fillGapsError, setFillGapsError] = useState<string | null>(null);
+    const [gapSuggestions, setGapSuggestions] = useState<FillGapSuggestionRow[] | null>(null);
     const [accommodationEditDate, setAccommodationEditDate] = useState<string | null>(null);
     const [accommodationCityInput, setAccommodationCityInput] = useState('');
     const [accommodationNameInput, setAccommodationNameInput] = useState('');
@@ -195,6 +214,9 @@ export function useCalendarViewController(options?: UseCalendarViewControllerOpt
         setPendingDescriptions(null);
         setDescriptionError(null);
         setDescriptionLoading(false);
+        setGapSuggestions(null);
+        setFillGapsError(null);
+        setFillGapsLoading(false);
     }, [currentDateStr, selectedTripId, activeScenario?.id]);
 
     const handleSelectTrip = (tripId: string | null) => {
@@ -215,8 +237,10 @@ export function useCalendarViewController(options?: UseCalendarViewControllerOpt
         !!descriptionError ||
         !!summaryError ||
         !!optimizationError ||
+        !!fillGapsError ||
         !!pendingDescriptions ||
-        !!optimizedRoute;
+        !!optimizedRoute ||
+        (gapSuggestions != null && gapSuggestions.length > 0);
 
     const calendarDays = useMemo(() => {
         if (viewMode === 'trip' && selectedTrip) {
@@ -567,6 +591,88 @@ export function useCalendarViewController(options?: UseCalendarViewControllerOpt
         setPendingDescriptions(null);
     };
 
+    const handleFillGaps = async () => {
+        if (!selectedTrip || dayViewActivities.length === 0) return;
+        if (!dayViewActivities.some((a) => a.time)) return;
+        const requestContext = {
+            currentDateStr,
+            selectedTripId,
+            scenarioId: activeScenario?.id ?? null,
+        };
+        setFillGapsLoading(true);
+        setFillGapsError(null);
+        setGapSuggestions(null);
+
+        try {
+            const locationLabel = currentDayLocations[0] ?? '(location unknown)';
+            const rows = await generateFillGapsSuggestions({
+                trip: effectiveTrip ?? selectedTrip,
+                dateStr: currentDateStr,
+                location: locationLabel,
+                activities: dayViewActivities,
+            });
+
+            const latestContext = latestDescriptionContextRef.current;
+            if (
+                latestContext.currentDateStr !== requestContext.currentDateStr ||
+                latestContext.selectedTripId !== requestContext.selectedTripId ||
+                latestContext.scenarioId !== requestContext.scenarioId
+            ) {
+                return;
+            }
+
+            setGapSuggestions(rows.length > 0 ? rows : null);
+        } catch (e) {
+            const msg = e instanceof Error ? e.message : 'Fill gaps failed';
+            const latestContext = latestDescriptionContextRef.current;
+            if (
+                latestContext.currentDateStr !== requestContext.currentDateStr ||
+                latestContext.selectedTripId !== requestContext.selectedTripId ||
+                latestContext.scenarioId !== requestContext.scenarioId
+            ) {
+                return;
+            }
+            setFillGapsError(/429|quota|rate/i.test(msg) ? 'API rate limit reached — please wait a minute and try again.' : msg);
+        } finally {
+            const latestContext = latestDescriptionContextRef.current;
+            if (
+                latestContext.currentDateStr === requestContext.currentDateStr &&
+                latestContext.selectedTripId === requestContext.selectedTripId &&
+                latestContext.scenarioId === requestContext.scenarioId
+            ) {
+                setFillGapsLoading(false);
+            }
+        }
+    };
+
+    const acceptGapSuggestion = (index: number) => {
+        const row = gapSuggestions?.[index];
+        if (!row || !selectedTripId) return;
+        const { suggestion } = row;
+        const category = normalizeActivityCategory(suggestion.category);
+        handleSaveActivity({
+            title: suggestion.title,
+            category,
+            time: suggestion.time,
+            details: suggestion.details,
+            location: suggestion.location,
+            order: dayViewActivities.length,
+        } as Omit<Activity, 'id' | 'userId' | 'tripMembers'>); // reason: handleSaveActivity union expects id branch; new-activity payload is the other branch
+        setGapSuggestions((current) => {
+            if (!current) return null;
+            const next = current.filter((_, i) => i !== index);
+            return next.length > 0 ? next : null;
+        });
+    };
+
+    const dismissGapSuggestion = (index: number) => {
+        setGapSuggestions((current) => {
+            if (!current) return null;
+            const next = current.filter((_, i) => i !== index);
+            return next.length > 0 ? next : null;
+        });
+    };
+
     return {
         trips,
         updateItineraryDay,
@@ -639,6 +745,12 @@ export function useCalendarViewController(options?: UseCalendarViewControllerOpt
         dismissPendingDescription,
         applyPendingDescription,
         handleAcceptAllDescriptions,
+        fillGapsLoading,
+        fillGapsError,
+        gapSuggestions,
+        handleFillGaps,
+        acceptGapSuggestion,
+        dismissGapSuggestion,
         hasDaySummaryContent,
         getNearbyPlacesLabel,
         updateScenarioTripSnapshot,

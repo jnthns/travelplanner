@@ -19,9 +19,13 @@ export interface ItineraryDay {
 
 export interface AiPreferences {
     pace?: 'relaxed' | 'balanced' | 'fast';
+    budget?: 'budget' | 'mid-range' | 'luxury';
+    groupType?: 'solo' | 'couple' | 'family' | 'group';
     interests?: string[];
     dietaryNeeds?: string;
     accessibilityNeeds?: string;
+    transportPreference?: string;
+    mustHave?: string;
     avoid?: string;
     notes?: string;
 }

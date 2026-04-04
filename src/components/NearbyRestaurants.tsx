@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
-import { fetchNearbyPlaces } from '../lib/services/placesService';
-import type { PlaceResult } from '../lib/services/placesService';
+import { fetchNearbyPlaces } from '../lib/places';
+import type { PlaceResult } from '../lib/places';
 
 function formatPlacesAsNote(places: PlaceResult[]): string {
   const heading = '**Nearby places**';
