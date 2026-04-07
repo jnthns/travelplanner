@@ -5,6 +5,10 @@ alwaysApply: true
 
 # Project Context — TravelPlanner
 
+## Knowledge Base
+
+Before exploring source files, read `docs/wiki/INDEX.md` for a compiled map of all architecture, data, AI, and coding convention topics. Use the topic files in `docs/wiki/topics/` as the primary reference — they are more complete than this rule file.
+
 Personal travel itinerary planner. Users create trips, plan day-by-day activities, track transport, manage budgets, take notes, and receive AI-powered suggestions. Supports real-time collaboration via trip sharing.
 
 ## Tech Stack

@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "name": "TravelPlanner",
+  "sources": [
+    { "path": "./", "exclude": ["wiki/", "node_modules/", ".git/", "dist/", "build/", "docs/wiki/"] },
+    { "path": ".agents/skills/" },
+    { "path": ".cursor/" }
+  ],
+  "output": "docs/wiki/",
+  "mode": "staging",
+  "topic_hints": [],
+  "link_style": "obsidian"
+}

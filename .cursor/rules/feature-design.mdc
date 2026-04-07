@@ -1,0 +1,19 @@
+---
+description: Use when designing, planning, or scoping a new feature for TravelPlanner. Triggered by prompts about adding functionality, building a new page or route, designing a UI component, or planning architectural changes.
+alwaysApply: false
+---
+
+# Feature Design — Wiki-First Protocol
+
+Before proposing any design or writing any code for a new feature:
+
+1. Read `docs/wiki/INDEX.md` to orient yourself.
+2. Read the relevant topic files from `docs/wiki/topics/` based on the feature's domain:
+   - Data model or Firestore work → `architecture-and-data.md`
+   - AI / Gemini integration → `ai-integration.md`
+   - UI component or page → `coding-standards.md`
+   - Deployment, env vars, Worker config → `deployment-and-config.md`
+   - When in doubt, read all relevant topics — they are short.
+3. Check the **Gotchas & Known Issues** and **Open Questions** sections of every relevant topic. These contain prior decisions and constraints that must inform the design.
+4. Output a numbered plan that references specific wiki findings where they apply. Wait for approval before writing code.
+5. After implementing, remind the user to run `/wiki-compile` so the wiki reflects the new feature.

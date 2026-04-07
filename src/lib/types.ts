@@ -96,6 +96,8 @@ export interface Activity {
     category?: 'sightseeing' | 'food' | 'accommodation' | 'transport' | 'shopping' | 'other';
     cost?: number;
     currency?: string;
+    paymentMethod?: string;
+    payer?: string;
     notes?: string;
     order: number; // for sorting within a day
     color?: string; // optional override for prioritization/organization

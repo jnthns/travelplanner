@@ -9,6 +9,9 @@ import {
     deleteDoc,
     doc,
     onSnapshot,
+    getDocs,
+    orderBy,
+    limit,
     writeBatch,
     and,
     or,
@@ -372,8 +375,13 @@ export function useChatHistory(tripId: string | null) {
     const { user } = useAuth();
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [loading, setLoading] = useState(true);
+    const [earlierMessages, setEarlierMessages] = useState<ChatMessage[]>([]);
+    const [hasLoadedEarlier, setHasLoadedEarlier] = useState(false);
+    const [isLoadingEarlier, setIsLoadingEarlier] = useState(false);
 
     useEffect(() => {
+        setEarlierMessages([]);
+        setHasLoadedEarlier(false);
         if (!user || !tripId) {
             setMessages([]);
             setLoading(false);
@@ -420,6 +428,40 @@ export function useChatHistory(tripId: string | null) {
         return () => unsub?.();
     }, [user?.uid, tripId]);
 
+    const loadEarlier = useCallback(async () => {
+        if (!user || !tripId || isLoadingEarlier || hasLoadedEarlier) return;
+        setIsLoadingEarlier(true);
+        try {
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+            const cutoffISO = sevenDaysAgo.toISOString();
+
+            const q = query(
+                collection(db, 'chat_history'),
+                and(
+                    where('tripId', '==', tripId),
+                    where('createdAt', '<', cutoffISO),
+                    or(
+                        where('tripMembers', 'array-contains', user.uid),
+                        where('userId', '==', user.uid)
+                    )
+                ),
+                orderBy('createdAt', 'desc'),
+                limit(50)
+            );
+            const snapshot = await getDocs(q);
+            const data = snapshot.docs
+                .map((d) => ({ id: d.id, ...d.data() }) as ChatMessage)
+                .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+            setEarlierMessages(data);
+        } catch (error) {
+            console.error('Error loading earlier messages:', error);
+        } finally {
+            setHasLoadedEarlier(true);
+            setIsLoadingEarlier(false);
+        }
+    }, [user, tripId, isLoadingEarlier, hasLoadedEarlier]);
+
     const addMessage = useCallback(async (msg: Omit<ChatMessage, 'id' | 'userId' | 'tripMembers'>, tripMembers: string[] = []) => {
         if (!user) throw new Error('Not authenticated');
         const docRef = doc(collection(db, 'chat_history'));
@@ -438,12 +480,12 @@ export function useChatHistory(tripId: string | null) {
 
     const clearHistory = useCallback(async () => {
         if (!user || !tripId) throw new Error('Not authenticated or no trip');
-        // Because of Firestore permissions, we can't easily run a batch delete query without an active read query loop, 
+        // Because of Firestore permissions, we can't easily run a batch delete query without an active read query loop,
         // so we just rely on the 7 day rolling window to drop them naturally from the UI!
-        // Alternatively, a Firebase Cloud Function would handle proper TTL deletions. 
+        // Alternatively, a Firebase Cloud Function would handle proper TTL deletions.
     }, [user, tripId]);
 
-    return { messages, loading, addMessage, clearHistory };
+    return { messages, loading, earlierMessages, hasLoadedEarlier, isLoadingEarlier, loadEarlier, addMessage, clearHistory };
 }
 
 // ---- Packing Items ----

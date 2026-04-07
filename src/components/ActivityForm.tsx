@@ -56,6 +56,8 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ tripId, date, existingActiv
     const [currency, setCurrency] = useState(existingActivity?.currency || defaultCurrency || 'USD');
     const [color, setColor] = useState(existingActivity?.color || '');
     const [tags, setTags] = useState(existingActivity?.tags?.join(', ') || '');
+    const [paymentMethod, setPaymentMethod] = useState(existingActivity?.paymentMethod || '');
+    const [payer, setPayer] = useState(existingActivity?.payer || '');
     const [showOptional, setShowOptional] = useState(!!existingActivity);
     const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
     const [aiLoading, setAiLoading] = useState(false);
@@ -92,6 +94,8 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ tripId, date, existingActiv
             category,
             cost: cost ? parseFloat(cost) : undefined,
             currency: cost ? currency : undefined,
+            paymentMethod: cost ? (paymentMethod || undefined) : undefined,
+            payer: cost ? (payer.trim() || undefined) : undefined,
             order: existingActivity?.order ?? nextOrder,
             color: color || undefined,
             tags: parsedTags.length > 0 ? parsedTags : undefined,
@@ -231,6 +235,34 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ tripId, date, existingActiv
                                 <option value="CAD">CAD</option>
                                 <option value="AUD">AUD</option>
                             </select>
+                        </div>
+                    </div>
+                    <div className="form-row">
+                        <div className="input-group" style={{ flex: 1 }}>
+                            <label className="input-label">Payment method</label>
+                            <select
+                                className="input-field"
+                                value={paymentMethod}
+                                onChange={e => setPaymentMethod(e.target.value)}
+                            >
+                                <option value="">Not specified</option>
+                                <option value="Cash">Cash</option>
+                                <option value="Credit card">Credit card</option>
+                                <option value="Debit card">Debit card</option>
+                                <option value="Mobile pay">Mobile pay</option>
+                                <option value="Bank transfer">Bank transfer</option>
+                                <option value="Split">Split</option>
+                            </select>
+                        </div>
+                        <div className="input-group" style={{ flex: 1 }}>
+                            <label className="input-label">Payer</label>
+                            <input
+                                className="input-field"
+                                type="text"
+                                value={payer}
+                                onChange={e => setPayer(e.target.value)}
+                                placeholder="Who paid?"
+                            />
                         </div>
                     </div>
                     <div className="input-group">

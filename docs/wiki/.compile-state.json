@@ -1,0 +1,28 @@
+{
+  "last_compiled": "2026-04-06",
+  "topics": [
+    "project-overview",
+    "architecture-and-data",
+    "ai-integration",
+    "coding-standards",
+    "deployment-and-config",
+    "agent-skills"
+  ],
+  "source_locations": [
+    "CLAUDE.md",
+    "README.md",
+    ".cursor/LLM_DOMAIN_MAP.md",
+    ".cursor/rules/rules.md",
+    ".cursor/skills/amhuppert-my-ai-resources-cursor-rules/SKILL.md",
+    ".agents/skills/gemini-api-dev/SKILL.md",
+    ".agents/skills/gemini-interactions-api/SKILL.md",
+    ".agents/skills/powershell-syntax/SKILL.md",
+    ".agents/skills/react-components/SKILL.md",
+    ".agents/skills/react-components/README.md",
+    ".agents/skills/react-components/resources/architecture-checklist.md",
+    ".agents/skills/react-components/resources/stitch-api-reference.md",
+    ".agent/skills/gemini-api-dev/SKILL.md",
+    ".agent/skills/gemini-interactions-api/SKILL.md"
+  ],
+  "total_sources_scanned": 14
+}

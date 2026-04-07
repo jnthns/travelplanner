@@ -10,8 +10,8 @@ interface ConflictListProps {
 }
 
 const ConflictList: React.FC<ConflictListProps> = ({ conflicts, title = 'Planning checks', compact = false }) => {
-  if (conflicts.length === 0) return null;
   const [isOpen, setIsOpen] = useState(false);
+  if (conflicts.length === 0) return null;
 
   return (
     <div className={`conflict-list ${compact ? 'compact' : ''}`}>

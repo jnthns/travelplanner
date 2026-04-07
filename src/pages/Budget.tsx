@@ -72,6 +72,43 @@ const DonutChart: React.FC<{ segments: { label: string; value: number; color: st
     );
 };
 
+// --- SVG Vertical Bar Chart ---
+const VertBarChart: React.FC<{ bars: { label: string; value: number }[]; height?: number }> = ({ bars, height = 160 }) => {
+    if (bars.length === 0) return null;
+    const maxVal = Math.max(...bars.map(b => b.value)) || 1;
+    const w = 400, h = height;
+    const pad = { top: 10, right: 8, bottom: 28, left: 38 };
+    const plotW = w - pad.left - pad.right;
+    const plotH = h - pad.top - pad.bottom;
+    const barGap = plotW / bars.length;
+    const barW = Math.max(2, Math.min(barGap * 0.6, 28));
+
+    return (
+        <svg viewBox={`0 0 ${w} ${h}`} style={{ width: '100%', height: 'auto' }} preserveAspectRatio="xMidYMid meet">
+            {[0, 0.5, 1].map((pct, i) => {
+                const y = pad.top + plotH - pct * plotH;
+                return (
+                    <g key={i}>
+                        <line x1={pad.left} y1={y} x2={w - pad.right} y2={y} stroke="var(--border-color)" strokeWidth="0.5" />
+                        <text x={pad.left - 4} y={y + 3} textAnchor="end" fontSize="9" fill="var(--text-tertiary)">{Math.round(pct * maxVal)}</text>
+                    </g>
+                );
+            })}
+            {bars.map((bar, i) => {
+                const cx = pad.left + i * barGap + barGap / 2;
+                const barH = (bar.value / maxVal) * plotH;
+                const y = pad.top + plotH - barH;
+                return (
+                    <g key={i}>
+                        <rect x={cx - barW / 2} y={y} width={barW} height={Math.max(1, barH)} fill="var(--primary-color)" rx="2" opacity="0.8" />
+                        <text x={cx} y={h - 6} textAnchor="middle" fontSize="8" fill="var(--text-tertiary)">{bar.label}</text>
+                    </g>
+                );
+            })}
+        </svg>
+    );
+};
+
 // --- SVG Cumulative Spend Chart ---
 const CumulativeChart: React.FC<{
     days: { label: string; cumulative: number }[];
@@ -412,6 +449,54 @@ const Budget: React.FC = () => {
         return items.slice(0, 5);
     }, [costedActivities, costedRoutes, costedAccommodations, displayCurrency, tripRates]);
 
+    const allExpenseRows = useMemo(() => {
+        type ExpenseRow = {
+            date: string; time?: string; location: string; title: string;
+            category: string; cost: number; currency: string;
+            paymentMethod: string; payer: string;
+        };
+        const rows: ExpenseRow[] = [];
+        for (const a of costedActivities) {
+            rows.push({
+                date: a.date, time: a.time,
+                location: a.location || locationsByDate[a.date] || '—',
+                title: a.title,
+                category: `${CATEGORY_EMOJIS[a.category || 'other']} ${a.category || 'other'}`,
+                cost: a.cost!, currency: a.currency || 'USD',
+                paymentMethod: a.paymentMethod || '—',
+                payer: a.payer || '—',
+            });
+        }
+        for (const r of costedRoutes) {
+            rows.push({
+                date: r.date,
+                location: locationsByDate[r.date] || '—',
+                title: `${r.from} → ${r.to}`,
+                category: '🚆 Transport route',
+                cost: r.cost!, currency: r.currency || 'USD',
+                paymentMethod: '—', payer: '—',
+            });
+        }
+        for (const a of costedAccommodations) {
+            rows.push({
+                date: a.date,
+                location: locationsByDate[a.date] || '—',
+                title: a.title,
+                category: '🏠 Accommodation',
+                cost: a.cost, currency: a.currency,
+                paymentMethod: '—', payer: '—',
+            });
+        }
+        rows.sort((a, b) => {
+            const d = a.date.localeCompare(b.date);
+            if (d !== 0) return d;
+            const t = (a.time ?? '').localeCompare(b.time ?? '');
+            if (t !== 0) return t;
+            return a.title.localeCompare(b.title);
+        });
+        return rows;
+    }, [costedActivities, costedRoutes, costedAccommodations, locationsByDate]);
+
     const avgDailySpend = useMemo(() => {
         if (allTripDays.length === 0) return null;
         if (displayCurrency && convertedTotal != null) return convertedTotal / allTripDays.length;
@@ -419,38 +504,6 @@ const Budget: React.FC = () => {
         return total / allTripDays.length;
     }, [allTripDays, grandTotal, displayCurrency, convertedTotal]);
 
-    const maxDayTotal = useMemo(() => {
-        let max = 0;
-        for (const day of dailyBreakdown) {
-            const sum = displayCurrency
-                ? Object.entries(day.totals).reduce((s, [cur, amt]) => s + convertAmount(amt, cur, displayCurrency, tripRates), 0)
-                : sumCurrency(day.totals);
-            if (sum > max) max = sum;
-        }
-        return max;
-    }, [dailyBreakdown, displayCurrency, tripRates]);
-
-    const categoryBarMax = useMemo(() => {
-        let max = 0;
-        for (const totals of Object.values(categoryBreakdown)) {
-            const sum = displayCurrency
-                ? Object.entries(totals).reduce((s, [cur, amt]) => s + convertAmount(amt, cur, displayCurrency, tripRates), 0)
-                : sumCurrency(totals);
-            if (sum > max) max = sum;
-        }
-        return max;
-    }, [categoryBreakdown, displayCurrency, tripRates]);
-
-    const locationBarMax = useMemo(() => {
-        let max = 0;
-        for (const totals of Object.values(locationBreakdown)) {
-            const sum = displayCurrency
-                ? Object.entries(totals).reduce((s, [cur, amt]) => s + convertAmount(amt, cur, displayCurrency, tripRates), 0)
-                : sumCurrency(totals);
-            if (sum > max) max = sum;
-        }
-        return max;
-    }, [locationBreakdown, displayCurrency, tripRates]);
 
     const totalExpenses = costedActivities.length + costedRoutes.length + costedAccommodations.length;
     const budgetTarget = effectiveTrip?.budgetTarget;
@@ -684,88 +737,105 @@ const Budget: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Donut + Category bars */}
+                    {/* All Expenses table */}
                     {totalExpenses > 0 && (
                         <div className="mb-xl">
-                            <h2 className="text-lg font-primary mb-md">By Category</h2>
-                            <div className="flex gap-xl items-start" style={{ flexWrap: 'wrap' }}>
-                                {donutSegments.length > 1 && <DonutChart segments={donutSegments} />}
-                                <div className="flex flex-col gap-sm flex-1 min-w-0">
-                                    {CATEGORIES.map(cat => {
-                                        const totals = categoryBreakdown[cat];
-                                        const sum = displayCurrency
-                                            ? Object.entries(totals).reduce((s, [cur, amt]) => s + convertAmount(amt, cur, displayCurrency, tripRates), 0)
-                                            : sumCurrency(totals);
-                                        if (sum === 0) return null;
-                                        const barWidth = categoryBarMax > 0 ? (sum / categoryBarMax) * 100 : 0;
-                                        return (
-                                            <div key={cat} className="grid items-center gap-md py-1 border-b" style={{ gridTemplateColumns: '140px 1fr auto' }}>
-                                                <div className="flex items-center gap-sm">
-                                                    <span className="text-base">{CATEGORY_EMOJIS[cat]}</span>
-                                                    <span className="text-sm font-semibold capitalize text-primary">{cat}</span>
-                                                </div>
-                                                <div className="h-2 rounded-full bg-border-light overflow-hidden">
-                                                    <div className="h-full rounded-full transition-all duration-300 min-w-1" style={{ width: `${barWidth}%`, backgroundColor: CATEGORY_COLORS[cat] }} />
-                                                </div>
-                                                <div className="flex flex-col items-end gap-0.5 text-sm font-bold text-primary min-w-[80px] text-right">{renderAmount(totals)}</div>
-                                            </div>
-                                        );
-                                    })}
-                                    {(() => {
-                                        const trTotals = categoryBreakdown['transport_routes'];
-                                        const trSum = displayCurrency
-                                            ? Object.entries(trTotals).reduce((s, [cur, amt]) => s + convertAmount(amt, cur, displayCurrency, tripRates), 0)
-                                            : sumCurrency(trTotals);
-                                        if (trSum === 0) return null;
-                                        const barW = categoryBarMax > 0 ? (trSum / categoryBarMax) * 100 : 0;
-                                        return (
-                                            <div className="grid items-center gap-md py-1 border-b" style={{ gridTemplateColumns: '140px 1fr auto' }}>
-                                                <div className="flex items-center gap-sm">
-                                                    <span className="text-base">🚆</span>
-                                                    <span className="text-sm font-semibold capitalize text-primary">transport routes</span>
-                                                </div>
-                                                <div className="h-2 rounded-full bg-border-light overflow-hidden">
-                                                    <div className="h-full rounded-full transition-all duration-300 min-w-1" style={{ width: `${barW}%`, backgroundColor: CATEGORY_COLORS['transport'] }} />
-                                                </div>
-                                                <div className="flex flex-col items-end gap-0.5 text-sm font-bold text-primary min-w-[80px] text-right">{renderAmount(trTotals)}</div>
-                                            </div>
-                                        );
-                                    })()}
-                                </div>
+                            <h2 className="text-lg font-primary mb-md">All Expenses</h2>
+                            <div className="card p-md" style={{ overflowX: 'auto' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                                    <thead>
+                                        <tr style={{ borderBottom: '2px solid var(--border-color)' }}>
+                                            {['Date', 'Location', 'Title', 'Category', 'Cost', 'Payment Method', 'Payer'].map(h => (
+                                                <th key={h} style={{ padding: '0.4rem 0.6rem', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{h}</th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {allExpenseRows.map((row, i) => (
+                                            <tr key={i} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                                <td style={{ padding: '0.4rem 0.6rem', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>
+                                                    {(() => { try { return format(parseISO(row.date), 'MMM d'); } catch { return row.date; } })()}
+                                                </td>
+                                                <td style={{ padding: '0.4rem 0.6rem', color: 'var(--text-secondary)' }}>{row.location}</td>
+                                                <td style={{ padding: '0.4rem 0.6rem', fontWeight: 500 }}>{row.title}</td>
+                                                <td style={{ padding: '0.4rem 0.6rem', whiteSpace: 'nowrap' }}>{row.category}</td>
+                                                <td style={{ padding: '0.4rem 0.6rem', whiteSpace: 'nowrap', fontWeight: 600 }}>
+                                                    {formatCurrency(row.cost, row.currency)}
+                                                    {displayCurrency && displayCurrency !== row.currency && (
+                                                        <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>
+                                                            {' '}({formatCurrency(convertAmount(row.cost, row.currency, displayCurrency, tripRates), displayCurrency)})
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td style={{ padding: '0.4rem 0.6rem', color: 'var(--text-secondary)' }}>{row.paymentMethod}</td>
+                                                <td style={{ padding: '0.4rem 0.6rem', color: 'var(--text-secondary)' }}>{row.payer}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     )}
 
-                    {/* Location breakdown */}
-                    {totalExpenses > 0 && Object.keys(locationBreakdown).length > 1 && (
-                        <div className="budget-section">
-                            <h2 className="budget-section-title">By Location</h2>
-                            <div className="budget-category-grid">
-                                {Object.entries(locationBreakdown)
-                                    .sort(([, a], [, b]) => {
-                                        const sa = displayCurrency ? Object.entries(a).reduce((s, [c, v]) => s + convertAmount(v, c, displayCurrency, tripRates), 0) : sumCurrency(a);
-                                        const sb = displayCurrency ? Object.entries(b).reduce((s, [c, v]) => s + convertAmount(v, c, displayCurrency, tripRates), 0) : sumCurrency(b);
-                                        return sb - sa;
-                                    })
-                                    .map(([loc, totals]) => {
-                                        const sum = displayCurrency
-                                            ? Object.entries(totals).reduce((s, [cur, amt]) => s + convertAmount(amt, cur, displayCurrency, tripRates), 0)
-                                            : sumCurrency(totals);
-                                        const barWidth = locationBarMax > 0 ? (sum / locationBarMax) * 100 : 0;
+                    {/* Charts: By Category | By Location | By Day */}
+                    {totalExpenses > 0 && (
+                        <div className="flex gap-md mb-xl" style={{ flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                            {/* By Category — donut chart */}
+                            {donutSegments.length > 0 && (
+                                <div className="card p-md flex flex-col" style={{ flex: '1 1 220px', minWidth: '220px' }}>
+                                    <h2 className="text-lg font-primary mb-md">By Category</h2>
+                                    <div className="flex justify-center flex-1">
+                                        <DonutChart segments={donutSegments} />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* By Location — horizontal bar chart */}
+                            {Object.keys(locationBreakdown).length > 1 && (
+                                <div className="card p-md flex flex-col" style={{ flex: '1 1 220px', minWidth: '220px' }}>
+                                    <h2 className="text-lg font-primary mb-md">By Location</h2>
+                                    {(() => {
+                                        const entries = Object.entries(locationBreakdown).map(([loc, totals]) => {
+                                            const sum = displayCurrency
+                                                ? Object.entries(totals).reduce((s, [cur, amt]) => s + convertAmount(amt, cur, displayCurrency, tripRates), 0)
+                                                : sumCurrency(totals);
+                                            return { loc, totals, sum };
+                                        }).sort((a, b) => b.sum - a.sum);
+                                        const locMax = entries[0]?.sum || 1;
                                         return (
-                                            <div key={loc} className="grid items-center gap-md py-1 border-b" style={{ gridTemplateColumns: '140px 1fr auto' }}>
-                                                <div className="flex items-center gap-sm">
-                                                    <span className="text-base">{loc === 'Unassigned' ? '📌' : '📍'}</span>
-                                                    <span className="text-sm font-semibold capitalize text-primary">{loc}</span>
-                                                </div>
-                                                <div className="h-2 rounded-full bg-border-light overflow-hidden">
-                                                    <div className="h-full rounded-full transition-all duration-300 min-w-1" style={{ width: `${barWidth}%`, backgroundColor: 'var(--primary-color)' }} />
-                                                </div>
-                                                <div className="flex flex-col items-end gap-0.5 text-sm font-bold text-primary min-w-[80px] text-right">{renderAmount(totals)}</div>
+                                            <div className="flex flex-col gap-sm">
+                                                {entries.map(({ loc, totals, sum }) => {
+                                                    const barWidth = (sum / locMax) * 100;
+                                                    return (
+                                                        <div key={loc}>
+                                                            <div className="flex justify-between text-xs mb-1">
+                                                                <span className="text-secondary">{loc === 'Unassigned' ? '📌' : '📍'} {loc}</span>
+                                                                <span className="font-bold text-primary">{renderAmount(totals)}</span>
+                                                            </div>
+                                                            <div className="h-2 rounded-full bg-border-light overflow-hidden">
+                                                                <div className="h-full rounded-full transition-all duration-300" style={{ width: `${barWidth}%`, backgroundColor: 'var(--primary-color)' }} />
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                         );
-                                    })}
-                            </div>
+                                    })()}
+                                </div>
+                            )}
+
+                            {/* By Day — vertical bar chart */}
+                            {dailyBreakdown.length > 0 && (
+                                <div className="card p-md flex flex-col" style={{ flex: '1 1 220px', minWidth: '220px' }}>
+                                    <h2 className="text-lg font-primary mb-md">By Day</h2>
+                                    <VertBarChart bars={dailyBreakdown.map(day => ({
+                                        label: format(day.date, 'MMM d'),
+                                        value: displayCurrency
+                                            ? Object.entries(day.totals).reduce((s, [cur, amt]) => s + convertAmount(amt, cur, displayCurrency, tripRates), 0)
+                                            : sumCurrency(day.totals),
+                                    }))} />
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -803,73 +873,6 @@ const Budget: React.FC = () => {
                                         </span>
                                     </div>
                                 ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Daily breakdown */}
-                    {dailyBreakdown.length > 0 && (
-                        <div className="mb-xl">
-                            <h2 className="text-lg font-primary mb-md">By Day</h2>
-                            <div className="grid grid-cols-auto-300 gap-md">
-                                {dailyBreakdown.map(day => {
-                                    const daySum = displayCurrency
-                                        ? Object.entries(day.totals).reduce((s, [cur, amt]) => s + convertAmount(amt, cur, displayCurrency, tripRates), 0)
-                                        : sumCurrency(day.totals);
-                                    const barWidth = maxDayTotal > 0 ? (daySum / maxDayTotal) * 100 : 0;
-                                    const overAvg = avgDailySpend != null && daySum > avgDailySpend * 1.5;
-                                    return (
-                                        <div key={day.dateStr} className={`card p-md ${overAvg ? 'border-l-[3px] border-l-danger' : ''}`}>
-                                            <div className="flex justify-between items-center mb-xs">
-                                                <div className="flex items-baseline gap-xs">
-                                                    <span className="font-bold text-sm text-primary">{format(day.date, 'EEE')}</span>
-                                                    <span className="text-xs text-secondary">{format(day.date, 'MMM d')}</span>
-                                                </div>
-                                                <div className="flex gap-sm">
-                                                    <span className="text-base font-bold text-secondary">
-                                                        {displayCurrency ? formatCurrency(daySum, displayCurrency) : Object.entries(day.totals).map(([cur, amt]) => formatCurrency(amt, cur)).join(' / ')}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            {day.location && <span className="block text-xs text-tertiary mb-xs">📍 {day.location}</span>}
-                                            <div className="h-1 rounded-full bg-border-light overflow-hidden mb-sm">
-                                                <div className="h-full rounded-full transition-all duration-300 min-w-1" style={{ width: `${barWidth}%`, background: 'linear-gradient(90deg, var(--primary-color), var(--secondary-color))' }} />
-                                            </div>
-                                            <div className="flex flex-col gap-1">
-                                                {day.accommodations.map((a, idx) => (
-                                                    <div key={`acc-${idx}`} className="flex items-center gap-xs py-1 px-2 rounded-sm bg-border-light text-xs">
-                                                        <span className="shrink-0">🏠</span>
-                                                        <span className="flex-1 font-medium text-primary truncate">{a.title}</span>
-                                                        <span className="font-bold text-secondary shrink-0">
-                                                            {displayCurrency ? formatCurrency(convertAmount(a.cost, a.currency, displayCurrency, tripRates), displayCurrency) : formatCurrency(a.cost, a.currency)}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                                {day.activities.map(a => (
-                                                    <div key={a.id} className="flex items-center gap-xs py-1 px-2 rounded-sm bg-border-light text-xs">
-                                                        <span className="shrink-0">{CATEGORY_EMOJIS[a.category || 'other']}</span>
-                                                        <span className="flex-1 font-medium text-primary truncate">
-                                                            {a.title}
-                                                            {a.tags && a.tags.length > 0 && <span className="ml-1 text-[10px] text-tertiary font-normal">{a.tags.map(t => `#${t}`).join(' ')}</span>}
-                                                        </span>
-                                                        <span className="font-bold text-secondary shrink-0">
-                                                            {displayCurrency ? formatCurrency(convertAmount(a.cost!, a.currency || 'USD', displayCurrency, tripRates), displayCurrency) : formatCurrency(a.cost!, a.currency || 'USD')}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                                {day.routes.map(r => (
-                                                    <div key={r.id} className="flex items-center gap-xs py-1 px-2 rounded-sm bg-border-light text-xs">
-                                                        <span className="shrink-0">🚆</span>
-                                                        <span className="flex-1 font-medium text-primary truncate">{r.from} → {r.to}</span>
-                                                        <span className="font-bold text-secondary shrink-0">
-                                                            {displayCurrency ? formatCurrency(convertAmount(r.cost!, r.currency || 'USD', displayCurrency, tripRates), displayCurrency) : formatCurrency(r.cost!, r.currency || 'USD')}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
                             </div>
                         </div>
                     )}
