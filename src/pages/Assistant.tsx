@@ -40,6 +40,7 @@ const Assistant: React.FC = () => {
     const [importedPayloads] = useState<Record<string, boolean>>({});
     const [importMenuOpenFor, setImportMenuOpenFor] = useState<string | null>(null);
     const [prefsOpen, setPrefsOpen] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
     const [prefPace, setPrefPace] = useState<'relaxed' | 'balanced' | 'fast'>('balanced');
     const [prefBudget, setPrefBudget] = useState<'budget' | 'mid-range' | 'luxury' | ''>('');
     const [prefGroupType, setPrefGroupType] = useState<'solo' | 'couple' | 'family' | 'group' | ''>('');
@@ -109,20 +110,26 @@ const Assistant: React.FC = () => {
     const saveAiPreferences = async () => {
         if (!selectedTripId || !selectedTrip) return;
         const interests = prefInterests.split(',').map((v) => v.trim()).filter(Boolean);
-        await updateTrip(selectedTripId, {
-            aiPreferences: {
-                pace: prefPace,
-                budget: prefBudget || undefined,
-                groupType: prefGroupType || undefined,
-                interests: interests.length > 0 ? interests : undefined,
-                dietaryNeeds: prefDietaryNeeds.trim() || undefined,
-                accessibilityNeeds: prefAccessibilityNeeds.trim() || undefined,
-                transportPreference: prefTransportPreference.trim() || undefined,
-                mustHave: prefMustHave.trim() || undefined,
-                avoid: prefAvoid.trim() || undefined,
-                notes: prefNotes.trim() || undefined,
-            },
-        });
+        setIsSaving(true);
+        try {
+            await updateTrip(selectedTripId, {
+                aiPreferences: {
+                    pace: prefPace,
+                    ...(prefBudget && { budget: prefBudget as 'budget' | 'mid-range' | 'luxury' }),
+                    ...(prefGroupType && { groupType: prefGroupType as 'solo' | 'couple' | 'family' | 'group' }),
+                    ...(interests.length > 0 && { interests }),
+                    ...(prefDietaryNeeds.trim() && { dietaryNeeds: prefDietaryNeeds.trim() }),
+                    ...(prefAccessibilityNeeds.trim() && { accessibilityNeeds: prefAccessibilityNeeds.trim() }),
+                    ...(prefTransportPreference.trim() && { transportPreference: prefTransportPreference.trim() }),
+                    ...(prefMustHave.trim() && { mustHave: prefMustHave.trim() }),
+                    ...(prefAvoid.trim() && { avoid: prefAvoid.trim() }),
+                    ...(prefNotes.trim() && { notes: prefNotes.trim() }),
+                },
+            });
+            setPrefsOpen(false);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
 
@@ -410,9 +417,16 @@ Notes: ${effectiveTrip.aiPreferences?.notes || 'none set'}`;
                                         <option value="group">Group</option>
                                     </select>
                                 </div>
-                                <div>
+                                <div style={{ gridColumn: '1 / -1' }}>
                                     <label className="prefs-drawer-label">Interests</label>
-                                    <input className="input-field" value={prefInterests} onChange={(e) => setPrefInterests(e.target.value)} placeholder="food, history, beaches..." />
+                                    <textarea
+                                        className="input-field"
+                                        value={prefInterests}
+                                        onChange={(e) => setPrefInterests(e.target.value)}
+                                        placeholder="food, history, beaches..."
+                                        rows={2}
+                                        style={{ resize: 'vertical', minHeight: '56px' }}
+                                    />
                                 </div>
                                 <div>
                                     <label className="prefs-drawer-label">Transport preference</label>
@@ -441,16 +455,17 @@ Notes: ${effectiveTrip.aiPreferences?.notes || 'none set'}`;
                             </div>
                         </div>
 
-                        <div className="flex gap-sm justify-end p-md" style={{ borderTop: '1px solid var(--border-color)', flexShrink: 0 }}>
+                        <div className="flex gap-sm justify-end p-md" style={{ borderTop: '1px solid var(--border-color)', flexShrink: 0, paddingBottom: 'max(14px, env(safe-area-inset-bottom))' }}>
                             <button type="button" className="btn btn-ghost btn-sm" onClick={resetPrefsFromTrip}>
                                 Reset
                             </button>
                             <button
                                 type="button"
                                 className="btn btn-primary btn-sm"
-                                onClick={() => void saveAiPreferences().then(() => setPrefsOpen(false))}
+                                onClick={() => void saveAiPreferences()}
+                                disabled={isSaving}
                             >
-                                Save
+                                {isSaving ? <><Loader2 size={14} className="spin" /> Saving…</> : 'Save'}
                             </button>
                         </div>
                     </div>
