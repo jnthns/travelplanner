@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate, useParams, useNavigate, Link } from 'react-router-dom';
+import { Navigate, useParams, useNavigate } from 'react-router-dom';
 import { format, isSameDay } from 'date-fns';
 import { AlertTriangle, Info, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { CATEGORY_EMOJIS } from '../lib/types';
@@ -140,9 +140,6 @@ const TripDayView: React.FC = () => {
                             )}
                         </p>
                     </div>
-                    <Link to="/calendar" className="btn btn-ghost btn-sm">
-                        Calendar overview
-                    </Link>
                 </div>
             </header>
 

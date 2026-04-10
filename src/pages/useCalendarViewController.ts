@@ -262,7 +262,7 @@ export function useCalendarViewController(options?: UseCalendarViewControllerOpt
 
     const getActivitiesForDate = (date: Date) => {
         const dateStr = format(date, 'yyyy-MM-dd');
-        return effectiveActivities.filter((a) => a.date === dateStr);
+        return effectiveActivities.filter((a) => a.date === dateStr).sort(compareActivitiesByTimeThenOrder);
     };
 
     const tripDays = useMemo(() => {

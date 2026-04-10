@@ -70,9 +70,10 @@ Task:
 1. Infer **free time windows** between the day boundaries (assume a typical day roughly 08:00–22:00 local unless activities imply otherwise) and between timed activities.
 2. Only include windows that are **at least 60 minutes** long.
 3. Return **at most 3** windows total, each with **exactly one** concrete activity suggestion that fits entirely inside that window.
-4. Each suggestion must include a plausible **time** (HH:MM) within the window for starting the activity.
-5. If there are no qualifying gaps, return an empty array.
-6. windowStart and windowEnd must be HH:MM (24h) strings.
+4. Each suggestion must align with the AI preferences above — match the pace, reflect stated interests, respect dietary and accessibility needs, and avoid anything listed under "Avoid".
+5. Each suggestion must include a plausible **time** (HH:MM) within the window for starting the activity.
+6. If there are no qualifying gaps, return an empty array.
+7. windowStart and windowEnd must be HH:MM (24h) strings.
 
 Respond with a JSON **array** only, matching the schema (no markdown).`;
 
