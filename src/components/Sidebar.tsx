@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Calendar, CalendarDays, CloudSun, Map, Table, Wallet, StickyNote, Upload, Settings, LogOut, User, Bot, Backpack } from 'lucide-react';
+import { Home, Calendar, CalendarDays, CloudSun, Map, Table, Wallet, StickyNote, Upload, Settings, LogOut, User, Bot, Backpack } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
 import { useDayNavHref } from '../lib/useDayNavHref';
 import './Sidebar.css';
@@ -15,6 +15,7 @@ const Sidebar: React.FC = () => {
   };
 
   const navLinks = [
+    { to: 'dashboard', icon: <Home size={20} />, label: 'Home' },
     { to: 'spreadsheet', icon: <Table size={20} />, label: 'Trips' },
     { to: 'calendar', icon: <Calendar size={20} />, label: 'Calendar' },
     { to: '__day__', icon: <CalendarDays size={20} />, label: 'Day' },

@@ -1,0 +1,410 @@
+/* Purpose: Mobile-first styles for the Dashboard landing page with staggered entrance animations. */
+
+.dashboard {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 1rem 1rem calc(5rem + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* ── Staggered entrance ── */
+
+@keyframes dashFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.section {
+  opacity: 0;
+  animation: dashFadeIn 0.5s ease-out forwards;
+}
+
+.section:nth-child(1) { animation-delay: 0.05s; }
+.section:nth-child(2) { animation-delay: 0.17s; }
+.section:nth-child(3) { animation-delay: 0.29s; }
+.section:nth-child(4) { animation-delay: 0.41s; }
+.section:nth-child(5) { animation-delay: 0.53s; }
+
+/* ── Shared card surface ── */
+
+.card {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  background: var(--surface-color);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* ── Hero card ── */
+
+.heroCard {
+  composes: card;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  border-left: 4px solid var(--primary-color);
+}
+
+.heroHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.heroTripName {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.heroDates {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.heroMeta {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.heroNextActivity {
+  font-size: 0.85rem;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.heroCta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--primary-color);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 44px;
+  transition: opacity 0.2s ease;
+}
+
+.heroCta:hover {
+  opacity: 0.9;
+}
+
+.heroSecondary {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.heroSecondaryLink {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--radius-md);
+  transition: background 0.2s ease;
+  min-height: 44px;
+}
+
+.heroSecondaryLink:hover {
+  background: var(--glass-bg);
+}
+
+/* ── Empty state ── */
+
+.emptyState {
+  composes: card;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+}
+
+.emptyIcon {
+  color: var(--text-tertiary);
+  opacity: 0.5;
+}
+
+.emptyTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.emptySubtitle {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.emptyLink {
+  composes: heroCta;
+  text-decoration: none;
+}
+
+/* ── AI preview ── */
+
+.aiPreview {
+  composes: card;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.aiHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.aiBubbles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.aiBubble {
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  line-height: 1.4;
+  max-width: 85%;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.aiBubbleUser {
+  composes: aiBubble;
+  align-self: flex-end;
+  background: var(--primary-color);
+  color: #fff;
+}
+
+.aiBubbleModel {
+  composes: aiBubble;
+  align-self: flex-start;
+  background: var(--glass-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--glass-border);
+}
+
+.aiInputRow {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.aiInput {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--surface-color);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  min-height: 44px;
+  outline: none;
+}
+
+.aiInput::placeholder {
+  color: var(--text-tertiary);
+}
+
+.aiInput:focus {
+  border-color: var(--primary-color);
+}
+
+.aiSendBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--primary-color);
+  color: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity 0.2s ease;
+}
+
+.aiSendBtn:hover {
+  opacity: 0.9;
+}
+
+.aiEmptyText {
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+  text-align: center;
+  padding: 0.5rem 0;
+}
+
+.aiFullLink {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  text-align: center;
+  transition: color 0.2s ease;
+}
+
+.aiFullLink:hover {
+  color: var(--primary-color);
+}
+
+/* ── Section heading ── */
+
+.sectionTitle {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0 0 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* ── Trip strip ── */
+
+.tripStrip {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding: 0.5rem 0;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.tripStrip::-webkit-scrollbar {
+  display: none;
+}
+
+.tripCard {
+  composes: card;
+  flex-shrink: 0;
+  min-width: 160px;
+  max-width: 200px;
+  padding: 0.85rem 1rem;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+}
+
+.tripCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tripColorDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tripCardName {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tripCardDates {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+/* ── Quick links ── */
+
+.quickLinks {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+.quickLinkCard {
+  composes: card;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.85rem 1rem;
+  text-decoration: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.quickLinkIcon {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.quickLinkLabel {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* ── Loading ── */
+
+.loadingWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -24,6 +24,13 @@ export interface AppSettings {
   showPlanningChecks: boolean;
   showBudgetWarnings: boolean;
 
+  // AI defaults
+  aiDefaultPace: 'relaxed' | 'balanced' | 'fast';
+  aiDefaultBudget: 'budget' | 'mid-range' | 'luxury';
+  aiDefaultGroupType: 'solo' | 'couple' | 'family' | 'group';
+  aiDefaultInterests: string;
+  aiDefaultTransportPreference: string;
+
   // Weather
   temperatureUnit: 'C' | 'F';
   /** Start hour for hourly forecast (0–23). Default 9 = 9am. */
@@ -48,6 +55,12 @@ const DEFAULTS: AppSettings = {
 
   showPlanningChecks: true,
   showBudgetWarnings: true,
+
+  aiDefaultPace: 'balanced',
+  aiDefaultBudget: 'mid-range',
+  aiDefaultGroupType: 'solo',
+  aiDefaultInterests: '',
+  aiDefaultTransportPreference: '',
 
   temperatureUnit: 'C',
   hourlyForecastStartHour: 9,
@@ -111,6 +124,16 @@ export function resetSettings() {
 
 export function getSettingsSnapshot(): AppSettings {
   return currentSettings;
+}
+
+export function getAiDefaults(): Pick<AppSettings, 'aiDefaultPace' | 'aiDefaultBudget' | 'aiDefaultGroupType' | 'aiDefaultInterests' | 'aiDefaultTransportPreference'> {
+  return {
+    aiDefaultPace: currentSettings.aiDefaultPace,
+    aiDefaultBudget: currentSettings.aiDefaultBudget,
+    aiDefaultGroupType: currentSettings.aiDefaultGroupType,
+    aiDefaultInterests: currentSettings.aiDefaultInterests,
+    aiDefaultTransportPreference: currentSettings.aiDefaultTransportPreference,
+  };
 }
 
 // --------------- Firestore sync ---------------

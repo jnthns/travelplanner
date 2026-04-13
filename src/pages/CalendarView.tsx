@@ -1,4 +1,4 @@
-import React, { useLayoutEffect } from 'react';
+import React, { useEffect, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { format, isSameDay } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
@@ -7,6 +7,8 @@ import { CATEGORY_EMOJIS } from '../lib/types';
 import ScenarioSwitcher from '../components/ScenarioSwitcher';
 import WeatherBadge from '../components/WeatherBadge';
 import { useCalendarViewController } from './useCalendarViewController';
+import { setLastContext } from '../lib/lastContext';
+import { getDefaultDayDateStr } from '../lib/tripDefaultDay';
 import styles from './CalendarView.module.css';
 
 const CalendarView: React.FC = () => {
@@ -49,6 +51,12 @@ const CalendarView: React.FC = () => {
     useLayoutEffect(() => {
         setViewMode('trip');
     }, [setViewMode]);
+
+    useEffect(() => {
+        if (selectedTripId && selectedTrip) {
+            setLastContext(selectedTripId, getDefaultDayDateStr(selectedTrip));
+        }
+    }, [selectedTripId, selectedTrip]);
 
     const goToDay = (day: Date, dateStr: string, conflictCount: number) => {
         if (!selectedTripId) return;
