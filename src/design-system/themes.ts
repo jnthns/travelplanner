@@ -84,6 +84,78 @@ function darkenHex(hex: string, amount = 0.15): string {
   return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
 }
 
+const sakura: ThemePreset = {
+  id: 'sakura',
+  name: 'Sakura Mist',
+  description: 'Warm, soft, luminous — muted pinks on cream',
+  preview: { primary: '#c4697a', secondary: '#e8a0ad', accent: '#c4697a', bg: '#faf6f2' },
+  tokens: {
+    bgColor: '#faf6f2',
+    surfaceColor: '#fff8f4',
+    textPrimary: '#2d2226',
+    textSecondary: '#9a8a8e',
+    textTertiary: '#bfaaae',
+    primaryColor: '#c4697a',
+    primaryHover: '#b05567',
+    secondaryColor: '#e8a0ad',
+    secondaryHover: '#d48a98',
+    accentColor: '#c4697a',
+    accentHover: '#b05567',
+    errorColor: '#ef4444',
+    errorBg: '#fee2e2',
+    borderColor: 'rgba(196,105,122,0.12)',
+    borderLight: 'rgba(196,105,122,0.06)',
+    glassBg: 'rgba(255,248,244,0.85)',
+    glassBorder: 'rgba(196,105,122,0.1)',
+    shadowSm: '0 1px 2px 0 rgb(196 105 122 / 0.06)',
+    shadowMd: '0 4px 8px -1px rgb(196 105 122 / 0.08), 0 2px 4px -2px rgb(45 34 38 / 0.04)',
+    shadowLg: '0 12px 20px -4px rgb(196 105 122 / 0.1), 0 4px 10px -4px rgb(45 34 38 / 0.06)',
+    radiusSm: '0.375rem',
+    radiusMd: '0.5rem',
+    radiusLg: '1rem',
+    radiusXl: '1.5rem',
+    radiusFull: '9999px',
+    fontFamily: "'Nunito', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    fontUrl: 'https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Nunito:wght@400;600;700&display=swap',
+  },
+};
+
+const kintsukuroi: ThemePreset = {
+  id: 'kintsukuroi',
+  name: 'Kintsukuroi',
+  description: 'Golden repair on dark warmth',
+  preview: { primary: '#c9a84c', secondary: '#a08a3e', accent: '#c9a84c', bg: '#1a1714' },
+  tokens: {
+    bgColor: '#1a1714',
+    surfaceColor: '#242019',
+    textPrimary: '#e8e0d4',
+    textSecondary: '#9a8e7a',
+    textTertiary: '#6b6255',
+    primaryColor: '#c9a84c',
+    primaryHover: '#b5953f',
+    secondaryColor: '#a08a3e',
+    secondaryHover: '#8c7735',
+    accentColor: '#c9a84c',
+    accentHover: '#b5953f',
+    errorColor: '#f87171',
+    errorBg: '#450a0a',
+    borderColor: 'rgba(201,168,76,0.15)',
+    borderLight: 'rgba(201,168,76,0.08)',
+    glassBg: 'rgba(26,23,20,0.85)',
+    glassBorder: 'rgba(201,168,76,0.12)',
+    shadowSm: '0 1px 2px 0 rgb(0 0 0 / 0.3)',
+    shadowMd: '0 4px 8px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3)',
+    shadowLg: '0 12px 20px -4px rgb(0 0 0 / 0.5), 0 4px 10px -4px rgb(0 0 0 / 0.4)',
+    radiusSm: '0.375rem',
+    radiusMd: '0.5rem',
+    radiusLg: '1rem',
+    radiusXl: '1.5rem',
+    radiusFull: '9999px',
+    fontFamily: "'DM Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    fontUrl: 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@400;600;700&display=swap',
+  },
+};
+
 const modern: ThemePreset = {
   id: 'modern',
   name: 'Modern',
@@ -443,13 +515,14 @@ const tropics: ThemePreset = {
 };
 
 /** Presets that are dark by default; dark mode toggle is hidden and these are shown in a separate "Dark themes" section. */
-export const DARK_PRESET_IDS = ['discord', 'neon', 'midnight'] as const;
+export const DARK_PRESET_IDS = ['discord', 'neon', 'midnight', 'kintsukuroi'] as const;
 
 export function isDarkPreset(presetId: string): boolean {
   return (DARK_PRESET_IDS as readonly string[]).includes(presetId);
 }
 
 export const THEME_PRESETS: ThemePreset[] = [
+  sakura, kintsukuroi,
   modern, sunset, ocean,
   aurora, tropics,
   terracotta, slate,
@@ -464,7 +537,6 @@ export function loadThemeConfig(): ThemeConfig {
     const raw = localStorage.getItem(THEME_CONFIG_KEY);
     if (raw) {
       const config = JSON.parse(raw) as ThemeConfig;
-      if (config.presetId === 'sakura') config.presetId = 'discord';
       return config;
     }
 
@@ -481,7 +553,7 @@ export function loadThemeConfig(): ThemeConfig {
       };
     }
   } catch { /* ignore corrupt storage */ }
-  return { presetId: 'discord', colorOverrides: {} };
+  return { presetId: 'sakura', colorOverrides: {} };
 }
 
 export function saveThemeConfig(config: ThemeConfig): void {

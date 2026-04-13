@@ -1,11 +1,10 @@
-import React, { Suspense, useEffect, lazy } from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import BottomTabBar from './components/BottomTabBar';
 import { AuthProvider, useAuth } from './lib/AuthContext';
 import { ToastProvider } from './components/Toast';
-import { loadThemeConfig, getResolvedTokens, getDarkTokens, applyTheme } from './design-system/themes';
-import { getSettingsSnapshot } from './lib/settings';
+import { ThemeProvider } from './contexts/ThemeContext';
 import OnlineStatus from './components/OnlineStatus';
 import GeminiUsageHeader from './components/GeminiUsageHeader';
 import { Loader2 } from 'lucide-react';
@@ -49,26 +48,11 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 }
 
 const App: React.FC = () => {
-  useEffect(() => {
-    const config = loadThemeConfig();
-    let tokens = getResolvedTokens(config);
-
-    const s = getSettingsSnapshot();
-    if (s.textSize) document.documentElement.style.setProperty('--text-size', `${s.textSize}%`);
-    if (s.compactLayout) document.body.classList.add('compact-layout');
-    if (s.darkMode) {
-      tokens = getDarkTokens(tokens);
-      document.body.classList.add('dark-mode');
-      document.documentElement.style.setProperty('color-scheme', 'dark');
-    }
-
-    applyTheme(tokens);
-  }, []);
-
   return (
     <Router basename="/travelplanner/">
-      <AuthProvider>
-        <ToastProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <ToastProvider>
           <AuthGate>
             <OnlineStatus />
             <div className="app-container">
@@ -98,8 +82,9 @@ const App: React.FC = () => {
               </main>
             </div>
           </AuthGate>
-        </ToastProvider>
-      </AuthProvider>
+          </ToastProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </Router>
   );
 };

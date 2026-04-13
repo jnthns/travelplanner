@@ -1,0 +1,80 @@
+// Purpose: Tailwind CSS + DaisyUI configuration with custom sakura/kintsukuroi themes.
+import type { Config } from 'tailwindcss'
+
+export default {
+  content: ['./index.html', './src/**/*.{ts,tsx}'],
+  theme: {
+    extend: {
+      fontFamily: {
+        display: ["'Libre Caslon Display'", "'Cormorant Garamond'", 'serif'],
+        body: ["'Nunito'", "'DM Sans'", 'sans-serif'],
+      },
+    },
+  },
+  corePlugins: {
+    preflight: false,
+  },
+  plugins: [require('daisyui')],
+  daisyui: {
+    themes: [
+      {
+        sakura: {
+          'primary': '#c4697a',
+          'primary-content': '#ffffff',
+          'secondary': '#e8a0ad',
+          'secondary-content': '#2d2226',
+          'accent': '#c4697a',
+          'accent-content': '#ffffff',
+          'neutral': '#2d2226',
+          'neutral-content': '#faf6f2',
+          'base-100': '#faf6f2',
+          'base-200': '#fff8f4',
+          'base-300': '#fff0ea',
+          'base-content': '#2d2226',
+          'info': '#3b82f6',
+          'success': '#22c55e',
+          'warning': '#f59e0b',
+          'error': '#ef4444',
+          '--rounded-box': '1rem',
+          '--rounded-btn': '0.5rem',
+          '--rounded-badge': '1.9rem',
+          '--animation-btn': '0.25s',
+          '--animation-input': '0.2s',
+          '--btn-focus-scale': '0.95',
+        },
+      },
+      {
+        kintsukuroi: {
+          'primary': '#c9a84c',
+          'primary-content': '#1a1714',
+          'secondary': '#a08a3e',
+          'secondary-content': '#e8e0d4',
+          'accent': '#c9a84c',
+          'accent-content': '#1a1714',
+          'neutral': '#e8e0d4',
+          'neutral-content': '#1a1714',
+          'base-100': '#1a1714',
+          'base-200': '#242019',
+          'base-300': '#2e2a23',
+          'base-content': '#e8e0d4',
+          'info': '#3b82f6',
+          'success': '#22c55e',
+          'warning': '#f59e0b',
+          'error': '#ef4444',
+          '--rounded-box': '1rem',
+          '--rounded-btn': '0.5rem',
+          '--rounded-badge': '1.9rem',
+          '--animation-btn': '0.25s',
+          '--animation-input': '0.2s',
+          '--btn-focus-scale': '0.95',
+        },
+      },
+    ],
+    darkTheme: false,
+    base: true,
+    styled: true,
+    utils: true,
+    logs: true,
+    themeRoot: ':root',
+  },
+} satisfies Config

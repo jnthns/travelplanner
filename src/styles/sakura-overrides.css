@@ -1,0 +1,85 @@
+/* Purpose: Theme-specific overrides that can't be expressed via DaisyUI config or CSS variable presets alone. */
+
+/* Gradient overlay on page background */
+[data-theme="sakura"] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(196,105,122,0.06) 0%, transparent 50%);
+}
+
+[data-theme="kintsukuroi"] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(ellipse at 30% 20%, rgba(201,168,76,0.06) 0%, transparent 60%);
+}
+
+/* Display font utility */
+.font-display {
+  font-family: 'Libre Caslon Display', serif;
+}
+
+[data-theme="kintsukuroi"] .font-display {
+  font-family: 'Cormorant Garamond', serif;
+}
+
+/* Body font utility */
+.font-body {
+  font-family: 'Nunito', sans-serif;
+}
+
+[data-theme="kintsukuroi"] .font-body {
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* Custom scrollbar for themed contexts */
+[data-theme="sakura"] ::-webkit-scrollbar {
+  width: 6px;
+}
+
+[data-theme="sakura"] ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+[data-theme="sakura"] ::-webkit-scrollbar-thumb {
+  background: rgba(196,105,122,0.2);
+  border-radius: 3px;
+}
+
+[data-theme="sakura"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(196,105,122,0.35);
+}
+
+[data-theme="kintsukuroi"] ::-webkit-scrollbar {
+  width: 6px;
+}
+
+[data-theme="kintsukuroi"] ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+[data-theme="kintsukuroi"] ::-webkit-scrollbar-thumb {
+  background: rgba(201,168,76,0.2);
+  border-radius: 3px;
+}
+
+[data-theme="kintsukuroi"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(201,168,76,0.35);
+}
+
+/* Reduced motion: disable ALL custom transitions and animations */
+@media (prefers-reduced-motion: reduce) {
+  .fade-in-animated,
+  .stagger-group > *,
+  .page-transition {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

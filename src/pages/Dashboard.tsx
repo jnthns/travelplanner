@@ -1,28 +1,16 @@
-// Purpose: Dashboard landing page — shows the last-viewed trip hero, AI preview, other trips strip, and quick links.
+// Purpose: Dashboard landing page — Sakura Mist redesign with hero, journey timeline, AI preview, and quick links.
 
 import { useMemo, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { format, parseISO } from 'date-fns';
-import {
-  Map,
-  Wallet,
-  StickyNote,
-  Backpack,
-  CloudSun,
-  Upload,
-  Bot,
-  Calendar,
-  Table,
-  ArrowRight,
-  Send,
-  MessageSquare,
-} from 'lucide-react';
-
+import { format, parseISO, differenceInDays } from 'date-fns';
+import { Send, ArrowRight, MessageSquare } from 'lucide-react';
 import { useTrips, useActivities, useChatHistory } from '../lib/store';
 import { getLastContext } from '../lib/lastContext';
 import { getDefaultDayDateStr } from '../lib/tripDefaultDay';
-import type { Trip, Activity, ChatMessage } from '../lib/types';
-
+import { deriveDashboardJourney } from '../lib/dashboard-journey';
+import type { Trip, ChatMessage } from '../lib/types';
+import type { DashboardJourneyStop } from '../lib/dashboard-journey';
+import { PageTransition, StaggerGroup, SakuraSkeleton } from '../components/ui/animations';
 import styles from './Dashboard.module.css';
 
 /* ── Helpers ── */
@@ -31,7 +19,8 @@ function formatTripRange(trip: Trip): string {
   try {
     const start = format(parseISO(trip.startDate), 'MMM d');
     const end = format(parseISO(trip.endDate), 'MMM d, yyyy');
-    return `${start} – ${end}`;
+    const days = differenceInDays(parseISO(trip.endDate), parseISO(trip.startDate)) + 1;
+    return `${start} – ${end} · ${days} days`;
   } catch {
     return `${trip.startDate} – ${trip.endDate}`;
   }
@@ -49,103 +38,142 @@ function pickHeroTrip(trips: Trip[]): Trip | undefined {
 
 /* ── Sub-components ── */
 
-interface HeroProps {
-  trip: Trip;
-  activities: Activity[];
-}
-
-function HeroSection({ trip, activities }: HeroProps): JSX.Element {
+function HeroSection({ trip, cityCount }: { trip: Trip; cityCount: number }): JSX.Element {
   const navigate = useNavigate();
   const focusDate = getDefaultDayDateStr(trip);
-
-  const dayActivities = useMemo(
-    () =>
-      activities
-        .filter((a) => a.tripId === trip.id && a.date === focusDate)
-        .sort((a, b) => a.order - b.order),
-    [activities, trip.id, focusDate],
-  );
-
-  const nextActivity = dayActivities[0];
+  const days = differenceInDays(parseISO(trip.endDate), parseISO(trip.startDate)) + 1;
+  const travelers = trip.members.length;
 
   return (
-    <div
-      className={`${styles.heroCard} ${styles.section}`}
-      style={trip.color ? { borderLeftColor: trip.color } : undefined}
-    >
-      <div className={styles.heroHeader}>
-        <h2 className={styles.heroTripName}>{trip.name}</h2>
-        <span className={styles.heroDates}>{formatTripRange(trip)}</span>
-      </div>
+    <div className={styles.heroCard}>
+      <div className={styles.heroEmoji}>🌍</div>
+      <h1 className={`${styles.heroTripName} font-display`}>{trip.name}</h1>
+      <span className={styles.heroDates}>{formatTripRange(trip)}</span>
 
-      <div className={styles.heroMeta}>
-        <span>{dayActivities.length} activit{dayActivities.length === 1 ? 'y' : 'ies'} on {format(parseISO(focusDate), 'MMM d')}</span>
+      <div className={styles.heroStats}>
+        <div className={styles.heroStat}>
+          <span className={styles.heroStatNumber}>{cityCount}</span>
+          <span className={styles.heroStatLabel}>CITIES</span>
+        </div>
+        <div className={styles.heroStat}>
+          <span className={styles.heroStatNumber}>{days}</span>
+          <span className={styles.heroStatLabel}>DAYS</span>
+        </div>
+        <div className={styles.heroStat}>
+          <span className={styles.heroStatNumber}>{travelers}</span>
+          <span className={styles.heroStatLabel}>TRAVELERS</span>
+        </div>
       </div>
-
-      {nextActivity && (
-        <span className={styles.heroNextActivity}>
-          Next up: {nextActivity.time ? `${nextActivity.time} — ` : ''}{nextActivity.title}
-        </span>
-      )}
 
       <button
         className={styles.heroCta}
         onClick={() => navigate(`/trip/${trip.id}/day/${focusDate}`)}
         type="button"
       >
-        Continue planning
-        <ArrowRight size={18} />
+        Continue Planning →
       </button>
+    </div>
+  );
+}
 
-      <div className={styles.heroSecondary}>
-        <Link to="/spreadsheet" className={styles.heroSecondaryLink}>
-          <Table size={16} /> Spreadsheet
-        </Link>
-        <Link to="/calendar" className={styles.heroSecondaryLink}>
-          <Calendar size={16} /> Calendar
-        </Link>
+interface OtherTripsStripProps {
+  trips: Trip[];
+}
+
+function OtherTripsStrip({ trips }: OtherTripsStripProps): JSX.Element | null {
+  const navigate = useNavigate();
+  if (trips.length === 0) return null;
+
+  return (
+    <div className={styles.otherTripsSection}>
+      <h3 className={styles.sectionTitle}>Other trips</h3>
+      <div className={styles.otherTripsList}>
+        {trips.map((t) => {
+          const focusDate = getDefaultDayDateStr(t);
+          return (
+            <button
+              key={t.id}
+              type="button"
+              className={styles.otherTripCard}
+              onClick={() => navigate(`/trip/${t.id}/day/${focusDate}`)}
+            >
+              <span className={styles.otherTripName}>{t.name}</span>
+              <span className={styles.otherTripRange}>{formatTripRange(t)}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
 }
 
-interface AiPreviewProps {
-  tripId: string;
+function JourneyTimeline({ stops }: { stops: DashboardJourneyStop[] }): JSX.Element {
+  if (stops.length === 0) {
+    return (
+      <div className={styles.journeySection}>
+        <h2 className={`${styles.journeySectionTitle} font-display`}>Your Journey</h2>
+        <p className={styles.journeyEmpty}>
+          No cities to show yet — set each day&apos;s location in your itinerary, or add activities other than
+          accommodation.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.journeySection}>
+      <h2 className={`${styles.journeySectionTitle} font-display`}>Your Journey</h2>
+      <div className={styles.timeline}>
+        {stops.map((stop, i) => (
+          <div key={`${stop.location}-${stop.dateLabel}-${i}`} className={styles.timelineItem}>
+            <div className={styles.timelineMarker}>
+              <span className={styles.timelineEmoji}>{stop.emoji}</span>
+            </div>
+            <div className={styles.timelineContent}>
+              <span className={styles.timelineCity}>{stop.location}</span>
+              <span className={styles.timelineDate}>{stop.dateLabel}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
-function AiPreviewSection({ tripId }: AiPreviewProps): JSX.Element {
+function AiPreviewSection({ tripId }: { tripId: string }): JSX.Element {
   const { messages } = useChatHistory(tripId);
   const [draft, setDraft] = useState('');
   const navigate = useNavigate();
 
-  const lastMessages: ChatMessage[] = useMemo(() => {
-    if (messages.length === 0) return [];
-    const tail = messages.slice(-2);
-    return tail;
+  const lastModelMessage: ChatMessage | undefined = useMemo(() => {
+    return [...messages].reverse().find((m) => m.role === 'model');
   }, [messages]);
 
   const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault();
-    navigate('/assistant');
+    const text = draft.trim();
+    navigate('/assistant', {
+      state: {
+        initialPrompt: text,
+        tripId,
+        autoSend: text.length > 0,
+      },
+    });
+    setDraft('');
   };
 
   return (
-    <div className={`${styles.aiPreview} ${styles.section}`}>
+    <div className={styles.aiPreview}>
       <div className={styles.aiHeader}>
-        <Bot size={16} />
-        <span>AI Assistant</span>
+        <span>✨</span>
+        <span className={styles.aiTitle}>AI Assistant</span>
       </div>
 
-      {lastMessages.length > 0 ? (
-        <div className={styles.aiBubbles}>
-          {lastMessages.map((msg) => (
-            <div
-              key={msg.id}
-              className={msg.role === 'user' ? styles.aiBubbleUser : styles.aiBubbleModel}
-            >
-              {msg.content}
-            </div>
-          ))}
+      {lastModelMessage ? (
+        <div className={styles.aiQuote}>
+          &ldquo;{lastModelMessage.content.length > 200
+            ? lastModelMessage.content.slice(0, 200) + '…'
+            : lastModelMessage.content}&rdquo;
         </div>
       ) : (
         <p className={styles.aiEmptyText}>Ask anything about your trip</p>
@@ -163,77 +191,33 @@ function AiPreviewSection({ tripId }: AiPreviewProps): JSX.Element {
           <Send size={18} />
         </button>
       </form>
-
-      <Link to="/assistant" className={styles.aiFullLink}>
-        Open full assistant <ArrowRight size={14} style={{ verticalAlign: 'middle' }} />
-      </Link>
     </div>
   );
 }
 
-interface TripStripProps {
-  trips: Trip[];
-}
+/* ── Quick Links ── */
 
-function OtherTripsStrip({ trips }: TripStripProps): JSX.Element | null {
-  const navigate = useNavigate();
-
-  if (trips.length === 0) return null;
-
-  return (
-    <div className={styles.section}>
-      <h3 className={styles.sectionTitle}>Other trips</h3>
-      <div className={styles.tripStrip}>
-        {trips.map((trip) => {
-          const defaultDate = getDefaultDayDateStr(trip);
-          return (
-            <div
-              key={trip.id}
-              className={styles.tripCard}
-              role="button"
-              tabIndex={0}
-              onClick={() => navigate(`/trip/${trip.id}/day/${defaultDate}`)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  navigate(`/trip/${trip.id}/day/${defaultDate}`);
-                }
-              }}
-            >
-              <div className={styles.tripCardHeader}>
-                <span
-                  className={styles.tripColorDot}
-                  style={{ backgroundColor: trip.color ?? 'var(--primary-color)' }}
-                />
-                <span className={styles.tripCardName}>{trip.name}</span>
-              </div>
-              <span className={styles.tripCardDates}>{formatTripRange(trip)}</span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-const QUICK_LINKS: { to: string; icon: React.ElementType; label: string }[] = [
-  { to: '/transportation', icon: Map, label: 'Transportation' },
-  { to: '/budget', icon: Wallet, label: 'Budget' },
-  { to: '/notes', icon: StickyNote, label: 'Notes' },
-  { to: '/packing', icon: Backpack, label: 'Packing' },
-  { to: '/weather', icon: CloudSun, label: 'Weather' },
-  { to: '/import', icon: Upload, label: 'Import' },
+const QUICK_LINKS: { to: string; emoji: string; label: string; subtitle: string }[] = [
+  { to: '/transportation', emoji: '🚆', label: 'Transportation', subtitle: 'Routes & passes' },
+  { to: '/budget', emoji: '💰', label: 'Budget', subtitle: 'Track spending' },
+  { to: '/notes', emoji: '📝', label: 'Notes', subtitle: 'Trip notes' },
+  { to: '/packing', emoji: '🎒', label: 'Packing', subtitle: 'Checklist' },
+  { to: '/weather', emoji: '⛅', label: 'Weather', subtitle: 'Forecasts' },
+  { to: '/import', emoji: '📥', label: 'Import', subtitle: 'Add activities' },
 ];
 
 function QuickLinksGrid(): JSX.Element {
   return (
-    <div className={styles.section}>
-      <h3 className={styles.sectionTitle}>Quick links</h3>
+    <div>
+      <h3 className={styles.sectionTitle}>QUICK LINKS</h3>
       <div className={styles.quickLinks}>
-        {QUICK_LINKS.map(({ to, icon: Icon, label }) => (
+        {QUICK_LINKS.map(({ to, emoji, label, subtitle }) => (
           <Link key={to} to={to} className={styles.quickLinkCard}>
-            <Icon size={20} className={styles.quickLinkIcon} />
-            <span className={styles.quickLinkLabel}>{label}</span>
+            <span className={styles.quickLinkEmoji}>{emoji}</span>
+            <div className={styles.quickLinkText}>
+              <span className={styles.quickLinkLabel}>{label}</span>
+              <span className={styles.quickLinkSubtitle}>{subtitle}</span>
+            </div>
           </Link>
         ))}
       </div>
@@ -241,15 +225,62 @@ function QuickLinksGrid(): JSX.Element {
   );
 }
 
+/* ── Skeleton / Loading ── */
+
+function DashboardSkeleton(): JSX.Element {
+  return (
+    <div className={`${styles.dashboard} font-body`}>
+      <div className={styles.dashboardGrid}>
+        <div className={styles.tripColumn}>
+          <div className={styles.skeletonHero}>
+            <SakuraSkeleton width={48} height={48} rounded="full" />
+            <SakuraSkeleton width="60%" height="2rem" />
+            <SakuraSkeleton width="50%" height="1rem" />
+            <div className={styles.heroStats}>
+              <SakuraSkeleton width={80} height={48} rounded="0.75rem" />
+              <SakuraSkeleton width={80} height={48} rounded="0.75rem" />
+              <SakuraSkeleton width={80} height={48} rounded="0.75rem" />
+            </div>
+            <SakuraSkeleton height={48} rounded="var(--radius-full, 9999px)" />
+          </div>
+        </div>
+        <div className={styles.mainColumn}>
+          <div className={styles.skeletonAi}>
+            <SakuraSkeleton width="45%" height="1.25rem" />
+            <SakuraSkeleton width="100%" height="4rem" rounded="var(--radius-md)" />
+            <SakuraSkeleton height={44} rounded="9999px" />
+          </div>
+          <SakuraSkeleton width="40%" height="1.5rem" />
+          <div className={styles.quickLinks}>
+            <SakuraSkeleton height={72} rounded="var(--radius-lg)" />
+            <SakuraSkeleton height={72} rounded="var(--radius-lg)" />
+          </div>
+          <SakuraSkeleton width="35%" height="1.5rem" />
+          {[1, 2, 3].map((i) => (
+            <div key={i} className={styles.skeletonTimelineRow}>
+              <SakuraSkeleton width={32} height={32} rounded="full" />
+              <div className={styles.skeletonTimelineText}>
+                <SakuraSkeleton width="60%" height="1rem" />
+                <SakuraSkeleton width="30%" height="0.75rem" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Empty state ── */
+
 function EmptyState(): JSX.Element {
   return (
-    <div className={`${styles.emptyState} ${styles.section}`}>
+    <div className={styles.emptyState}>
       <MessageSquare size={48} className={styles.emptyIcon} />
-      <h2 className={styles.emptyTitle}>No trips yet</h2>
+      <h2 className={`${styles.emptyTitle} font-display`}>No trips yet</h2>
       <p className={styles.emptySubtitle}>Create your first trip to get started</p>
       <Link to="/spreadsheet" className={styles.emptyLink}>
-        Create a trip
-        <ArrowRight size={18} />
+        Create a trip <ArrowRight size={18} />
       </Link>
     </div>
   );
@@ -262,34 +293,51 @@ export default function Dashboard(): JSX.Element {
   const { activities, loading: activitiesLoading } = useActivities();
 
   const heroTrip = useMemo(() => pickHeroTrip(trips), [trips]);
+
   const otherTrips = useMemo(
     () => (heroTrip ? trips.filter((t) => t.id !== heroTrip.id) : []),
     [trips, heroTrip],
   );
 
+  const { stops: journeyStops, cityCount } = useMemo(
+    () => (heroTrip ? deriveDashboardJourney(heroTrip, activities) : { stops: [], cityCount: 0 }),
+    [heroTrip, activities],
+  );
+
   if (tripsLoading || activitiesLoading) {
-    return (
-      <div className={styles.loadingWrap}>
-        <div className={styles.spinner} />
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (!heroTrip) {
     return (
-      <div className={styles.dashboard}>
-        <EmptyState />
-        <QuickLinksGrid />
-      </div>
+      <PageTransition>
+        <div className={`${styles.dashboard} font-body`}>
+          <EmptyState />
+          <QuickLinksGrid />
+        </div>
+      </PageTransition>
     );
   }
 
   return (
-    <div className={styles.dashboard}>
-      <HeroSection trip={heroTrip} activities={activities} />
-      <AiPreviewSection tripId={heroTrip.id} />
-      <OtherTripsStrip trips={otherTrips} />
-      <QuickLinksGrid />
-    </div>
+    <PageTransition>
+      <div className={`${styles.dashboard} font-body`}>
+        <div className={styles.dashboardGrid}>
+          <aside className={styles.tripColumn}>
+            <StaggerGroup baseDelay={200} stagger={120}>
+              <HeroSection trip={heroTrip} cityCount={cityCount} />
+              <OtherTripsStrip trips={otherTrips} />
+            </StaggerGroup>
+          </aside>
+          <div className={styles.mainColumn}>
+            <StaggerGroup baseDelay={280} stagger={100} className={styles.mainStack}>
+              <AiPreviewSection tripId={heroTrip.id} />
+              <QuickLinksGrid />
+              <JourneyTimeline stops={journeyStops} />
+            </StaggerGroup>
+          </div>
+        </div>
+      </div>
+    </PageTransition>
   );
 }
