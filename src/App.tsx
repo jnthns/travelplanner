@@ -1,11 +1,10 @@
-import React, { Suspense, useEffect, lazy } from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import BottomTabBar from './components/BottomTabBar';
 import { AuthProvider, useAuth } from './lib/AuthContext';
 import { ToastProvider } from './components/Toast';
-import { loadThemeConfig, getResolvedTokens, getDarkTokens, applyTheme } from './design-system/themes';
-import { getSettingsSnapshot } from './lib/settings';
+import { ThemeProvider } from './contexts/ThemeContext';
 import OnlineStatus from './components/OnlineStatus';
 import GeminiUsageHeader from './components/GeminiUsageHeader';
 import { Loader2 } from 'lucide-react';
@@ -24,6 +23,7 @@ const Settings = lazy(() => import('./pages/Settings'));
 const ImportItinerary = lazy(() => import('./pages/ImportItinerary'));
 const Assistant = lazy(() => import('./pages/Assistant'));
 const TripDayView = lazy(() => import('./pages/TripDayView'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -48,26 +48,11 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 }
 
 const App: React.FC = () => {
-  useEffect(() => {
-    const config = loadThemeConfig();
-    let tokens = getResolvedTokens(config);
-
-    const s = getSettingsSnapshot();
-    if (s.textSize) document.documentElement.style.setProperty('--text-size', `${s.textSize}%`);
-    if (s.compactLayout) document.body.classList.add('compact-layout');
-    if (s.darkMode) {
-      tokens = getDarkTokens(tokens);
-      document.body.classList.add('dark-mode');
-      document.documentElement.style.setProperty('color-scheme', 'dark');
-    }
-
-    applyTheme(tokens);
-  }, []);
-
   return (
     <Router basename="/travelplanner/">
-      <AuthProvider>
-        <ToastProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <ToastProvider>
           <AuthGate>
             <OnlineStatus />
             <div className="app-container">
@@ -77,7 +62,8 @@ const App: React.FC = () => {
                 <GeminiUsageHeader />
                 <Suspense fallback={null}>
                   <Routes>
-                    <Route path="/" element={<Navigate to="/spreadsheet" replace />} />
+                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                    <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/calendar" element={<CalendarView />} />
                     <Route path="/trip/:tripId/day/:date" element={<TripDayView />} />
                     <Route path="/trip/:tripId" element={<TripDefaultRedirect />} />
@@ -90,14 +76,15 @@ const App: React.FC = () => {
                     <Route path="/import" element={<ImportItinerary />} />
                     <Route path="/assistant" element={<Assistant />} />
                     <Route path="/settings" element={<Settings />} />
-                    <Route path="*" element={<Navigate to="/spreadsheet" replace />} />
+                    <Route path="*" element={<Navigate to="/dashboard" replace />} />
                   </Routes>
                 </Suspense>
               </main>
             </div>
           </AuthGate>
-        </ToastProvider>
-      </AuthProvider>
+          </ToastProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </Router>
   );
 };

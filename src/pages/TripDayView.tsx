@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Navigate, useParams, useNavigate } from 'react-router-dom';
+import { setLastContext } from '../lib/lastContext';
 import { format, isSameDay } from 'date-fns';
 import { AlertTriangle, Info, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { CATEGORY_EMOJIS } from '../lib/types';
@@ -92,6 +93,12 @@ const TripDayView: React.FC = () => {
     } = useCalendarViewController({ routeTripId: tripId ?? null, routeDateStr: dateParam ?? null });
 
     const tripFromStore = tripId ? trips.find((t) => t.id === tripId) : undefined;
+
+    useEffect(() => {
+        if (tripId && dateParam) {
+            setLastContext(tripId, dateParam);
+        }
+    }, [tripId, dateParam]);
 
     if (!tripId || !dateParam) {
         return <Navigate to="/spreadsheet" replace />;

@@ -5,6 +5,10 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   base: '/travelplanner/',
+  // Dev server must be opened under this path (matches BrowserRouter basename); otherwise the shell loads with no JS route match → blank page.
+  server: {
+    open: '/travelplanner/',
+  },
   build: {
     chunkSizeWarningLimit: 700,
     rollupOptions: {

@@ -1,0 +1,516 @@
+/* Purpose: Sakura Mist styles for the Dashboard — hero, journey timeline, AI preview, quick links. */
+
+.dashboard {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem 1rem calc(5rem + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Mobile: single column; desktop: trip cards left, journey + tools right */
+.dashboardGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.tripColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  min-width: 0;
+}
+
+.mainColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 2.25rem;
+  min-width: 0;
+}
+
+/* Vertical rhythm between AI → Quick links → Journey (StaggerGroup wraps each block in FadeIn) */
+.mainStack {
+  display: flex;
+  flex-direction: column;
+  gap: 2.25rem;
+}
+
+@media (min-width: 900px) {
+  .dashboardGrid {
+    display: grid;
+    grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+    gap: 2rem;
+    align-items: start;
+  }
+
+  .tripColumn {
+    position: sticky;
+    top: 1rem;
+  }
+}
+
+/* ── Other trips (desktop left column) ── */
+
+.otherTripsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.otherTripsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.otherTripCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  background: var(--surface-color);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.otherTripCard:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.otherTripName {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.otherTripRange {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+/* ── Hero card ── */
+
+.heroCard {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  background: var(--surface-color);
+  padding: 1.5rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: center;
+}
+
+.heroEmoji {
+  font-size: 48px;
+  line-height: 1;
+}
+
+.heroTripName {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.heroDates {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.heroStats {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin: 0.75rem 0;
+}
+
+.heroStat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.heroStatNumber {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.heroStatLabel {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+
+.heroCta {
+  width: 100%;
+  padding: 0.85rem 1.25rem;
+  border: none;
+  border-radius: 9999px;
+  background: var(--primary-color);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 44px;
+  transition: opacity 0.2s ease;
+  margin-top: 0.5rem;
+}
+
+.heroCta:hover {
+  opacity: 0.9;
+}
+
+/* ── Journey timeline ── */
+
+.journeySection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.journeySectionTitle {
+  font-size: 1.25rem;
+  font-weight: 400;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.journeyEmpty {
+  font-size: 0.875rem;
+  color: var(--text-tertiary);
+  margin: 0;
+  padding: 0.5rem 0;
+}
+
+.timeline {
+  position: relative;
+  padding-left: 2.5rem;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  background: var(--primary-color);
+  opacity: 0.3;
+  border-radius: 1px;
+}
+
+.timelineItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  position: relative;
+  padding-bottom: 1.25rem;
+}
+
+.timelineItem:last-child {
+  padding-bottom: 0;
+}
+
+.timelineMarker {
+  position: absolute;
+  left: -2.5rem;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.timelineEmoji {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.timelineContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding-top: 0.25rem;
+}
+
+.timelineCity {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.timelineDate {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+/* ── AI Preview ── */
+
+.aiPreview {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  background: var(--surface-color);
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.aiHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.aiTitle {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.aiQuote {
+  font-style: italic;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+  padding: 0.75rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-color);
+  border-left: 3px solid var(--primary-color);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+}
+
+.aiEmptyText {
+  font-size: 0.85rem;
+  color: var(--text-tertiary);
+  text-align: center;
+  padding: 0.5rem 0;
+  margin: 0;
+}
+
+.aiInputRow {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.aiInput {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 9999px;
+  background: var(--bg-color);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  min-height: 44px;
+  outline: none;
+}
+
+.aiInput::placeholder {
+  color: var(--text-tertiary);
+}
+
+.aiInput:focus {
+  border-color: var(--primary-color);
+}
+
+.aiSendBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: var(--primary-color);
+  color: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity 0.2s ease;
+}
+
+.aiSendBtn:hover {
+  opacity: 0.9;
+}
+
+/* ── Section heading ── */
+
+.sectionTitle {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0 0 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ── Quick links ── */
+
+.quickLinks {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+.quickLinkCard {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  background: var(--surface-color);
+  text-decoration: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  min-height: 44px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.quickLinkCard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.quickLinkEmoji {
+  font-size: 24px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.quickLinkText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.quickLinkLabel {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.quickLinkSubtitle {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+/* ── Empty state ── */
+
+.emptyState {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  background: var(--surface-color);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+}
+
+.emptyIcon {
+  color: var(--text-tertiary);
+  opacity: 0.5;
+}
+
+.emptyTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.emptySubtitle {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.emptyLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1.5rem;
+  border: none;
+  border-radius: 9999px;
+  background: var(--primary-color);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  text-decoration: none;
+  min-height: 44px;
+  transition: opacity 0.2s ease;
+}
+
+.emptyLink:hover {
+  opacity: 0.9;
+}
+
+/* ── Skeleton / Loading ── */
+
+.skeletonHero {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  background: var(--surface-color);
+  padding: 1.5rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.skeletonAi {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  background: var(--surface-color);
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.skeletonTimelineRow {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.skeletonTimelineText {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.loadingWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+}

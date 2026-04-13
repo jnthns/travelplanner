@@ -475,6 +475,79 @@ const Settings: React.FC = () => {
         </div>
       </div>
 
+      {/* AI Assistant */}
+      <div className="card p-lg mb-lg">
+        <h2 className="text-lg font-bold mb-md">AI Assistant</h2>
+        <div className="flex flex-col gap-md">
+          <div className="flex flex-col gap-xs">
+            <label className="text-sm font-medium text-primary">Pace</label>
+            <div className="flex flex-wrap gap-sm">
+              {(['relaxed', 'balanced', 'fast'] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  className={`text-size-btn ${settings.aiDefaultPace === v ? 'active' : ''}`}
+                  onClick={() => { set({ aiDefaultPace: v }); }}
+                >
+                  {v.charAt(0).toUpperCase() + v.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-col gap-xs">
+            <label className="text-sm font-medium text-primary">Budget tier</label>
+            <div className="flex flex-wrap gap-sm">
+              {(['budget', 'mid-range', 'luxury'] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  className={`text-size-btn ${settings.aiDefaultBudget === v ? 'active' : ''}`}
+                  onClick={() => { set({ aiDefaultBudget: v }); }}
+                >
+                  {v === 'mid-range' ? 'Mid-range' : v.charAt(0).toUpperCase() + v.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-col gap-xs">
+            <label className="text-sm font-medium text-primary">Traveling as</label>
+            <div className="flex flex-wrap gap-sm">
+              {(['solo', 'couple', 'family', 'group'] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  className={`text-size-btn ${settings.aiDefaultGroupType === v ? 'active' : ''}`}
+                  onClick={() => { set({ aiDefaultGroupType: v }); }}
+                >
+                  {v.charAt(0).toUpperCase() + v.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-col gap-xs">
+            <label className="text-sm font-medium text-primary">Interests</label>
+            <input
+              type="text"
+              className="input-field"
+              placeholder="e.g. history, food, nature, art"
+              value={settings.aiDefaultInterests}
+              onChange={(e) => { set({ aiDefaultInterests: e.target.value }); }}
+            />
+          </div>
+          <div className="flex flex-col gap-xs">
+            <label className="text-sm font-medium text-primary">Transport preference</label>
+            <input
+              type="text"
+              className="input-field"
+              placeholder="e.g. walking, public transit, taxi"
+              value={settings.aiDefaultTransportPreference}
+              onChange={(e) => { set({ aiDefaultTransportPreference: e.target.value }); }}
+            />
+          </div>
+          <p className="text-sm text-subtle m-0">These are default preferences for the AI assistant. Individual trips can override these from the Assistant page.</p>
+        </div>
+      </div>
+
       {/* Data */}
       <div className="card p-lg mb-lg">
         <h2 className="text-lg font-bold mb-md">Data</h2>

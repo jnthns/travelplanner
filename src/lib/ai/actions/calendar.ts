@@ -2,6 +2,7 @@ import { format } from 'date-fns';
 import { getCachedAiText } from '../cache';
 import { generateWithGemini } from '../../gemini';
 import { getEffectiveDayLocations } from '../../itinerary';
+import { getAiDefaults } from '../../settings';
 import type { Activity, Trip } from '../../types';
 
 export interface DaySummaryResponse {
@@ -24,14 +25,32 @@ const ACTIVITY_DESCRIPTION_CACHE_VERSION = 'v3';
 
 export function formatAiPreferenceContext(trip: Trip): string {
   const prefs = trip.aiPreferences;
-  if (!prefs) return 'AI preferences: none set.';
-  return `AI preferences:
+  const hasPrefs = prefs && Object.values(prefs).some(v =>
+    Array.isArray(v) ? v.length > 0 : typeof v === 'string' ? v.trim().length > 0 : v != null
+  );
+
+  if (hasPrefs && prefs) {
+    return `AI preferences:
 - Pace: ${prefs.pace || 'balanced'}
 - Interests: ${(prefs.interests || []).join(', ') || 'none set'}
 - Dietary needs: ${prefs.dietaryNeeds || 'none set'}
 - Accessibility needs: ${prefs.accessibilityNeeds || 'none set'}
 - Avoid: ${prefs.avoid || 'none set'}
 - Notes: ${prefs.notes || 'none set'}`;
+  }
+
+  const defaults = getAiDefaults();
+  const hasDefaults = defaults.aiDefaultInterests || defaults.aiDefaultTransportPreference ||
+    defaults.aiDefaultPace !== 'balanced' || defaults.aiDefaultBudget !== 'mid-range' || defaults.aiDefaultGroupType !== 'solo';
+
+  if (!hasDefaults) return 'AI preferences: none set.';
+
+  return `AI preferences (global defaults):
+- Pace: ${defaults.aiDefaultPace}
+- Budget: ${defaults.aiDefaultBudget}
+- Traveling as: ${defaults.aiDefaultGroupType}
+- Interests: ${defaults.aiDefaultInterests || 'none set'}
+- Transport preference: ${defaults.aiDefaultTransportPreference || 'none set'}`;
 }
 
 function normalizeActivityDescriptionSuggestion(

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
+    Home,
     Table,
     Calendar,
     CalendarDays,
@@ -22,6 +23,7 @@ const BottomTabBar: React.FC = () => {
     const [moreOpen, setMoreOpen] = useState(false);
 
     const moreLinks = [
+        { to: 'spreadsheet', icon: <Table size={20} />, label: 'Trips' },
         { to: 'weather', icon: <CloudSun size={20} />, label: 'Weather' },
         { to: 'transportation', icon: <Map size={20} />, label: 'Transportation' },
         { to: 'budget', icon: <Wallet size={20} />, label: 'Budget' },
@@ -35,13 +37,13 @@ const BottomTabBar: React.FC = () => {
         <>
             <nav className="bottom-tab-bar" aria-label="Main navigation">
                 <NavLink
-                    to="spreadsheet"
+                    to="dashboard"
                     className={({ isActive }) => `bottom-tab-bar__item ${isActive ? 'bottom-tab-bar__item--active' : ''}`}
                 >
                     <span className="bottom-tab-bar__icon">
-                        <Table size={22} />
+                        <Home size={22} />
                     </span>
-                    <span className="bottom-tab-bar__label">Trips</span>
+                    <span className="bottom-tab-bar__label">Home</span>
                 </NavLink>
                 <NavLink
                     to="calendar"

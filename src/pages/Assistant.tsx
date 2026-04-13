@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTrips, useActivities, useNotes, useChatHistory, useTransportRoutes } from '../lib/store';
 import { useTripScenarios } from '../lib/scenarios';
 import ScenarioSwitcher from '../components/ScenarioSwitcher';
@@ -9,9 +9,24 @@ import { generateAssistantResponse } from '../lib/ai/actions/assistant';
 import { eachDayOfInterval, format, parseISO } from 'date-fns';
 import { compareActivitiesByTimeThenOrder, getEffectiveDayLocations } from '../lib/itinerary';
 
+/** Navigation state from Dashboard (or future entry points) — prefill composer, trip context, optional auto-send. */
+function readAssistantNavState(state: unknown): {
+    initialPrompt?: string;
+    tripId?: string;
+    autoSend?: boolean;
+} {
+    if (!state || typeof state !== 'object') return {};
+    const o = state as Record<string, unknown>;
+    const initialPrompt = typeof o.initialPrompt === 'string' ? o.initialPrompt : undefined;
+    const tripId = typeof o.tripId === 'string' ? o.tripId : undefined;
+    const autoSend = o.autoSend === true;
+    return { initialPrompt, tripId, autoSend };
+}
+
 const Assistant: React.FC = () => {
     const navigate = useNavigate();
-    const { trips, updateTrip } = useTrips();
+    const location = useLocation();
+    const { trips, updateTrip, loading: tripsLoading } = useTrips();
     const { activities } = useActivities();
     const { getRoutesByTrip } = useTransportRoutes();
     const { addNote } = useNotes();
@@ -52,6 +67,8 @@ const Assistant: React.FC = () => {
     const [prefAvoid, setPrefAvoid] = useState('');
     const [prefNotes, setPrefNotes] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    /** Queued after reading router state; effect sends once `selectedTrip` matches. */
+    const pendingDashboardSendRef = useRef<{ message: string; tripId: string } | null>(null);
 
     const selectedTrip = trips.find(t => t.id === selectedTripId);
     const { activeScenarioId, activeScenario } = useTripScenarios(selectedTripId);
@@ -106,6 +123,36 @@ const Assistant: React.FC = () => {
         setPrefAvoid(prefs?.avoid || '');
         setPrefNotes(prefs?.notes || '');
     }, [selectedTripId, selectedTrip?.id]);
+
+    /** Apply prompt + trip from router state (e.g. Dashboard AI preview), then strip state so refresh does not replay. */
+    useEffect(() => {
+        const { initialPrompt, tripId, autoSend } = readAssistantNavState(location.state);
+        let consumed = false;
+        if (tripId) {
+            setSelectedTripId(tripId);
+            consumed = true;
+            try {
+                const raw = localStorage.getItem('travelplanner_calendar_view') || '{}';
+                const parsed = JSON.parse(raw) as Record<string, unknown>;
+                localStorage.setItem(
+                    'travelplanner_calendar_view',
+                    JSON.stringify({ ...parsed, selectedTripId: tripId }),
+                );
+            } catch { /* ignore */ }
+        }
+        const trimmed = initialPrompt?.trim();
+        if (trimmed && autoSend && tripId) {
+            pendingDashboardSendRef.current = { message: trimmed, tripId };
+            setInput('');
+            consumed = true;
+        } else if (trimmed) {
+            setInput(trimmed);
+            consumed = true;
+        }
+        if (consumed) {
+            navigate('.', { replace: true, state: {} });
+        }
+    }, [location.state, navigate]);
 
     const saveAiPreferences = async () => {
         if (!selectedTripId || !selectedTrip) return;
@@ -203,7 +250,89 @@ Notes: ${effectiveTrip.aiPreferences?.notes || 'none set'}`;
         }
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const sendUserMessage = useCallback(
+        async (userMsg: string): Promise<void> => {
+            const trimmed = userMsg.trim();
+            if (!trimmed || isLoading) return;
+            const tid = selectedTripId;
+            const trip = selectedTrip;
+            if (!tid || !trip) return;
+
+            setInput('');
+            setIsLoading(true);
+
+            const tripMembers = trip.members || [trip.userId];
+
+            try {
+                await addMessage(
+                    {
+                        tripId: tid,
+                        role: 'user',
+                        content: trimmed,
+                        createdAt: new Date().toISOString(),
+                    },
+                    tripMembers,
+                );
+
+                const currentHistory = displayMessages
+                    .map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
+                    .join('\n\n');
+                const responseText = await generateAssistantResponse({
+                    userMessage: trimmed,
+                    currentHistory,
+                    tripContext,
+                });
+
+                await addMessage(
+                    {
+                        tripId: tid,
+                        role: 'model',
+                        content: responseText,
+                        createdAt: new Date().toISOString(),
+                    },
+                    tripMembers,
+                );
+            } catch (error) {
+                console.error('Chat error:', error);
+                const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+                try {
+                    await addMessage(
+                        {
+                            tripId: tid,
+                            role: 'model',
+                            content: `⚠️ ${errorMsg}`,
+                            createdAt: new Date().toISOString(),
+                        },
+                        tripMembers,
+                    );
+                } catch {
+                    // Ignore nested save errors
+                }
+            } finally {
+                setIsLoading(false);
+            }
+        },
+        [addMessage, displayMessages, tripContext, isLoading, selectedTrip, selectedTripId],
+    );
+
+    /** After Dashboard navigation with autoSend, send once trip list + selection are ready. */
+    useEffect(() => {
+        const pending = pendingDashboardSendRef.current;
+        if (!pending) return;
+        if (isLoading) return;
+        if (tripsLoading) return;
+        if (!trips.some((t) => t.id === pending.tripId)) {
+            pendingDashboardSendRef.current = null;
+            return;
+        }
+        if (selectedTripId !== pending.tripId) return;
+        if (!selectedTrip || selectedTrip.id !== pending.tripId) return;
+
+        pendingDashboardSendRef.current = null;
+        void sendUserMessage(pending.message);
+    }, [isLoading, selectedTrip, selectedTripId, sendUserMessage, trips, tripsLoading]);
+
+    const handleSubmit = async (e: React.FormEvent): Promise<void> => {
         e.preventDefault();
         if (!input.trim() || isLoading) return;
 
@@ -212,59 +341,12 @@ Notes: ${effectiveTrip.aiPreferences?.notes || 'none set'}`;
             return;
         }
 
-        const userMsg = input.trim();
-        if (!userMsg) return;
-
-        // Ensure trip data is loaded before allowing chat (avoids empty tripMembers rejection)
         if (!selectedTrip) {
             alert('Loading trip details... please wait a moment.');
             return;
         }
 
-        setInput('');
-        setIsLoading(true);
-
-        const tripMembers = selectedTrip.members || [selectedTrip.userId];
-
-        try {
-            // Immediately sync to Firebase
-            await addMessage({
-                tripId: selectedTripId,
-                role: 'user',
-                content: userMsg,
-                createdAt: new Date().toISOString()
-            }, tripMembers);
-
-            const currentHistory = displayMessages.map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join('\n\n');
-            const responseText = await generateAssistantResponse({
-                userMessage: userMsg,
-                currentHistory,
-                tripContext,
-            });
-
-            await addMessage({
-                tripId: selectedTripId,
-                role: 'model',
-                content: responseText,
-                createdAt: new Date().toISOString()
-            }, tripMembers);
-
-        } catch (error) {
-            console.error('Chat error:', error);
-            const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-            try {
-                await addMessage({
-                    tripId: selectedTripId,
-                    role: 'model',
-                    content: `⚠️ ${errorMsg}`,
-                    createdAt: new Date().toISOString()
-                }, tripMembers);
-            } catch (e) {
-                // Ignore nested save errors
-            }
-        } finally {
-            setIsLoading(false);
-        }
+        await sendUserMessage(input);
     };
 
     return (

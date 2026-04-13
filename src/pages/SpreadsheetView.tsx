@@ -24,6 +24,8 @@ import { compareActivitiesByTimeThenOrder, getEffectiveDayLocations } from '../l
 import { buildLlmCopyText } from '../lib/itinerarySerializer';
 import { getTripEmoji } from '../lib/tripEmoji';
 import { getTripPlanningConflicts } from '../lib/planning/conflicts';
+import { setLastContext } from '../lib/lastContext';
+import { getDefaultDayDateStr } from '../lib/tripDefaultDay';
 import { useSettings } from '../lib/settings';
 import {
     createScenarioActivity,
@@ -157,6 +159,15 @@ const SpreadsheetView: React.FC = () => {
             behavior: 'smooth',
         });
     }, [focusedDate, tripDays]);
+
+    useEffect(() => {
+        if (selectedTripId) {
+            const trip = trips.find(t => t.id === selectedTripId);
+            if (trip) {
+                setLastContext(selectedTripId, getDefaultDayDateStr(trip));
+            }
+        }
+    }, [selectedTripId, trips]);
 
     const tripActivities = useMemo(() => {
         if (!selectedTripId) return [];
