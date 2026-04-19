@@ -66,6 +66,8 @@ const Assistant: React.FC = () => {
     const [prefMustHave, setPrefMustHave] = useState('');
     const [prefAvoid, setPrefAvoid] = useState('');
     const [prefNotes, setPrefNotes] = useState('');
+    const [prefMaxActivitiesPerDay, setPrefMaxActivitiesPerDay] = useState<string>('');
+    const [prefEnergyDipTime, setPrefEnergyDipTime] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
     /** Queued after reading router state; effect sends once `selectedTrip` matches. */
     const pendingDashboardSendRef = useRef<{ message: string; tripId: string } | null>(null);
@@ -87,6 +89,8 @@ const Assistant: React.FC = () => {
         setPrefMustHave(prefs?.mustHave || '');
         setPrefAvoid(prefs?.avoid || '');
         setPrefNotes(prefs?.notes || '');
+        setPrefMaxActivitiesPerDay(prefs?.maxActivitiesPerDay != null ? String(prefs.maxActivitiesPerDay) : '');
+        setPrefEnergyDipTime(prefs?.energyDipTime || '');
     }, [selectedTrip]);
 
     /** Shown so user knows which trip (and Live vs draft) Import will edit. */
@@ -105,7 +109,8 @@ const Assistant: React.FC = () => {
         return Boolean(
             (p.pace && p.pace !== 'balanced') || p.budget || p.groupType ||
             (p.interests && p.interests.length > 0) || p.dietaryNeeds ||
-            p.accessibilityNeeds || p.transportPreference || p.mustHave || p.avoid || p.notes
+            p.accessibilityNeeds || p.transportPreference || p.mustHave || p.avoid || p.notes ||
+            p.maxActivitiesPerDay != null || p.energyDipTime
         );
     }, [selectedTrip]);
 
@@ -122,6 +127,8 @@ const Assistant: React.FC = () => {
         setPrefMustHave(prefs?.mustHave || '');
         setPrefAvoid(prefs?.avoid || '');
         setPrefNotes(prefs?.notes || '');
+        setPrefMaxActivitiesPerDay(prefs?.maxActivitiesPerDay != null ? String(prefs.maxActivitiesPerDay) : '');
+        setPrefEnergyDipTime(prefs?.energyDipTime || '');
     }, [selectedTripId, selectedTrip?.id]);
 
     /** Apply prompt + trip from router state (e.g. Dashboard AI preview), then strip state so refresh does not replay. */
@@ -157,6 +164,7 @@ const Assistant: React.FC = () => {
     const saveAiPreferences = async () => {
         if (!selectedTripId || !selectedTrip) return;
         const interests = prefInterests.split(',').map((v) => v.trim()).filter(Boolean);
+        const parsedMax = parseInt(prefMaxActivitiesPerDay, 10);
         setIsSaving(true);
         try {
             await updateTrip(selectedTripId, {
@@ -171,6 +179,8 @@ const Assistant: React.FC = () => {
                     ...(prefMustHave.trim() && { mustHave: prefMustHave.trim() }),
                     ...(prefAvoid.trim() && { avoid: prefAvoid.trim() }),
                     ...(prefNotes.trim() && { notes: prefNotes.trim() }),
+                    ...(!isNaN(parsedMax) && parsedMax > 0 && { maxActivitiesPerDay: parsedMax }),
+                    ...(prefEnergyDipTime.trim() && { energyDipTime: prefEnergyDipTime.trim() }),
                 },
             });
             setPrefsOpen(false);
@@ -535,6 +545,31 @@ Notes: ${effectiveTrip.aiPreferences?.notes || 'none set'}`;
                                     <input className="input-field" value={prefNotes} onChange={(e) => setPrefNotes(e.target.value)} placeholder="honeymoon, anniversary..." />
                                 </div>
                             </div>
+                            <p style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-tertiary)', margin: '14px 0 8px' }}>Pacing limits</p>
+                            <div className="prefs-drawer-grid">
+                                <div>
+                                    <label className="prefs-drawer-label">Max activities / day</label>
+                                    <input
+                                        className="input-field"
+                                        type="number"
+                                        min={1}
+                                        max={20}
+                                        value={prefMaxActivitiesPerDay}
+                                        onChange={(e) => setPrefMaxActivitiesPerDay(e.target.value)}
+                                        placeholder="e.g. 4"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="prefs-drawer-label">Afternoon reset time</label>
+                                    <input
+                                        className="input-field"
+                                        type="time"
+                                        value={prefEnergyDipTime}
+                                        onChange={(e) => setPrefEnergyDipTime(e.target.value)}
+                                        placeholder="e.g. 15:00"
+                                    />
+                                </div>
+                            </div>
                         </div>
 
                         <div className="flex gap-sm justify-end p-md" style={{ borderTop: '1px solid var(--border-color)', flexShrink: 0, paddingBottom: 'max(14px, env(safe-area-inset-bottom))' }}>
@@ -752,7 +787,30 @@ Notes: ${effectiveTrip.aiPreferences?.notes || 'none set'}`;
                     <div ref={messagesEndRef} />
                 </div>
 
-                <form className="assistant-form flex gap-md p-md bg-surface-1 border-t" style={{ borderBottomLeftRadius: 'var(--radius-lg)', borderBottomRightRadius: 'var(--radius-lg)' }} onSubmit={handleSubmit}>
+                {selectedTrip && (
+                    <div className="flex flex-wrap gap-2 px-md pt-sm pb-0" style={{ borderTop: '1px solid var(--border-color)' }}>
+                        <button
+                            type="button"
+                            className="btn btn-ghost btn-sm"
+                            style={{ fontSize: '0.75rem' }}
+                            onClick={() => setInput('You are a cynical, experienced travel expert. Review my itinerary and find the 5 most likely reasons this trip will go wrong. Look for: tight connections, overpriced tourist-trap areas, weather-season mismatches, physically exhausting days, and activities that clash with my preferences. Label each risk P0 (trip-ruining) or P1 (annoying). Be direct.')}
+                            disabled={isLoading}
+                        >
+                            Review plan
+                        </button>
+                        <button
+                            type="button"
+                            className="btn btn-ghost btn-sm"
+                            style={{ fontSize: '0.75rem' }}
+                            onClick={() => setInput('Generate 4 distinct day-by-day itinerary versions for this trip and label them: (1) Hyper-Efficient — max sightseeing, minimal transit waste; (2) Slow Travel — deep immersion, 2–3 things/day; (3) Budget-Maximized — best value, free/cheap alternatives; (4) Local Secrets — off tourist trail, neighbourhood-first. Show key differences between them so I can cherry-pick the best parts.')}
+                            disabled={isLoading}
+                        >
+                            4 versions
+                        </button>
+                    </div>
+                )}
+
+                <form className="assistant-form flex gap-md p-md bg-surface-1" style={{ borderBottomLeftRadius: 'var(--radius-lg)', borderBottomRightRadius: 'var(--radius-lg)' }} onSubmit={handleSubmit}>
                     <textarea
                         className="input-field flex-1 mb-0 min-w-0"
                         placeholder="Ask about your itinerary..."

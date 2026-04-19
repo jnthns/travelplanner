@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { clearAllScenariosStorage } from './scenarios';
+import type { LintRule } from './types';
 
 export interface AppSettings {
   // Appearance
@@ -30,6 +31,9 @@ export interface AppSettings {
   aiDefaultGroupType: 'solo' | 'couple' | 'family' | 'group';
   aiDefaultInterests: string;
   aiDefaultTransportPreference: string;
+
+  // Travel lint rules — user-level "never again" guardrails injected into every AI call
+  travelLintRules: LintRule[];
 
   // Weather
   temperatureUnit: 'C' | 'F';
@@ -61,6 +65,8 @@ const DEFAULTS: AppSettings = {
   aiDefaultGroupType: 'solo',
   aiDefaultInterests: '',
   aiDefaultTransportPreference: '',
+
+  travelLintRules: [],
 
   temperatureUnit: 'C',
   hourlyForecastStartHour: 9,
@@ -135,6 +141,12 @@ export function getAiDefaults(): Pick<AppSettings, 'aiDefaultPace' | 'aiDefaultB
     aiDefaultTransportPreference: currentSettings.aiDefaultTransportPreference,
   };
 }
+
+export function getTravelLintRules(): LintRule[] {
+  return currentSettings.travelLintRules ?? [];
+}
+
+export type { LintRule };
 
 // --------------- Firestore sync ---------------
 
