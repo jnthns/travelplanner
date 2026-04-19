@@ -30,7 +30,7 @@ export function FadeIn({
   direction = 'up',
   children,
   className,
-}: FadeInProps): JSX.Element {
+}: FadeInProps): React.JSX.Element {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -68,7 +68,7 @@ export function StaggerGroup({
   stagger = 100,
   children,
   className,
-}: StaggerGroupProps): JSX.Element {
+}: StaggerGroupProps): React.JSX.Element {
   const items = React.Children.toArray(children);
 
   return (
@@ -91,7 +91,7 @@ interface PageTransitionProps {
   className?: string;
 }
 
-export function PageTransition({ children, className }: PageTransitionProps): JSX.Element {
+export function PageTransition({ children, className }: PageTransitionProps): React.JSX.Element {
   return (
     <FadeIn
       duration={500}
@@ -137,7 +137,7 @@ export function SakuraSkeleton({
   height = '1rem',
   rounded = '0.5rem',
   className,
-}: SakuraSkeletonProps): JSX.Element {
+}: SakuraSkeletonProps): React.JSX.Element {
   const injected = useRef(false);
 
   if (!injected.current) {

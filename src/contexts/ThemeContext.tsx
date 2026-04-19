@@ -1,6 +1,6 @@
 // Purpose: React context + provider for the Sakura Mist theme system — manages preset selection, CSS variable application, and dark mode.
 
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import {
   loadThemeConfig,
   saveThemeConfig,
@@ -25,7 +25,7 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
  * App.tsx that calls loadThemeConfig / getResolvedTokens / applyTheme on mount.
  * Once this provider is wired in, that useEffect should be removed.
  */
-export function ThemeProvider({ children }: { children: ReactNode }): JSX.Element {
+export function ThemeProvider({ children }: { children: ReactNode }): ReactElement {
   const [theme, setThemeState] = useState<string>(() => loadThemeConfig().presetId);
   const isInitialMount = useRef(true);
 
