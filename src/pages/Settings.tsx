@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Check, Sun, Moon, Trash2, RotateCcw } from 'lucide-react';
+import { Check, Sun, Moon, Trash2, RotateCcw, Plus, X } from 'lucide-react';
+import type { LintRule } from '../lib/types';
 import {
   THEME_PRESETS,
   isDarkPreset,
@@ -52,6 +53,137 @@ function SettingsToggle({ id, label, description, checked, onChange }: {
         {label}
       </label>
       {description && <p className="text-sm text-subtle m-0" style={{ paddingLeft: '1.5rem' }}>{description}</p>}
+    </div>
+  );
+}
+
+const LINT_CATEGORIES: { value: LintRule['category']; label: string }[] = [
+  { value: 'hotel', label: 'Hotel' },
+  { value: 'transport', label: 'Transport' },
+  { value: 'restaurant', label: 'Restaurant' },
+  { value: 'activity', label: 'Activity' },
+  { value: 'other', label: 'Other' },
+];
+
+function TravelRulesCard({ settings, set }: { settings: AppSettings; set: (patch: Partial<AppSettings>) => void }) {
+  const [ruleText, setRuleText] = useState('');
+  const [ruleSource, setRuleSource] = useState('');
+  const [ruleCategory, setRuleCategory] = useState<LintRule['category']>('other');
+
+  const rules = settings.travelLintRules ?? [];
+
+  const addRule = () => {
+    const trimmed = ruleText.trim();
+    if (!trimmed) return;
+    const next: LintRule = {
+      id: Date.now().toString(),
+      rule: trimmed,
+      category: ruleCategory,
+      ...(ruleSource.trim() && { source: ruleSource.trim() }),
+    };
+    set({ travelLintRules: [...rules, next] });
+    setRuleText('');
+    setRuleSource('');
+    setRuleCategory('other');
+  };
+
+  const removeRule = (id: string) => {
+    set({ travelLintRules: rules.filter(r => r.id !== id) });
+  };
+
+  return (
+    <div className="card p-lg mb-lg">
+      <h2 className="text-lg font-bold mb-xs">Travel Rules</h2>
+      <p className="text-sm text-subtle mb-md m-0">
+        Persistent guardrails injected into every AI call as hard constraints — your "never again" rules that survive across all trips.
+      </p>
+
+      {rules.length > 0 && (
+        <div className="flex flex-col gap-2 mb-md">
+          {rules.map((r) => (
+            <div
+              key={r.id}
+              className="flex items-start gap-sm"
+              style={{
+                padding: '0.5rem 0.75rem',
+                background: 'var(--surface-2, var(--border-light))',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border-color)',
+              }}
+            >
+              <span
+                className="text-xs font-semibold shrink-0"
+                style={{
+                  padding: '2px 6px',
+                  background: 'var(--primary-color)',
+                  color: 'white',
+                  borderRadius: 'var(--radius-full)',
+                  marginTop: '1px',
+                }}
+              >
+                {r.category}
+              </span>
+              <div className="flex flex-col flex-1 min-w-0">
+                <span className="text-sm" style={{ wordBreak: 'break-word' }}>{r.rule}</span>
+                {r.source && (
+                  <span className="text-xs text-subtle" style={{ marginTop: '2px' }}>From: {r.source}</span>
+                )}
+              </div>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm shrink-0"
+                style={{ padding: '2px', color: 'var(--text-tertiary)' }}
+                onClick={() => removeRule(r.id)}
+                aria-label="Remove rule"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex flex-col gap-sm">
+        <div className="flex flex-wrap gap-sm">
+          <select
+            className="input-field"
+            style={{ flex: '0 0 auto', width: 'auto' }}
+            value={ruleCategory}
+            onChange={(e) => setRuleCategory(e.target.value as LintRule['category'])}
+          >
+            {LINT_CATEGORIES.map(c => (
+              <option key={c.value} value={c.value}>{c.label}</option>
+            ))}
+          </select>
+          <input
+            type="text"
+            className="input-field flex-1"
+            style={{ minWidth: '180px' }}
+            placeholder='e.g. No hotels with resort fees'
+            value={ruleText}
+            onChange={(e) => setRuleText(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') addRule(); }}
+          />
+        </div>
+        <div className="flex gap-sm">
+          <input
+            type="text"
+            className="input-field flex-1"
+            placeholder='Source (optional) — e.g. Bad hotel in Bali 2024'
+            value={ruleSource}
+            onChange={(e) => setRuleSource(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') addRule(); }}
+          />
+          <button
+            type="button"
+            className="btn btn-primary btn-sm shrink-0"
+            onClick={addRule}
+            disabled={!ruleText.trim()}
+          >
+            <Plus size={14} /> Add rule
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -547,6 +679,9 @@ const Settings: React.FC = () => {
           <p className="text-sm text-subtle m-0">These are default preferences for the AI assistant. Individual trips can override these from the Assistant page.</p>
         </div>
       </div>
+
+      {/* Travel Rules */}
+      <TravelRulesCard settings={settings} set={set} />
 
       {/* Data */}
       <div className="card p-lg mb-lg">

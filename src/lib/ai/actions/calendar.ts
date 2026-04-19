@@ -2,7 +2,7 @@ import { format } from 'date-fns';
 import { getCachedAiText } from '../cache';
 import { generateWithGemini } from '../../gemini';
 import { getEffectiveDayLocations } from '../../itinerary';
-import { getAiDefaults } from '../../settings';
+import { getAiDefaults, getTravelLintRules } from '../../settings';
 import type { Activity, Trip } from '../../types';
 
 export interface DaySummaryResponse {
@@ -29,28 +29,40 @@ export function formatAiPreferenceContext(trip: Trip): string {
     Array.isArray(v) ? v.length > 0 : typeof v === 'string' ? v.trim().length > 0 : v != null
   );
 
+  const lintRules = getTravelLintRules();
+  const lintBlock = lintRules.length > 0
+    ? `\nTravel guardrails (hard rules — never violate these):\n${lintRules.map(r => `- [${r.category}] ${r.rule}`).join('\n')}`
+    : '';
+
   if (hasPrefs && prefs) {
+    const nfrLines = [
+      prefs.maxActivitiesPerDay != null ? `- Max activities per day: ${prefs.maxActivitiesPerDay} (do not suggest more)` : null,
+      prefs.energyDipTime ? `- Energy dip at ${prefs.energyDipTime}: schedule a low-key break or coffee here` : null,
+    ].filter(Boolean).join('\n');
+
     return `AI preferences:
 - Pace: ${prefs.pace || 'balanced'}
 - Interests: ${(prefs.interests || []).join(', ') || 'none set'}
 - Dietary needs: ${prefs.dietaryNeeds || 'none set'}
 - Accessibility needs: ${prefs.accessibilityNeeds || 'none set'}
 - Avoid: ${prefs.avoid || 'none set'}
-- Notes: ${prefs.notes || 'none set'}`;
+- Notes: ${prefs.notes || 'none set'}${nfrLines ? '\n' + nfrLines : ''}${lintBlock}`;
   }
 
   const defaults = getAiDefaults();
   const hasDefaults = defaults.aiDefaultInterests || defaults.aiDefaultTransportPreference ||
     defaults.aiDefaultPace !== 'balanced' || defaults.aiDefaultBudget !== 'mid-range' || defaults.aiDefaultGroupType !== 'solo';
 
-  if (!hasDefaults) return 'AI preferences: none set.';
+  if (!hasDefaults && !lintRules.length) return 'AI preferences: none set.';
 
-  return `AI preferences (global defaults):
+  const defaultsBlock = hasDefaults ? `AI preferences (global defaults):
 - Pace: ${defaults.aiDefaultPace}
 - Budget: ${defaults.aiDefaultBudget}
 - Traveling as: ${defaults.aiDefaultGroupType}
 - Interests: ${defaults.aiDefaultInterests || 'none set'}
-- Transport preference: ${defaults.aiDefaultTransportPreference || 'none set'}`;
+- Transport preference: ${defaults.aiDefaultTransportPreference || 'none set'}` : 'AI preferences: none set.';
+
+  return `${defaultsBlock}${lintBlock}`;
 }
 
 function normalizeActivityDescriptionSuggestion(

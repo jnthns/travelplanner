@@ -17,6 +17,13 @@ export interface ItineraryDay {
     accommodation?: Accommodation;
 }
 
+export interface LintRule {
+    id: string;
+    rule: string;
+    category: 'hotel' | 'transport' | 'restaurant' | 'activity' | 'other';
+    source?: string;
+}
+
 export interface AiPreferences {
     pace?: 'relaxed' | 'balanced' | 'fast';
     budget?: 'budget' | 'mid-range' | 'luxury';
@@ -28,6 +35,8 @@ export interface AiPreferences {
     mustHave?: string;
     avoid?: string;
     notes?: string;
+    maxActivitiesPerDay?: number;
+    energyDipTime?: string;
 }
 
 export interface Trip {

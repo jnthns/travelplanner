@@ -56,6 +56,9 @@ export async function generateFillGapsSuggestions(args: {
         (a) => `- ${a.time} | ${a.title} | category: ${a.category ?? 'other'}`,
     );
 
+    const maxPerDay = trip.aiPreferences?.maxActivitiesPerDay;
+    const remainingSlots = maxPerDay != null ? Math.max(0, maxPerDay - sorted.length) : null;
+
     const prompt = `You are planning a single calendar day for the trip "${trip.name}".
 
 Date: ${dateStr}
@@ -69,10 +72,10 @@ ${formatAiPreferenceContext(trip)}
 Task:
 1. Infer **free time windows** between the day boundaries (assume a typical day roughly 08:00–22:00 local unless activities imply otherwise) and between timed activities.
 2. Only include windows that are **at least 60 minutes** long.
-3. Return **at most 3** windows total, each with **exactly one** concrete activity suggestion that fits entirely inside that window.
-4. Each suggestion must align with the AI preferences above — match the pace, reflect stated interests, respect dietary and accessibility needs, and avoid anything listed under "Avoid".
+3. Return **at most ${remainingSlots !== null ? Math.min(3, remainingSlots) : 3}** windows total${remainingSlots !== null ? ` (the traveler's max-activities-per-day limit leaves only ${remainingSlots} slot(s) open)` : ''}, each with **exactly one** concrete activity suggestion that fits entirely inside that window.
+4. Each suggestion must align with the AI preferences above — match the pace, reflect stated interests, respect dietary and accessibility needs, and avoid anything listed under "Avoid". Respect all travel guardrails as hard constraints.
 5. Each suggestion must include a plausible **time** (HH:MM) within the window for starting the activity.
-6. If there are no qualifying gaps, return an empty array.
+6. If there are no qualifying gaps${remainingSlots === 0 ? ' or no remaining slots allowed' : ''}, return an empty array.
 7. windowStart and windowEnd must be HH:MM (24h) strings.
 
 Respond with a JSON **array** only, matching the schema (no markdown).`;
@@ -85,7 +88,7 @@ Respond with a JSON **array** only, matching the schema (no markdown).`;
             type: 'array',
             items: gapItemSchema as unknown as Record<string, unknown>,
             minItems: 0,
-            maxItems: 3,
+            maxItems: remainingSlots !== null ? Math.min(3, remainingSlots) : 3,
         },
     });
 
