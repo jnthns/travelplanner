@@ -1,6 +1,6 @@
 // Purpose: Dashboard landing page — Sakura Mist redesign with hero, journey timeline, AI preview, and quick links.
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactElement } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { Send, ArrowRight, MessageSquare } from 'lucide-react';
@@ -38,7 +38,7 @@ function pickHeroTrip(trips: Trip[]): Trip | undefined {
 
 /* ── Sub-components ── */
 
-function HeroSection({ trip, cityCount }: { trip: Trip; cityCount: number }): JSX.Element {
+function HeroSection({ trip, cityCount }: { trip: Trip; cityCount: number }): ReactElement {
   const navigate = useNavigate();
   const focusDate = getDefaultDayDateStr(trip);
   const days = differenceInDays(parseISO(trip.endDate), parseISO(trip.startDate)) + 1;
@@ -80,7 +80,7 @@ interface OtherTripsStripProps {
   trips: Trip[];
 }
 
-function OtherTripsStrip({ trips }: OtherTripsStripProps): JSX.Element | null {
+function OtherTripsStrip({ trips }: OtherTripsStripProps): ReactElement | null {
   const navigate = useNavigate();
   if (trips.length === 0) return null;
 
@@ -107,7 +107,7 @@ function OtherTripsStrip({ trips }: OtherTripsStripProps): JSX.Element | null {
   );
 }
 
-function JourneyTimeline({ stops }: { stops: DashboardJourneyStop[] }): JSX.Element {
+function JourneyTimeline({ stops }: { stops: DashboardJourneyStop[] }): ReactElement {
   if (stops.length === 0) {
     return (
       <div className={styles.journeySection}>
@@ -140,7 +140,7 @@ function JourneyTimeline({ stops }: { stops: DashboardJourneyStop[] }): JSX.Elem
   );
 }
 
-function AiPreviewSection({ tripId }: { tripId: string }): JSX.Element {
+function AiPreviewSection({ tripId }: { tripId: string }): ReactElement {
   const { messages } = useChatHistory(tripId);
   const [draft, setDraft] = useState('');
   const navigate = useNavigate();
@@ -206,7 +206,7 @@ const QUICK_LINKS: { to: string; emoji: string; label: string; subtitle: string 
   { to: '/import', emoji: '📥', label: 'Import', subtitle: 'Add activities' },
 ];
 
-function QuickLinksGrid(): JSX.Element {
+function QuickLinksGrid(): ReactElement {
   return (
     <div>
       <h3 className={styles.sectionTitle}>QUICK LINKS</h3>
@@ -227,7 +227,7 @@ function QuickLinksGrid(): JSX.Element {
 
 /* ── Skeleton / Loading ── */
 
-function DashboardSkeleton(): JSX.Element {
+function DashboardSkeleton(): ReactElement {
   return (
     <div className={`${styles.dashboard} font-body`}>
       <div className={styles.dashboardGrid}>
@@ -273,7 +273,7 @@ function DashboardSkeleton(): JSX.Element {
 
 /* ── Empty state ── */
 
-function EmptyState(): JSX.Element {
+function EmptyState(): ReactElement {
   return (
     <div className={styles.emptyState}>
       <MessageSquare size={48} className={styles.emptyIcon} />
@@ -288,7 +288,7 @@ function EmptyState(): JSX.Element {
 
 /* ── Page component ── */
 
-export default function Dashboard(): JSX.Element {
+export default function Dashboard(): ReactElement {
   const { trips, loading: tripsLoading } = useTrips();
   const { activities, loading: activitiesLoading } = useActivities();
 
