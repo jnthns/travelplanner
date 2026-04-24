@@ -6,8 +6,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        display: ["'Libre Caslon Display'", "'Cormorant Garamond'", 'serif'],
-        body: ["'Nunito'", "'DM Sans'", 'sans-serif'],
+        display: ["'Cormorant Garamond'", 'Georgia', 'serif'],
+        body: ["'Cormorant Garamond'", "'DM Sans'", 'Georgia', 'serif'],
       },
     },
   },
@@ -19,18 +19,18 @@ export default {
     themes: [
       {
         sakura: {
-          'primary': '#c4697a',
+          'primary': '#5a7a52',
           'primary-content': '#ffffff',
-          'secondary': '#e8a0ad',
-          'secondary-content': '#2d2226',
-          'accent': '#c4697a',
+          'secondary': '#8fad85',
+          'secondary-content': '#2d3a2a',
+          'accent': '#5a7a52',
           'accent-content': '#ffffff',
-          'neutral': '#2d2226',
-          'neutral-content': '#faf6f2',
-          'base-100': '#faf6f2',
-          'base-200': '#fff8f4',
-          'base-300': '#fff0ea',
-          'base-content': '#2d2226',
+          'neutral': '#2d3a2a',
+          'neutral-content': '#f5f7f2',
+          'base-100': '#f5f7f2',
+          'base-200': '#f0f5ed',
+          'base-300': '#eaf0e5',
+          'base-content': '#2d3a2a',
           'info': '#3b82f6',
           'success': '#22c55e',
           'warning': '#f59e0b',

@@ -34,7 +34,27 @@
   --radius-full: 9999px;
 
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --font-size-base: 12px;
+  --font-size-base: 16px;
+
+  /* Design system token aliases — updated by applyTheme() via the above vars */
+  --bg: var(--bg-color);
+  --surface: var(--surface-color);
+  --fg1: var(--text-primary);
+  --fg2: var(--text-secondary);
+  --fg3: var(--text-tertiary);
+  --primary: var(--primary-color);
+  --primary-light: color-mix(in srgb, var(--primary-color) 12%, transparent);
+  --primary-xlight: color-mix(in srgb, var(--primary-color) 6%, transparent);
+  --border: var(--border-color);
+  --border-strong: color-mix(in srgb, var(--border-color) 200%, transparent);
+
+  /* Easing curves */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 150ms;
+  --duration-base: 250ms;
+  --duration-slow: 400ms;
+  --duration-xslow: 700ms;
 }
 
 html {
@@ -294,6 +314,35 @@ p {
 
 .animate-fade-in {
   animation: fadeIn 0.4s ease-out forwards;
+}
+
+/* Zen design system animations */
+@keyframes tp-fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes tp-fade-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes tp-bloom {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes tp-shimmer {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 1; }
+}
+
+.tp-animate-fade-in {
+  animation: tp-fade-in var(--duration-slow, 400ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+
+.tp-animate-bloom {
+  animation: tp-bloom var(--duration-xslow, 700ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)) both;
 }
 
 @keyframes spin {

@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { format, parseISO, differenceInDays } from 'date-fns';
-import { Send, ArrowRight, MessageSquare } from 'lucide-react';
+import { Send, ArrowRight, MessageSquare, Bot } from 'lucide-react';
 import { useTrips, useActivities, useChatHistory } from '../lib/store';
 import { getLastContext } from '../lib/lastContext';
 import { getDefaultDayDateStr } from '../lib/tripDefaultDay';
@@ -46,32 +46,34 @@ function HeroSection({ trip, cityCount }: { trip: Trip; cityCount: number }): JS
 
   return (
     <div className={styles.heroCard}>
-      <div className={styles.heroEmoji}>🌍</div>
-      <h1 className={`${styles.heroTripName} font-display`}>{trip.name}</h1>
-      <span className={styles.heroDates}>{formatTripRange(trip)}</span>
+      <div className={styles.heroCardInner}>
+        <div className={styles.heroEmoji}>🌍</div>
+        <h1 className={`${styles.heroTripName} font-display`}>{trip.name}</h1>
+        <span className={styles.heroDates}>{formatTripRange(trip)}</span>
 
-      <div className={styles.heroStats}>
-        <div className={styles.heroStat}>
-          <span className={styles.heroStatNumber}>{cityCount}</span>
-          <span className={styles.heroStatLabel}>CITIES</span>
+        <div className={styles.heroStats}>
+          <div className={styles.heroStat}>
+            <span className={styles.heroStatNumber}>{cityCount}</span>
+            <span className={styles.heroStatLabel}>Cities</span>
+          </div>
+          <div className={styles.heroStat}>
+            <span className={styles.heroStatNumber}>{days}</span>
+            <span className={styles.heroStatLabel}>Days</span>
+          </div>
+          <div className={styles.heroStat}>
+            <span className={styles.heroStatNumber}>{travelers}</span>
+            <span className={styles.heroStatLabel}>With</span>
+          </div>
         </div>
-        <div className={styles.heroStat}>
-          <span className={styles.heroStatNumber}>{days}</span>
-          <span className={styles.heroStatLabel}>DAYS</span>
-        </div>
-        <div className={styles.heroStat}>
-          <span className={styles.heroStatNumber}>{travelers}</span>
-          <span className={styles.heroStatLabel}>TRAVELERS</span>
-        </div>
+
+        <button
+          className={styles.heroCta}
+          onClick={() => navigate(`/trip/${trip.id}/day/${focusDate}`)}
+          type="button"
+        >
+          Continue Planning →
+        </button>
       </div>
-
-      <button
-        className={styles.heroCta}
-        onClick={() => navigate(`/trip/${trip.id}/day/${focusDate}`)}
-        type="button"
-      >
-        Continue Planning →
-      </button>
     </div>
   );
 }
@@ -111,7 +113,7 @@ function JourneyTimeline({ stops }: { stops: DashboardJourneyStop[] }): JSX.Elem
   if (stops.length === 0) {
     return (
       <div className={styles.journeySection}>
-        <h2 className={`${styles.journeySectionTitle} font-display`}>Your Journey</h2>
+        <h2 className={styles.journeySectionTitle}>Your Journey</h2>
         <p className={styles.journeyEmpty}>
           No cities to show yet — set each day&apos;s location in your itinerary, or add activities other than
           accommodation.
@@ -122,7 +124,7 @@ function JourneyTimeline({ stops }: { stops: DashboardJourneyStop[] }): JSX.Elem
 
   return (
     <div className={styles.journeySection}>
-      <h2 className={`${styles.journeySectionTitle} font-display`}>Your Journey</h2>
+      <h2 className={styles.journeySectionTitle}>Your Journey</h2>
       <div className={styles.timeline}>
         {stops.map((stop, i) => (
           <div key={`${stop.location}-${stop.dateLabel}-${i}`} className={styles.timelineItem}>
@@ -165,8 +167,11 @@ function AiPreviewSection({ tripId }: { tripId: string }): JSX.Element {
   return (
     <div className={styles.aiPreview}>
       <div className={styles.aiHeader}>
-        <span>✨</span>
+        <div className={styles.aiHeaderIcon}>
+          <Bot size={15} />
+        </div>
         <span className={styles.aiTitle}>AI Assistant</span>
+        <span className={styles.aiGeminiTag}>Gemini</span>
       </div>
 
       {lastModelMessage ? (
