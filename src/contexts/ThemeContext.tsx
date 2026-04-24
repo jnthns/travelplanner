@@ -1,6 +1,6 @@
 // Purpose: React context + provider for the Sakura Mist theme system — manages preset selection, CSS variable application, and dark mode.
 
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactElement, type ReactNode } from 'react';
 import {
   loadThemeConfig,
   saveThemeConfig,
