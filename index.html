@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <!-- connect-src includes http://localhost:8787 and 127.0.0.1:8787 for Wrangler dev (VITE_AI_PROXY_URL). -->
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://api.open-meteo.com https://geocoding-api.open-meteo.com https://accounts.google.com https://apis.google.com https://*.workers.dev http://localhost:8787 http://127.0.0.1:8787; img-src 'self' data: https: blob:; frame-ancestors 'none'" />
+    content="default-src 'self'; script-src 'self' 'unsafe-inline' https://apis.google.com https://accounts.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://api.open-meteo.com https://geocoding-api.open-meteo.com https://accounts.google.com https://apis.google.com https://*.workers.dev http://localhost:8787 http://127.0.0.1:8787; img-src 'self' data: https: blob:; frame-src https://apis.google.com https://accounts.google.com https://*.firebaseapp.com; frame-ancestors 'none'" />
   <link rel="icon"
     href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
