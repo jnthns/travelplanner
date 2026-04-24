@@ -13,6 +13,19 @@
 }
 
 .toast {
+    /* Reset DaisyUI's .toast positioning — DaisyUI treats .toast as a fixed container,
+       but here .toast is an individual item inside .toast-container. */
+    position: static;
+    bottom: auto;
+    inset-inline-end: auto;
+    inset-inline-start: auto;
+    top: auto;
+    transform: none;
+    min-width: unset;
+    padding: 0;
+    white-space: normal;
+    gap: 0;
+
     pointer-events: auto;
     background-color: var(--text-primary);
     color: var(--surface-color);

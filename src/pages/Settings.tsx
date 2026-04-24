@@ -15,11 +15,11 @@ import {
 import { useSettings, updateSettings, resetSettings, clearLocalDrafts, type AppSettings } from '../lib/settings';
 
 const TEXT_SIZE_OPTIONS = [
-  { label: 'Small', value: 75 },
-  { label: 'Default', value: 80 },
-  { label: 'Medium', value: 90 },
-  { label: 'Large', value: 100 },
-  { label: 'Extra Large', value: 112 },
+  { label: 'Small', value: 85 },
+  { label: 'Default', value: 100 },
+  { label: 'Medium', value: 112 },
+  { label: 'Large', value: 125 },
+  { label: 'Extra Large', value: 140 },
 ];
 
 const ZOOM_OPTIONS = [70, 80, 90, 100, 110, 120, 130, 140];

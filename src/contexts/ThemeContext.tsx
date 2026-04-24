@@ -10,7 +10,7 @@ import {
   THEME_PRESETS,
   isDarkPreset,
 } from '../design-system/themes';
-import { getSettingsSnapshot } from '../lib/settings';
+import { useSettings } from '../lib/settings';
 
 interface ThemeContextValue {
   theme: string;
@@ -27,7 +27,7 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
  */
 export function ThemeProvider({ children }: { children: ReactNode }): ReactElement {
   const [theme, setThemeState] = useState<string>(() => loadThemeConfig().presetId);
-  const isInitialMount = useRef(true);
+  const settings = useSettings();
 
   useEffect(() => {
     const config = { presetId: theme, colorOverrides: {} };
@@ -47,21 +47,15 @@ export function ThemeProvider({ children }: { children: ReactNode }): ReactEleme
 
     applyTheme(tokens);
     document.documentElement.setAttribute('data-theme', theme);
-
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      const settings = getSettingsSnapshot();
-
-      if (settings.textSize != null) {
-        document.documentElement.style.fontSize = `${settings.textSize}%`;
-      }
-      if (settings.compactLayout) {
-        document.body.classList.add('compact-layout');
-      } else {
-        document.body.classList.remove('compact-layout');
-      }
-    }
   }, [theme]);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--text-size', `${settings.textSize}%`);
+  }, [settings.textSize]);
+
+  useEffect(() => {
+    document.body.classList.toggle('compact-layout', settings.compactLayout);
+  }, [settings.compactLayout]);
 
   const setTheme = (themeId: string): void => {
     setThemeState(themeId);

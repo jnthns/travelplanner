@@ -46,7 +46,7 @@ export interface AppSettings {
 const DEFAULTS: AppSettings = {
   darkMode: false,
   compactLayout: false,
-  textSize: 80,
+  textSize: 100,
 
   colorCodedTimeRows: false,
   colorCodingOpacity: 6,
