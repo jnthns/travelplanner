@@ -1,0 +1,196 @@
+name: Review Deploy on Failure
+
+on:
+  workflow_run:
+    workflows: ["Deploy static content to Pages"]
+    types: [completed]
+
+jobs:
+  review:
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      issues: write
+
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Anthropic SDK
+        run: npm install @anthropic-ai/sdk
+
+      - name: Analyze and handle failure
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WORKFLOW_RUN_ID: ${{ github.event.workflow_run.id }}
+          WORKFLOW_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          REPO: ${{ github.repository }}
+        run: |
+          cat > review.mjs << 'SCRIPT'
+          import Anthropic from '@anthropic-ai/sdk';
+
+          const token = process.env.GITHUB_TOKEN;
+          const runId = process.env.WORKFLOW_RUN_ID;
+          const runAttempt = parseInt(process.env.WORKFLOW_RUN_ATTEMPT || '1', 10);
+          const repo = process.env.REPO;
+
+          const GH_API = 'https://api.github.com';
+          const GH_HEADERS = {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28',
+            'User-Agent': 'deploy-reviewer/1.0',
+          };
+
+          async function ghFetch(path, options = {}) {
+            const res = await fetch(`${GH_API}${path}`, {
+              ...options,
+              headers: { ...GH_HEADERS, ...(options.headers || {}) },
+            });
+            return res;
+          }
+
+          async function getLogs() {
+            const jobsRes = await ghFetch(`/repos/${repo}/actions/runs/${runId}/jobs`);
+            if (!jobsRes.ok) throw new Error(`Failed to fetch jobs: ${jobsRes.status}`);
+            const { jobs } = await jobsRes.json();
+            if (!jobs.length) return 'No jobs found.';
+
+            const parts = [];
+            for (const job of jobs) {
+              if (job.conclusion !== 'success') {
+                const logsRes = await ghFetch(`/repos/${repo}/actions/jobs/${job.id}/logs`);
+                if (logsRes.ok) {
+                  const text = await logsRes.text();
+                  parts.push(`=== ${job.name} (${job.conclusion}) ===\n${text}`);
+                }
+              }
+            }
+            return parts.join('\n\n') || 'No failed job logs found.';
+          }
+
+          const SYSTEM_PROMPT = `You are a CI/CD expert analyzing GitHub Actions deployment failures for a React app deployed to GitHub Pages via Vite.
+
+          When given failure logs, classify the failure as one of two types:
+
+          TRANSIENT: A temporary infrastructure issue that will likely succeed on retry:
+          - Network timeouts, connection resets, or DNS failures
+          - GitHub Pages or Actions service unavailability
+          - Runner provisioning or setup failures
+          - Flaky npm registry responses
+
+          REAL_FAILURE: A genuine issue requiring code or configuration changes:
+          - Build errors (TypeScript compile errors, missing modules, syntax errors)
+          - Missing or invalid secrets/environment variables (VITE_* vars)
+          - Misconfigured vite or deployment settings
+          - Out-of-resource failures unlikely to resolve on retry
+
+          Respond with exactly this JSON object and nothing else (no markdown fences, no extra text):
+          {"verdict":"TRANSIENT","summary":"one sentence root cause","details":"2-3 sentences with specifics and recommended fix"}
+          or
+          {"verdict":"REAL_FAILURE","summary":"one sentence root cause","details":"2-3 sentences with specifics and recommended fix"}`;
+
+          async function analyzeWithClaude(logs) {
+            const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+            const truncated = logs.length > 40000
+              ? '[earlier logs truncated]\n' + logs.slice(-40000)
+              : logs;
+
+            const response = await client.messages.create({
+              model: 'claude-sonnet-4-6',
+              max_tokens: 512,
+              system: [
+                {
+                  type: 'text',
+                  text: SYSTEM_PROMPT,
+                  cache_control: { type: 'ephemeral' },
+                },
+              ],
+              messages: [
+                {
+                  role: 'user',
+                  content: `Deploy failed on run attempt ${runAttempt}.\n\nLogs:\n\n${truncated}`,
+                },
+              ],
+            });
+
+            const text = response.content.find(b => b.type === 'text')?.text ?? '';
+            const match = text.match(/\{[\s\S]*?\}/);
+            if (!match) throw new Error(`Unexpected Claude response: ${text.slice(0, 300)}`);
+            return JSON.parse(match[0]);
+          }
+
+          async function rerunWorkflow() {
+            const res = await ghFetch(`/repos/${repo}/actions/runs/${runId}/rerun`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ enable_debug_logging: false }),
+            });
+            if (!res.ok) {
+              const err = await res.text();
+              throw new Error(`Re-run failed: ${res.status} ${err}`);
+            }
+            console.log('Re-run triggered successfully.');
+          }
+
+          async function createIssue(analysis, reason) {
+            const body = [
+              '## Deploy Failure Analysis',
+              '',
+              `**Run:** https://github.com/${repo}/actions/runs/${runId} (attempt ${runAttempt})`,
+              `**Reason for escalation:** ${reason}`,
+              '',
+              `**Root cause:** ${analysis.summary}`,
+              '',
+              `**Details:** ${analysis.details}`,
+              '',
+              '---',
+              '*Auto-generated by the deploy review workflow.*',
+            ].join('\n');
+
+            const res = await ghFetch(`/repos/${repo}/issues`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                title: `Deploy failure: ${analysis.summary}`,
+                body,
+              }),
+            });
+            if (!res.ok) {
+              const err = await res.text();
+              throw new Error(`Failed to create issue: ${res.status} ${err}`);
+            }
+            const issue = await res.json();
+            console.log(`Issue created: ${issue.html_url}`);
+          }
+
+          async function main() {
+            console.log(`Reviewing workflow run ${runId} (attempt ${runAttempt})...`);
+            const logs = await getLogs();
+            console.log(`Fetched ${logs.length} chars of logs.`);
+
+            const analysis = await analyzeWithClaude(logs);
+            console.log(`Verdict: ${analysis.verdict} — ${analysis.summary}`);
+
+            if (analysis.verdict === 'TRANSIENT' && runAttempt < 2) {
+              console.log('Transient failure on first attempt — retrying deploy...');
+              await rerunWorkflow();
+            } else {
+              const reason = analysis.verdict === 'TRANSIENT'
+                ? 'Transient failure persisted after one retry'
+                : 'Build or configuration error requiring a fix';
+              console.log(`${reason} — creating GitHub issue...`);
+              await createIssue(analysis, reason);
+            }
+          }
+
+          main().catch(err => {
+            console.error('Fatal error:', err.message);
+            process.exit(1);
+          });
+          SCRIPT
+          node review.mjs
