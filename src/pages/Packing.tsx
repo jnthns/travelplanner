@@ -3,7 +3,7 @@ import { Check, Plus, Trash2 } from 'lucide-react';
 import { useLocalStorageState } from '../lib/persist';
 import { usePackingItems, useTrips } from '../lib/store';
 import type { PackingItem, PackingListGroup } from '../lib/types';
-import { useToast } from '../components/Toast';
+import { useToast } from '../components/toastContext';
 
 const CATEGORIES: Array<NonNullable<PackingItem['category']>> = [
     'documents',

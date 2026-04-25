@@ -7,7 +7,7 @@ import ScenarioSwitcher from '../components/ScenarioSwitcher';
 import { TRANSPORT_EMOJIS } from '../lib/types';
 import { useLocalStorageState } from '../lib/persist';
 import Markdown from '../components/Markdown';
-import { useToast } from '../components/Toast';
+import { useToast } from '../components/toastContext';
 import { suggestTransportOptions } from '../lib/ai/actions/transport';
 import ConflictList from '../components/ConflictList';
 import { getTripPlanningConflicts } from '../lib/planning/conflicts';

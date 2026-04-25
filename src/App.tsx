@@ -4,9 +4,9 @@ import Sidebar from './components/Sidebar';
 import BottomTabBar from './components/BottomTabBar';
 import { AuthProvider, useAuth } from './lib/AuthContext';
 import { ToastProvider } from './components/Toast';
+import { GeminiAiToastBridge } from './components/GeminiAiToastBridge';
 import { ThemeProvider } from './contexts/ThemeContext';
 import OnlineStatus from './components/OnlineStatus';
-import GeminiUsageHeader from './components/GeminiUsageHeader';
 import { Loader2 } from 'lucide-react';
 import './theme.css';
 import TripDefaultRedirect from './pages/TripDefaultRedirect';
@@ -53,13 +53,13 @@ const App: React.FC = () => {
       <ThemeProvider>
         <AuthProvider>
           <ToastProvider>
+            <GeminiAiToastBridge />
           <AuthGate>
             <OnlineStatus />
             <div className="app-container">
               <Sidebar />
               <BottomTabBar />
               <main className="main-content">
-                <GeminiUsageHeader />
                 <Suspense fallback={null}>
                   <Routes>
                     <Route path="/" element={<Navigate to="/dashboard" replace />} />

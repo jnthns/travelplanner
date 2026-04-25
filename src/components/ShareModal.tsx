@@ -4,7 +4,7 @@ import { collection, query, where, getDocs, writeBatch, type DocumentReference }
 import { db } from '../lib/firebase';
 import { useTrips } from '../lib/store';
 import type { Trip } from '../lib/types';
-import { useToast } from './Toast';
+import { useToast } from './toastContext';
 
 interface ShareModalProps {
     trip: Trip;

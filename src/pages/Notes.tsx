@@ -8,7 +8,7 @@ import { useLocalStorageState } from '../lib/persist';
 import DraggableList from '../components/DraggableList';
 import NoteEditor from '../components/NoteEditor';
 import NoteCard from '../components/NoteCard';
-import { useToast } from '../components/Toast';
+import { useToast } from '../components/toastContext';
 
 type NotesFilterMode = 'all' | 'general' | 'day';
 

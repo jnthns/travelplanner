@@ -6,6 +6,7 @@ import {
   recordAiRequestRetry,
   recordAiRequestSuccess,
 } from './aiUsage';
+import { emitGeminiRequestToast } from './geminiToastBridge';
 import { getProxyUrl } from './proxyUrl';
 
 const MIN_CALL_SPACING_MS = 1200;
@@ -21,6 +22,17 @@ function isRateLimitError(err: unknown): boolean {
   return false;
 }
 
+/** Thrown for proxy/body errors after the error toast was already emitted. */
+class GeminiRequestError extends Error {
+  readonly statusCode: number | null;
+
+  constructor(message: string, statusCode: number | null) {
+    super(message);
+    this.name = 'GeminiRequestError';
+    this.statusCode = statusCode;
+  }
+}
+
 async function sleep(ms: number) {
   await new Promise((r) => setTimeout(r, ms));
 }
@@ -31,7 +43,12 @@ async function sleep(ms: number) {
  */
 export async function generateWithGemini(
   prompt: string,
-  options?: { systemInstruction?: string; responseMimeType?: 'text/plain' | 'application/json', responseSchema?: Record<string, any>, model?: string }
+  options?: {
+    systemInstruction?: string;
+    responseMimeType?: 'text/plain' | 'application/json';
+    responseSchema?: Record<string, unknown>;
+    model?: string;
+  }
 ): Promise<string> {
   const opts = options || {};
   const { systemInstruction, responseMimeType, responseSchema } = opts;
@@ -49,8 +66,7 @@ export async function generateWithGemini(
 
     const proxyUrl = getProxyUrl();
     let attempt = 0;
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
+    for (;;) {
       try {
         recordAiRequestAttempt(model);
         const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -65,12 +81,19 @@ export async function generateWithGemini(
         const data = await response.json() as { text?: string; error?: string };
 
         if (!response.ok) {
-          throw new Error(data.error || `Proxy returned ${response.status}`);
+          const msg = (data.error || 'Request failed').trim() || 'Request failed';
+          emitGeminiRequestToast({ kind: 'error', message: msg, statusCode: response.status });
+          throw new GeminiRequestError(data.error || `Proxy returned ${response.status}`, response.status);
         }
 
         const text = data.text?.trim() ?? '';
-        if (!text) throw new Error('Empty response from AI proxy');
+        if (!text) {
+          const emptyMsg = 'Empty response from AI proxy';
+          emitGeminiRequestToast({ kind: 'error', message: emptyMsg, statusCode: response.status });
+          throw new GeminiRequestError('Empty response from AI proxy', response.status);
+        }
         recordAiRequestSuccess();
+        emitGeminiRequestToast({ kind: 'success', model });
         return text;
       } catch (err) {
         if (attempt < 3 && isRateLimitError(err)) {
@@ -81,6 +104,15 @@ export async function generateWithGemini(
           continue;
         }
         recordAiRequestFailure();
+        if (err instanceof GeminiRequestError) {
+          // Error toast was already emitted in the try block.
+          throw err;
+        }
+        const message =
+          err instanceof Error
+            ? err.message || 'Request failed'
+            : String(err);
+        emitGeminiRequestToast({ kind: 'error', message, statusCode: null });
         throw err instanceof Error ? err : new Error(String(err));
       }
     }

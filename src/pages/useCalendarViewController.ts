@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { format, eachDayOfInterval, parseISO } from 'date-fns';
 import { useTrips, useActivities, useTransportRoutes } from '../lib/store';
 import { CATEGORY_COLORS } from '../lib/types';
-import { useToast } from '../components/Toast';
+import { useToast } from '../components/toastContext';
 import { generateDayActivityDescriptions, generateDaySummary, generateOptimizedRoute } from '../lib/ai/actions/calendar';
 import { generateFillGapsSuggestions, type FillGapSuggestionRow } from '../lib/ai/actions/fillGaps';
 import { getNearbyPlacesLabel } from '../lib/places';

@@ -12,6 +12,30 @@
     width: 100%;
 }
 
+.toast--error {
+    background-color: var(--error-bg);
+    color: var(--text-primary);
+    border: 1px solid color-mix(in srgb, var(--error-color) 45%, transparent);
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--error-color) 20%, transparent);
+}
+
+.toast--error .toast-dismiss-btn {
+    color: var(--text-secondary);
+}
+
+.toast--error .toast-dismiss-btn:hover {
+    color: var(--text-primary);
+}
+
+.toast-icon--warning {
+    flex-shrink: 0;
+    color: var(--error-color);
+}
+
+.toast-content:has(.toast-icon) {
+    align-items: flex-start;
+}
+
 .toast {
     /* Reset DaisyUI's .toast positioning — DaisyUI treats .toast as a fixed container,
        but here .toast is an individual item inside .toast-container. */
