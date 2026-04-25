@@ -3,12 +3,12 @@
 /* ── Matcha Zenith (sakura id) — extended tokens ── */
 [data-theme="sakura"],
 :root {
-  --surface-raised: #fafcf9;
-  --bg-alt: #eaf0e5;
-  --fg4: #a8c4a2;
-  --primary-light: rgba(90, 122, 82, 0.12);
-  --primary-xlight: rgba(90, 122, 82, 0.06);
-  --border-strong: rgba(90, 122, 82, 0.24);
+  --surface-raised: #ffffff;
+  --bg-alt: #e1ebe1;
+  --fg4: #4a6a42;
+  --primary-light: rgba(31, 92, 46, 0.14);
+  --primary-xlight: rgba(31, 92, 46, 0.08);
+  --border-strong: rgba(10, 19, 9, 0.2);
 }
 
 /* ── Kintsukuroi — extended tokens ── */
@@ -28,7 +28,7 @@
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  background: radial-gradient(ellipse at 50% 0%, rgba(90, 122, 82, 0.05) 0%, transparent 55%);
+  background: radial-gradient(ellipse at 50% 0%, rgba(31, 92, 46, 0.08) 0%, transparent 55%);
 }
 
 [data-theme="kintsukuroi"] body::before {
@@ -40,14 +40,11 @@
   background: radial-gradient(ellipse at 30% 20%, rgba(201, 168, 76, 0.06) 0%, transparent 60%);
 }
 
-/* Display font utility */
-.font-display {
-  font-family: 'Cormorant Garamond', Georgia, serif;
-}
-
-/* Body font utility */
+/* Display + body: Matcha uses Plus Jakarta (loaded via theme fontUrl) */
+.font-display,
 .font-body {
-  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-family: 'Plus Jakarta Sans', Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    sans-serif;
 }
 
 /* Custom scrollbar for themed contexts */
@@ -60,12 +57,12 @@
 }
 
 [data-theme="sakura"] ::-webkit-scrollbar-thumb {
-  background: rgba(90, 122, 82, 0.2);
+  background: rgba(31, 92, 46, 0.28);
   border-radius: 3px;
 }
 
 [data-theme="sakura"] ::-webkit-scrollbar-thumb:hover {
-  background: rgba(90, 122, 82, 0.35);
+  background: rgba(31, 92, 46, 0.45);
 }
 
 [data-theme="kintsukuroi"] ::-webkit-scrollbar {
