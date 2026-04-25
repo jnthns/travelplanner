@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useLayoutEffect } from 'react';
+import { TriangleAlert } from 'lucide-react';
+import { ToastContext, type ToastVariant } from './toastContext';
 import './Toast.css';
 
 const TOAST_DURATION = 5000;
@@ -8,19 +10,8 @@ interface ToastItem {
     message: string;
     onUndo?: () => void;
     timeoutId: ReturnType<typeof setTimeout>;
-}
-
-interface ToastContextValue {
-    /** Optional third argument: duration in ms (default 5000). Use `undefined` for onUndo when passing duration only. */
-    showToast: (message: string, onUndo?: () => void, durationMs?: number) => void;
-}
-
-const ToastContext = createContext<ToastContextValue | null>(null);
-
-export function useToast() {
-    const ctx = useContext(ToastContext);
-    if (!ctx) throw new Error('useToast must be used within ToastProvider');
-    return ctx;
+    durationMs: number;
+    variant: ToastVariant;
 }
 
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -35,12 +26,18 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         });
     }, []);
 
-    const showToast = useCallback((message: string, onUndo?: () => void, durationMs?: number) => {
+    const showToast = useCallback(
+        (message: string, onUndo?: () => void, durationMs?: number, variant: ToastVariant = 'default') => {
         const id = ++idRef.current;
         const duration = durationMs ?? TOAST_DURATION;
         const timeoutId = setTimeout(() => dismiss(id), duration);
-        setToasts(prev => [...prev, { id, message, onUndo, timeoutId }]);
-    }, [dismiss]);
+        setToasts(prev => [
+            ...prev,
+            { id, message, onUndo, timeoutId, durationMs: duration, variant },
+        ]);
+    },
+    [dismiss]
+);
 
     const handleUndo = useCallback((toast: ToastItem) => {
         toast.onUndo?.();
@@ -68,26 +65,44 @@ const ToastItem: React.FC<{
 }> = ({ toast, onDismiss, onUndo }) => {
     const [exiting, setExiting] = useState(false);
     const [progress, setProgress] = useState(100);
-    const startRef = useRef(Date.now());
+    const startRef = useRef<number | null>(null);
+
+    useLayoutEffect(() => {
+        startRef.current = Date.now();
+    }, []);
 
     useEffect(() => {
+        const duration = toast.durationMs;
         const interval = setInterval(() => {
-            const elapsed = Date.now() - startRef.current;
-            const remaining = Math.max(0, 100 - (elapsed / TOAST_DURATION) * 100);
+            const start = startRef.current;
+            if (start == null) return;
+            const elapsed = Date.now() - start;
+            const remaining = Math.max(0, 100 - (elapsed / duration) * 100);
             setProgress(remaining);
             if (remaining <= 0) clearInterval(interval);
         }, 50);
         return () => clearInterval(interval);
-    }, []);
+    }, [toast.durationMs]);
 
     const handleDismiss = () => {
         setExiting(true);
         setTimeout(() => onDismiss(toast.id), 200);
     };
 
+    const isError = toast.variant === 'error';
+
     return (
-        <div className={`toast ${exiting ? 'toast-exit' : 'toast-enter'}`}>
+        <div
+            className={`toast ${isError ? 'toast--error' : ''} ${
+                exiting ? 'toast-exit' : 'toast-enter'
+            }`}
+            role="status"
+            aria-live={isError ? 'assertive' : 'polite'}
+        >
             <div className="toast-content">
+                {isError && (
+                    <TriangleAlert className="toast-icon toast-icon--warning" size={20} aria-hidden />
+                )}
                 <span className="toast-message">{toast.message}</span>
                 <div className="toast-actions">
                     {toast.onUndo && (

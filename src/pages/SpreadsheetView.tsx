@@ -18,7 +18,7 @@ import WeatherBadge from '../components/WeatherBadge';
 import NearbyRestaurants from '../components/NearbyRestaurants';
 import { getNearbyPlacesLabel } from '../lib/places';
 import ActivityReviews from '../components/ActivityReviews';
-import { useToast } from '../components/Toast';
+import { useToast } from '../components/toastContext';
 import { useWeatherForTrip } from '../lib/weather';
 import { compareActivitiesByTimeThenOrder, getEffectiveDayLocations } from '../lib/itinerary';
 import { buildLlmCopyText } from '../lib/itinerarySerializer';

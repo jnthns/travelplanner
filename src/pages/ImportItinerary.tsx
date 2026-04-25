@@ -5,7 +5,7 @@ import { useTrips, useActivities, useTransportRoutes, useNotes } from '../lib/st
 import { useLocalStorageState } from '../hooks/useLocalStorageState';
 import { CATEGORY_EMOJIS } from '../lib/types';
 import type { Activity } from '../lib/types';
-import { useToast } from '../components/Toast';
+import { useToast } from '../components/toastContext';
 import { selectTripScenario, replaceScenarioDay, overwriteScenarioActivities } from '../lib/scenarios';
 import { buildTripExportPayload, downloadTextFile, slugifyFilename, toTripCsv } from '../lib/exportTrip';
 import { compareActivitiesByTimeThenOrder } from '../lib/itinerary';
